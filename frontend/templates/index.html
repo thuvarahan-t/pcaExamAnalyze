@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('PCA Exam Analyzer')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <section class="glass card-glass" style="padding: 3rem 2rem; text-align:center; margin-top:1.5rem;">
+            <img th:src="@{/img/logo.png}" alt="PCA logo"
+                 style="height:88px;width:88px;border-radius:20px;background:#fff;padding:8px;box-shadow:0 14px 36px rgba(26,19,100,.2);">
+            <div class="eyebrow mt-3">Physics Cube Academy</div>
+            <h1 style="font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;margin:.5rem 0 .6rem;">
+                Know exactly what to revise.
+            </h1>
+            <p class="text-dim" style="max-width:620px;margin:0 auto 1.6rem;font-size:1.05rem;">
+                Analyze your Physics past-paper performance (2021–2025), track every attempt,
+                and get a personalized study report pinpointing your weak, mid-range and strong topics.
+            </p>
+            <div class="flex gap-1 flex-wrap" style="justify-content:center;">
+                <a th:href="@{/register}" class="btn btn-primary"><i class="bi bi-rocket-takeoff"></i> Get started</a>
+                <a th:href="@{/login}" class="btn btn-ghost"><i class="bi bi-box-arrow-in-right"></i> Sign in</a>
+            </div>
+        </section>
+
+        <section class="grid cols-3 mt-3">
+            <div class="glass card-glass hoverable">
+                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-clipboard-data"></i></div>
+                <h3 class="mt-2 mb-1">Enter your marks</h3>
+                <p class="text-dim mb-0">Pick a year, type your score per question. We validate against each question's max marks.</p>
+            </div>
+            <div class="glass card-glass hoverable">
+                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-pie-chart"></i></div>
+                <h3 class="mt-2 mb-1">See your weak areas</h3>
+                <p class="text-dim mb-0">Topic-wise breakdown with clear weak / mid / strong colour coding and charts.</p>
+            </div>
+            <div class="glass card-glass hoverable">
+                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-file-earmark-pdf"></i></div>
+                <h3 class="mt-2 mb-1">Download your report</h3>
+                <p class="text-dim mb-0">A personalized PDF telling you what to study and which questions to redo.</p>
+            </div>
+        </section>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+</body>
+</html>

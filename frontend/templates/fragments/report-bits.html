@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+
+<!-- One section's result card. showRes=true shows the teacher's study resources. -->
+<div th:fragment="section-card(s, showRes)" class="glass card-glass repsec"
+     th:classappend="' ' + ${s.cssClass}" th:style="'--c:' + ${s.color}">
+    <div class="repsec-head">
+        <div class="repsec-name">
+            <span class="repsec-dot"></span>
+            <span th:text="${s.section}">Mechanics</span>
+        </div>
+        <div class="repsec-score">
+            <span class="repsec-pct" th:text="${s.roundedPercentage} + '%'">42%</span>
+            <span class="repsec-raw" th:text="${s.obtained} + '/' + ${s.max}">17/40</span>
+            <span class="rbadge" th:classappend="${s.cssClass}" th:text="${s.classification.label}">Weak</span>
+        </div>
+    </div>
+    <div class="repsec-bar"><i th:style="'width:' + ${s.roundedPercentage} + '%'"></i></div>
+
+    <div th:if="${showRes and !s.resources.isEmpty()}" class="res-block">
+        <div class="res-title"><i class="bi bi-journal-bookmark"></i> What to study to improve</div>
+        <div class="res-list">
+            <div th:each="r : ${s.resources}" class="res-item">
+                <span class="res-type"><i class="bi" th:classappend="${r.typeIcon}"></i> <span th:text="${r.typeLabel}">Files</span></span>
+                <div class="res-main">
+                    <span class="res-name" th:text="${r.title}">Mechanics Notes</span>
+                    <a th:if="${r.url}" class="res-link" th:href="${r.resource}" target="_blank" rel="noopener"
+                       th:text="${r.resource}">https://…</a>
+                    <span th:unless="${r.url}" class="res-link plain" th:text="${r.resource}">pg 112–118</span>
+                    <span th:if="${r.note}" class="res-note" th:text="${r.note}">Focus on worked examples.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div th:if="${showRes and s.resources.isEmpty()}" class="res-empty">
+        No resources attached by your teacher for this section yet.
+    </div>
+</div>
+
+</body>
+</html>

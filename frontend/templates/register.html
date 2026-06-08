@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('Register - PCA Exam Analyzer')}"></head>
+<body class="register-page">
+<div class="auth-wrap register-wrap">
+    <div class="glass card-glass auth-card register-card">
+        <div class="auth-logo register-logo">
+            <img th:src="@{/img/logo.png}" alt="Physics Cube Academy logo">
+            <h1>Create your account</h1>
+            <p>Join the correct batch and start tracking your exam performance.</p>
+        </div>
+
+        <form th:action="@{/register}" th:object="${form}" method="post" id="register-form" novalidate>
+            <div class="register-grid">
+                <section class="register-section" aria-label="Student details">
+                    <div class="section-kicker">Student details</div>
+
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <div class="input-status-wrap">
+                            <input class="input" type="text" id="username" th:field="*{username}"
+                                   th:classappend="${#fields.hasErrors('username')} ? 'is-invalid'"
+                                   placeholder="kavin2026" minlength="3" maxlength="30" pattern="[a-z0-9]{3,30}"
+                                   autocomplete="username" autofocus required>
+                            <i class="bi bi-hourglass-split input-status-icon" id="username-icon" aria-hidden="true"></i>
+                        </div>
+                        <div class="field-hint" id="username-help">Small letters and numbers only. We will check availability.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fullName">Name</label>
+                        <input class="input" type="text" id="fullName" th:field="*{fullName}"
+                               th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
+                               placeholder="Your full name" autocomplete="name" required>
+                        <div class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mobileLocal">WhatsApp number</label>
+                        <input type="hidden" id="mobile" th:field="*{mobile}">
+                        <div class="phone-input" th:classappend="${#fields.hasErrors('mobile')} ? ' is-invalid'">
+                            <span class="phone-prefix">+94</span>
+                            <input type="tel" id="mobileLocal" inputmode="numeric" autocomplete="tel"
+                                   placeholder="74 104 6208" maxlength="11" required>
+                        </div>
+                        <div class="field-hint" id="mobile-help">Type like 74 104 6208. Do not start with 0.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('mobile')}" th:errors="*{mobile}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nic">NIC</label>
+                        <input class="input" type="text" id="nic" th:field="*{nic}"
+                               th:classappend="${#fields.hasErrors('nic')} ? 'is-invalid'"
+                               placeholder="200321812435" inputmode="numeric" maxlength="12" pattern="[0-9]{12}"
+                               autocomplete="off" required>
+                        <div class="field-hint">New NIC only: exactly 12 numbers.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('nic')}" th:errors="*{nic}"></div>
+                    </div>
+                </section>
+
+                <section class="register-section" aria-label="Class and security">
+                    <div class="section-kicker">Class and security</div>
+
+                    <div class="form-group">
+                        <label for="batch">Batch</label>
+                        <select class="input select-input" id="batch" th:field="*{batch}"
+                                th:classappend="${#fields.hasErrors('batch')} ? 'is-invalid'" required>
+                            <option value="">Select your batch</option>
+                            <option th:each="b : ${batches}" th:value="${b}" th:text="${b}"></option>
+                        </select>
+                        <div class="field-error" th:if="${#fields.hasErrors('batch')}" th:errors="*{batch}"></div>
+                    </div>
+
+                    <div class="form-group district-group">
+                        <label for="district-trigger">District</label>
+                        <input type="hidden" th:field="*{district}">
+                        <div class="gselect" id="district-select">
+                            <button type="button" class="gselect-trigger" id="district-trigger"
+                                    aria-haspopup="listbox" aria-expanded="false">
+                                <span id="district-trigger-text" class="gselect-placeholder">Select your district</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <div class="gselect-panel" id="district-panel" hidden>
+                                <div class="gselect-body">
+                                    <div class="gselect-left">
+                                        <div class="gselect-search-wrap">
+                                            <i class="bi bi-search"></i>
+                                            <input type="text" id="district-search" class="gselect-search"
+                                                   placeholder="Search district..." autocomplete="off">
+                                        </div>
+                                        <ul class="gselect-list" id="district-list" role="listbox">
+                                            <li th:each="d : ${districts}" th:attr="data-value=${d}" th:text="${d}"
+                                                class="gselect-option" role="option"></li>
+                                        </ul>
+                                    </div>
+                                    <div class="gselect-map">
+                                        <div id="district-name" class="map-label">Tap your district on the map</div>
+                                        <div id="map"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('district')}" th:errors="*{district}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input class="input" type="password" id="password" th:field="*{password}"
+                                   th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'"
+                                   placeholder="Password" autocomplete="new-password" minlength="6" required>
+                            <button class="icon-btn password-toggle" type="button" data-target="password"
+                                    aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-meter" aria-hidden="true"><span id="password-meter-bar"></span></div>
+                        <div class="field-hint" id="password-help">A stronger password is better, but normal passwords are allowed.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm password</label>
+                        <div class="password-wrap">
+                            <input class="input" type="password" id="confirmPassword" th:field="*{confirmPassword}"
+                                   th:classappend="${#fields.hasErrors('confirmPassword')} ? 'is-invalid'"
+                                   placeholder="Re-enter password" autocomplete="new-password" required>
+                            <button class="icon-btn password-toggle" type="button" data-target="confirmPassword"
+                                    aria-label="Show confirm password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="field-hint" id="confirm-help">Both passwords must match.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="field-error" id="form-error" role="alert"
+                 style="display:none;margin:0 0 .7rem;text-align:center;font-weight:600;"></div>
+
+            <button class="btn btn-primary btn-block register-submit" id="register-submit" type="submit">
+                <i class="bi bi-person-plus"></i> Create account
+            </button>
+        </form>
+
+        <div class="auth-switch">
+            Already have an account? <a th:href="@{/login}">Sign in</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .register-page { background-color: #eef3f8; }
+    .register-wrap { align-items: center; padding: 1.4rem; }
+    .register-card {
+        max-width: 940px;
+        padding: 1.55rem;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .78);
+    }
+    .register-logo { margin-bottom: 1.05rem; }
+    .register-logo img { height: 62px; width: 62px; border-radius: 14px; }
+    .register-logo h1 { margin-top: .65rem; }
+    .register-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+    }
+    .register-section {
+        min-width: 0;
+        padding: 1rem;
+        border: 1px solid rgba(26, 19, 172, .12);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .58);
+    }
+    .section-kicker {
+        margin-bottom: .85rem;
+        color: var(--brand);
+        font-size: .74rem;
+        font-weight: 800;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+    }
+    .register-card .form-group { margin-bottom: .9rem; }
+    .register-card label { color: #34405f; }
+    .register-card .input,
+    .register-card .gselect-trigger,
+    .phone-input {
+        min-height: 44px;
+        border-radius: 11px;
+        border-color: rgba(39, 103, 232, .18);
+        background: rgba(255, 255, 255, .94);
+    }
+    .register-card .input:focus,
+    .register-card .gselect.open .gselect-trigger,
+    .phone-input:focus-within {
+        border-color: #2767e8;
+        box-shadow: 0 0 0 3px rgba(14, 179, 254, .16);
+        background: #fff;
+    }
+    .select-input {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, #50608a 50%), linear-gradient(135deg, #50608a 50%, transparent 50%);
+        background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+        padding-right: 2.35rem;
+    }
+    .input-status-wrap,
+    .password-wrap { position: relative; }
+    .input-status-wrap .input,
+    .password-wrap .input { padding-right: 2.7rem; }
+    .input-status-icon {
+        position: absolute;
+        right: .85rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--txt-faint);
+        display: none;
+    }
+    .input-status-icon.show { display: block; }
+    .input-status-icon.ok { color: var(--strong); }
+    .input-status-icon.bad { color: var(--weak); }
+    .phone-input {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        border: 1px solid rgba(39, 103, 232, .18);
+        transition: border-color .25s, box-shadow .25s, background .25s;
+    }
+    .phone-prefix {
+        align-self: stretch;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 .8rem;
+        color: #fff;
+        font-weight: 800;
+        background: linear-gradient(135deg, #1a13ac, #0a8fd6);
+    }
+    .phone-input input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        padding: .7rem .85rem;
+        background: transparent;
+        color: var(--txt);
+        font: inherit;
+    }
+    .phone-input.is-invalid { border-color: var(--weak); }
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        display: inline-grid;
+        place-items: center;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: #53607f;
+        cursor: pointer;
+    }
+    .password-toggle {
+        position: absolute;
+        right: .35rem;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .password-toggle:hover { background: rgba(26, 19, 172, .08); color: var(--brand); }
+    .password-meter {
+        height: 6px;
+        margin-top: .45rem;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(26, 19, 100, .09);
+    }
+    .password-meter span {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--weak);
+        transition: width .2s, background .2s;
+    }
+    .register-submit { margin-top: 1rem; min-height: 46px; }
+
+    .gselect { position: relative; min-width: 0; }
+    .gselect-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        padding: .7rem .9rem;
+        cursor: pointer;
+        text-align: left;
+        color: var(--txt);
+        font-size: .95rem;
+        font-family: inherit;
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    .gselect-trigger .bi-chevron-down { color: var(--txt-dim); transition: transform .2s; }
+    .gselect.open .gselect-trigger .bi-chevron-down { transform: rotate(180deg); }
+    .gselect-placeholder { color: var(--txt-faint); }
+    .gselect-panel {
+        position: absolute;
+        z-index: 30;
+        left: 0;
+        top: calc(100% + .45rem);
+        width: min(520px, calc(100vw - 2rem));
+        max-width: calc(100vw - 2rem);
+        padding: .65rem;
+        border: 1px solid rgba(39, 103, 232, .22);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .96);
+        box-shadow: 0 18px 46px rgba(26, 19, 100, .16);
+        backdrop-filter: blur(16px) saturate(150%);
+        -webkit-backdrop-filter: blur(16px) saturate(150%);
+    }
+    .gselect-panel.align-right { left: auto; right: 0; }
+    .gselect-body { display: flex; gap: .75rem; }
+    .gselect-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+    .gselect-map {
+        flex: 0 0 205px;
+        min-width: 0;
+        padding: .55rem;
+        border: 1px solid rgba(39, 103, 232, .12);
+        border-radius: 14px;
+        background:
+            linear-gradient(180deg, rgba(238, 247, 255, .92), rgba(255, 255, 255, .96));
+    }
+    .map-label {
+        min-height: 1.1em;
+        margin-bottom: .35rem;
+        text-align: center;
+        color: var(--brand);
+        font-size: .82rem;
+        font-weight: 800;
+    }
+    #map { width: 100%; }
+    #map svg { filter: drop-shadow(0 9px 18px rgba(15, 23, 42, .16)); }
+    #map svg path { cursor: pointer; transition: stroke-width .12s ease, fill-opacity .12s ease; }
+    #map svg path:hover { fill-opacity: .86; }
+    .gselect-search-wrap { position: relative; margin-bottom: .45rem; }
+    .gselect-search-wrap .bi {
+        position: absolute;
+        left: .65rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--txt-faint);
+        font-size: .85rem;
+    }
+    .gselect-search {
+        width: 100%;
+        padding: .55rem .65rem .55rem 1.95rem;
+        border: 1px solid rgba(39, 103, 232, .18);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--txt);
+        font: inherit;
+        font-size: .9rem;
+    }
+    .gselect-search:focus { outline: none; border-color: #2767e8; box-shadow: 0 0 0 3px rgba(14,179,254,.13); }
+    .gselect-list { list-style: none; margin: 0; padding: 0; max-height: 290px; overflow-y: auto; }
+    .gselect-option {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        padding: .5rem .65rem;
+        border-radius: 9px;
+        cursor: pointer;
+        color: var(--txt);
+        font-size: .92rem;
+        transition: background .15s, color .15s;
+    }
+    .gselect-option::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--dot, #cbd5e1);
+        box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(15, 23, 42, .14);
+    }
+    .gselect-option:hover { background: rgba(14, 179, 254, .1); }
+    .gselect-option.active { background: rgba(26, 19, 172, .12); color: var(--brand); font-weight: 800; }
+    .gselect-option.is-hidden { display: none; }
+
+    @media (max-width: 820px) {
+        .register-card { max-width: 560px; }
+        .register-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+        .register-wrap { padding: .8rem; }
+        .register-card { padding: 1rem; border-radius: 16px; }
+        .register-section { padding: .85rem; }
+        .gselect-body { flex-direction: column; }
+        .gselect-map { flex: none; width: min(220px, 100%); margin: 0 auto; }
+        .gselect-panel { width: calc(100vw - 1.4rem); max-width: calc(100vw - 1.4rem); }
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script th:src="@{/js/sl-district-map.js}"></script>
+<script th:src="@{/js/district-map-init.js}"></script>
+<script>
+    (function () {
+        var form = document.getElementById('register-form');
+        var username = document.getElementById('username');
+        var usernameHelp = document.getElementById('username-help');
+        var usernameIcon = document.getElementById('username-icon');
+        var mobileHidden = document.getElementById('mobile');
+        var mobileLocal = document.getElementById('mobileLocal');
+        var mobileHelp = document.getElementById('mobile-help');
+        var nic = document.getElementById('nic');
+        var password = document.getElementById('password');
+        var confirmPassword = document.getElementById('confirmPassword');
+        var passwordHelp = document.getElementById('password-help');
+        var confirmHelp = document.getElementById('confirm-help');
+        var meter = document.getElementById('password-meter-bar');
+        var submit = document.getElementById('register-submit');
+        var formError = document.getElementById('form-error');
+        var availabilityTimer;
+        var usernameAvailable = false;
+        var usernameKnownTaken = false;
+
+        function showFormError(message, field) {
+            formError.textContent = message;
+            formError.style.display = 'block';
+            if (field) { field.focus(); field.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        }
+        function clearFormError() { formError.style.display = 'none'; formError.textContent = ''; }
+
+        function setIcon(state, icon) {
+            usernameIcon.className = 'bi input-status-icon show ' + state + ' ' + icon;
+        }
+
+        function formatPhone(raw) {
+            var digits = raw.replace(/\D/g, '').slice(0, 9);
+            if (digits.charAt(0) === '0') {
+                alert('WhatsApp number should not start with 0 after +94.');
+                digits = digits.slice(1);
+            }
+            return [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 9)].filter(Boolean).join(' ');
+        }
+
+        function syncPhone() {
+            mobileLocal.value = formatPhone(mobileLocal.value);
+            mobileHidden.value = mobileLocal.value ? '+94 ' + mobileLocal.value : '';
+            var ok = /^\+94\s7\d\s\d{3}\s\d{4}$/.test(mobileHidden.value);
+            mobileHelp.textContent = ok ? 'Looks good.' : 'Type like 74 104 6208. Do not start with 0.';
+            mobileHelp.style.color = ok ? 'var(--strong)' : 'var(--txt-faint)';
+            return ok;
+        }
+
+        function hydratePhone() {
+            if (!mobileHidden.value) { return; }
+            mobileLocal.value = mobileHidden.value.replace(/^\+94\s?/, '');
+            syncPhone();
+        }
+
+        function scorePassword(value) {
+            var score = 0;
+            if (value.length >= 8) { score++; }
+            if (/[a-z]/.test(value)) { score++; }
+            if (/[A-Z]/.test(value)) { score++; }
+            if (/\d/.test(value)) { score++; }
+            if (/[^A-Za-z0-9]/.test(value)) { score++; }
+            return score;
+        }
+
+        function syncPassword() {
+            var score = scorePassword(password.value);
+            var strong = score === 5;
+            meter.style.width = (score * 20) + '%';
+            meter.style.background = score < 3 ? 'var(--weak)' : (score < 5 ? 'var(--mid)' : 'var(--strong)');
+            passwordHelp.textContent = strong ? 'Strong password.' : 'A stronger password is better, but normal passwords are allowed.';
+            passwordHelp.style.color = strong ? 'var(--strong)' : 'var(--txt-faint)';
+            var matches = confirmPassword.value.length > 0 && password.value === confirmPassword.value;
+            confirmHelp.textContent = matches ? 'Passwords match.' : 'Both passwords must match.';
+            confirmHelp.style.color = matches ? 'var(--strong)' : (confirmPassword.value ? 'var(--weak)' : 'var(--txt-faint)');
+            return password.value.length >= 6 && (!confirmPassword.value || matches);
+        }
+
+        function checkUsername() {
+            var value = username.value.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
+            username.value = value;
+            usernameAvailable = false;
+            usernameKnownTaken = false;
+            clearTimeout(availabilityTimer);
+            if (!/^[a-z0-9]{3,30}$/.test(value)) {
+                setIcon('bad', 'bi-exclamation-circle');
+                usernameHelp.textContent = 'Use at least 3 lowercase letters or numbers.';
+                usernameHelp.style.color = 'var(--weak)';
+                return;
+            }
+            setIcon('', 'bi-hourglass-split');
+            usernameHelp.textContent = 'Checking username availability...';
+            usernameHelp.style.color = 'var(--txt-faint)';
+            availabilityTimer = setTimeout(function () {
+                fetch('/register/username-available?username=' + encodeURIComponent(value), { headers: { 'Accept': 'application/json' } })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        usernameAvailable = Boolean(data.available);
+                        usernameKnownTaken = !usernameAvailable;
+                        setIcon(usernameAvailable ? 'ok' : 'bad', usernameAvailable ? 'bi-check-circle-fill' : 'bi-x-circle-fill');
+                        usernameHelp.textContent = usernameAvailable ? 'Username is available.' : 'This username is already taken.';
+                        usernameHelp.style.color = usernameAvailable ? 'var(--strong)' : 'var(--weak)';
+                    })
+                    .catch(function () {
+                        setIcon('bad', 'bi-exclamation-circle');
+                        usernameHelp.textContent = 'Could not check availability. Try again.';
+                        usernameHelp.style.color = 'var(--weak)';
+                    });
+            }, 280);
+        }
+
+        document.querySelectorAll('.password-toggle').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var target = document.getElementById(button.getAttribute('data-target'));
+                var icon = button.querySelector('i');
+                var show = target.type === 'password';
+                target.type = show ? 'text' : 'password';
+                icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+                button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+                target.focus();
+            });
+        });
+
+        username.addEventListener('input', checkUsername);
+        mobileLocal.addEventListener('input', syncPhone);
+        nic.addEventListener('input', function () { nic.value = nic.value.replace(/\D/g, '').slice(0, 12); });
+        password.addEventListener('input', syncPassword);
+        confirmPassword.addEventListener('input', syncPassword);
+
+        form.addEventListener('submit', function (event) {
+            clearFormError();
+            syncPhone();
+            syncPassword();
+            if (!/^[a-z0-9]{3,30}$/.test(username.value)) {
+                event.preventDefault();
+                showFormError('Enter a valid username — 3 to 30 lowercase letters or numbers.', username);
+                checkUsername();
+                return;
+            }
+            if (usernameKnownTaken) {
+                event.preventDefault();
+                showFormError('That username is already taken. Please choose another.', username);
+                return;
+            }
+            if (!/^\+94\s7\d\s\d{3}\s\d{4}$/.test(mobileHidden.value)) {
+                event.preventDefault();
+                showFormError('Enter a valid WhatsApp number, e.g. 74 104 6208 (do not start with 0).', mobileLocal);
+                return;
+            }
+            if (!/^\d{12}$/.test(nic.value)) {
+                event.preventDefault();
+                showFormError('NIC must be exactly 12 digits.', nic);
+                return;
+            }
+            if (password.value.length < 6) {
+                event.preventDefault();
+                showFormError('Password must be at least 6 characters.', password);
+                return;
+            }
+            if (password.value !== confirmPassword.value) {
+                event.preventDefault();
+                showFormError('Both passwords must match.', confirmPassword);
+                return;
+            }
+            if (scorePassword(password.value) < 5) {
+                alert('Your password is not very strong. Account will still be created, but use a stronger password if possible.');
+            }
+            // Valid so far. The username-availability fetch may still be in flight —
+            // that's fine, the server re-checks uniqueness and returns errors if taken.
+            submit.disabled = true;
+        });
+
+        hydratePhone();
+        if (username.value) { checkUsername(); }
+        syncPassword();
+    })();
+</script>
+</body>
+</html>

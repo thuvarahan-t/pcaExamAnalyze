@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('Teacher · PCA')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <div th:replace="~{fragments/common :: flash}"></div>
+
+        <section class="glass card-glass qmap-card">
+
+            <!-- Empty state -->
+            <div th:if="${rows.isEmpty()}" class="empty">
+                <div class="empty-icon"><i class="bi bi-table"></i></div>
+                <p>No years yet. Pick a year to start building your question map.</p>
+                <div class="addyear addyear-center mt-2">
+                    <form th:each="y : ${availableYears}" th:action="@{/teacher/years}" method="post">
+                        <input type="hidden" name="year" th:value="${y}">
+                        <button type="submit" class="yearchip"><i class="bi bi-plus-lg"></i> <span th:text="${y}">2021</span></button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- The one table — 3D glass year × Structure 1–4 grid -->
+            <div th:unless="${rows.isEmpty()}">
+                <div class="qmap-head">
+                    <h1 class="qmap-title">Question Map</h1>
+                    <div class="addyear" th:if="${!availableYears.isEmpty()}">
+                        <span class="addyear-label">Add year</span>
+                        <form th:each="y : ${availableYears}" th:action="@{/teacher/years}" method="post">
+                            <input type="hidden" name="year" th:value="${y}">
+                            <button type="submit" class="yearchip"><i class="bi bi-plus-lg"></i> <span th:text="${y}">2026</span></button>
+                        </form>
+                    </div>
+                </div>
+                <div class="qmap-table" id="qmap-table">
+                    <div class="qmap-colhead">
+                        <span>Year</span>
+                        <span><span class="cdot c1"></span>Structure 1</span>
+                        <span><span class="cdot c2"></span>Structure 2</span>
+                        <span><span class="cdot c3"></span>Structure 3</span>
+                        <span><span class="cdot c4"></span>Structure 4</span>
+                    </div>
+
+                    <div class="qmap-row" th:each="row : ${rows}">
+                        <a class="qmap-ylabel" th:href="@{/teacher/papers/{p}/questions(p=${row.paperId})}">
+                            <b th:text="${row.year}">2021</b>
+                            <small><i class="bi bi-calendar3"></i> Paper</small>
+                        </a>
+
+                        <a href="#" th:each="cell,iter : ${row.cells}"
+                           class="qmap-cell qcell-open"
+                           th:classappend="${cell.set} ? ' set' : ' empty'"
+                           th:style="${cell.set} ? ('--c:' + ${cell.color}) : null"
+                           th:attr="data-paper=${row.paperId}, data-pos=${iter.count}, data-year=${row.year},
+                                    data-qnum=${cell.position}, data-section-id=${cell.sectionId}, data-section=${cell.section},
+                                    data-description=${cell.description}, data-marks=${cell.maxMarks}, data-refs=${cell.refsJson}">
+                            <th:block th:if="${cell.set}">
+                                <span class="qcell-sec" th:text="${cell.section}">Mechanics</span>
+                                <span class="qcell-meta"><i class="bi bi-link-45deg"></i>
+                                    <span th:text="${cell.refCount}">0</span> refs</span>
+                                <div class="qcell-bar"><i data-w="100"></i></div>
+                                <span class="qcell-glare"></span>
+                            </th:block>
+                            <th:block th:unless="${cell.set}"><i class="bi bi-plus-lg"></i> Add</th:block>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+
+<!-- ===================== Cell editor popup ===================== -->
+<div class="modal-overlay" id="cell-modal" hidden>
+    <div class="modal-card glass">
+        <div class="modal-head">
+            <h2 id="cm-title">Structure</h2>
+            <button type="button" class="modal-x" data-close aria-label="Close">&times;</button>
+        </div>
+        <form method="post" id="cm-form" th:action="@{/teacher/papers/0/questions/save}">
+            <input type="hidden" name="questionNumber" id="cm-qnum">
+            <input type="hidden" name="maxMarks" id="cm-marks" value="20">
+
+            <div class="form-group">
+                <label>Section</label>
+                <div class="combo" data-combo>
+                    <input type="hidden" class="combo-value" name="sectionId" required>
+                    <button type="button" class="combo-trigger input is-placeholder">
+                        <span class="combo-label">Choose a section…</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="combo-panel">
+                        <input type="text" class="combo-search input" placeholder="Search or add a section…">
+                        <div class="combo-options">
+                            <button type="button" class="combo-option" th:each="sec : ${sections}"
+                                    th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                        </div>
+                        <div class="combo-empty" hidden>No matching section.</div>
+                        <button type="button" class="combo-add">
+                            <i class="bi bi-plus-circle"></i> Add &ldquo;<span class="combo-add-name"></span>&rdquo;
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="cm-desc">Focus Points</label>
+                <textarea class="input" name="description" id="cm-desc" rows="2"
+                          placeholder="What should the student focus on to score marks?"></textarea>
+            </div>
+
+            <div class="form-group">
+                <div class="flex items-center justify-between mb-1">
+                    <label style="margin:0;">Resources</label>
+                    <button type="button" class="btn btn-sm" id="cm-add-ref"><i class="bi bi-plus-lg"></i> Add resource</button>
+                </div>
+                <div id="cm-refs" class="ref-rows"></div>
+                <div class="field-hint">Files, videos, or practical — anything to study for this section.</div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<template id="cm-ref-tpl">
+    <div class="ref-row">
+        <input class="input" name="refTitle" placeholder="Title">
+        <div class="rtype" data-rtype>
+            <input type="hidden" name="refType">
+            <button type="button" class="input rtype-trigger">
+                <span class="rtype-current"></span>
+                <i class="bi bi-chevron-down rtype-caret"></i>
+            </button>
+            <div class="rtype-panel">
+                <button type="button" class="rtype-option" th:each="t : ${refTypes}" th:data-value="${t}">
+                    <i class="bi" th:classappend="${t.icon}"></i> <span th:text="${t.label}">Files</span>
+                </button>
+            </div>
+        </div>
+        <input class="input" name="refResource" placeholder="Link, file name, or pg 112–118">
+        <input class="input" name="refNote" placeholder="Note (optional)">
+        <button type="button" class="btn btn-sm btn-danger cm-ref-del" title="Remove">&times;</button>
+    </div>
+</template>
+
+<script th:src="@{/js/combo.js(v=2)}"></script>
+<script th:src="@{/js/rtype.js(v=2)}"></script>
+<script th:src="@{/js/cell-modal.js(v=2)}"></script>
+<script th:src="@{/js/qmap-tilt.js(v=2)}"></script>
+</body>
+</html>

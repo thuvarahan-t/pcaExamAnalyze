@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('Manage Papers · PCA')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <div class="page-head">
+            <div class="eyebrow">Teacher</div>
+            <h1>Manage papers</h1>
+            <p>Create one paper per year, then add its four structured questions and references.</p>
+        </div>
+
+        <div th:replace="~{fragments/common :: flash}"></div>
+
+        <section class="grid cols-2">
+            <!-- Create -->
+            <div class="glass card-glass">
+                <h2 class="section-title"><i class="bi bi-plus-circle"></i> New paper</h2>
+                <form th:action="@{/teacher/papers}" method="post">
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <select class="input" id="year" name="year" required>
+                            <option value="" disabled selected>Choose a year…</option>
+                            <option th:each="y : ${availableYears}" th:value="${y}" th:text="${y}">2021</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input class="input" id="subject" name="subject" value="Physics">
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input class="input" id="title" name="title" placeholder="e.g. 2023 A/L Physics Past Paper" required>
+                    </div>
+                    <button class="btn btn-primary btn-block" type="submit"><i class="bi bi-check2"></i> Create paper</button>
+                </form>
+            </div>
+
+            <!-- List -->
+            <div class="glass card-glass">
+                <h2 class="section-title"><i class="bi bi-journals"></i> Configured papers</h2>
+
+                <div th:if="${summaries.isEmpty()}" class="empty">
+                    <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+                    <p>No papers yet.</p>
+                </div>
+
+                <div th:each="s : ${summaries}" class="glass" style="padding:.9rem 1rem;margin-bottom:.7rem;">
+                    <div class="flex items-center justify-between gap-1 flex-wrap">
+                        <div>
+                            <span class="chip"><i class="bi bi-calendar3"></i> <span th:text="${s.year}">2021</span></span>
+                            <span class="fw-700" style="margin-left:.5rem;" th:text="${s.title}">Title</span>
+                            <div class="text-faint mt-1" style="font-size:.8rem;">
+                                <span th:text="${s.subject}">Physics</span> ·
+                                <span th:text="${s.questionCount}">0</span> questions ·
+                                <span th:text="${s.referenceCount}">0</span> refs
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            <a th:href="@{/teacher/papers/{id}/questions(id=${s.id})}" class="btn btn-sm btn-primary"><i class="bi bi-list-check"></i> Questions</a>
+                            <details style="position:relative;">
+                                <summary class="btn btn-sm" style="list-style:none;"><i class="bi bi-pencil"></i></summary>
+                                <div class="glass" style="position:absolute;right:0;z-index:20;width:280px;padding:1rem;margin-top:.4rem;">
+                                    <form th:action="@{/teacher/papers/{id}/update(id=${s.id})}" method="post">
+                                        <div class="form-group">
+                                            <label>Year</label>
+                                            <input class="input" type="number" name="year" th:value="${s.year}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Subject</label>
+                                            <input class="input" name="subject" th:value="${s.subject}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Title</label>
+                                            <input class="input" name="title" th:value="${s.title}" required>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm btn-block" type="submit">Save</button>
+                                    </form>
+                                </div>
+                            </details>
+                            <form th:action="@{/teacher/papers/{id}/delete(id=${s.id})}" method="post"
+                                  onsubmit="return confirm('Delete this paper and all its questions?');">
+                                <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+</body>
+</html>

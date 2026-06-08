@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('Report · PCA')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <div th:replace="~{fragments/common :: flash}"></div>
+
+        <!-- Header -->
+        <section class="glass card-glass report-head">
+            <div>
+                <span class="eyebrow">Performance report</span>
+                <h1 class="report-title" th:text="${report.scopeLabel}">Attempt 1</h1>
+                <p class="report-sub" th:if="${!report.empty}">
+                    <span th:text="|${report.answeredQuestions} questions answered across ${report.answeredSections} section(s)|">12 questions across 5 sections</span>
+                    <span th:if="${report.combined}" th:text="| · ${report.attemptsCovered} attempt(s)|"></span>
+                </p>
+                <p class="report-sub" th:if="${report.empty}">No marks entered for this scope yet.</p>
+            </div>
+            <div class="report-score" th:if="${!report.empty}">
+                <div class="big-pct" th:classappend="${report.overall.cssClass}"
+                     th:text="${report.roundedPercentage} + '%'">72%</div>
+                <span class="rbadge" th:classappend="${report.overall.cssClass}" th:text="${report.overall.label}">Strong</span>
+                <span class="report-raw" th:text="${report.obtained} + ' / ' + ${report.max} + ' marks'">144 / 200 marks</span>
+            </div>
+        </section>
+
+        <!-- Empty -->
+        <section th:if="${report.empty}" class="glass card-glass empty">
+            <div class="empty-icon"><i class="bi bi-pencil-square"></i></div>
+            <p>Enter some marks on your attempt sheet first, then generate the report.</p>
+            <a class="btn btn-primary" th:href="@{/student/dashboard}"><i class="bi bi-arrow-left"></i> Back to my attempts</a>
+        </section>
+
+        <th:block th:unless="${report.empty}">
+
+            <!-- WEAK — priority -->
+            <section th:if="${!report.weak.isEmpty()}" class="report-group">
+                <h2 class="group-title weak"><i class="bi bi-exclamation-triangle-fill"></i> Focus here — weak sections</h2>
+                <p class="group-lead">Use the resources your teacher attached to rebuild these topics.</p>
+                <th:block th:each="s : ${report.weak}">
+                    <div th:replace="~{fragments/report-bits :: section-card(${s}, true)}"></div>
+                </th:block>
+            </section>
+
+            <!-- MID -->
+            <section th:if="${!report.mid.isEmpty()}" class="report-group">
+                <h2 class="group-title mid"><i class="bi bi-arrow-up-right-circle-fill"></i> Mid-range — push these up</h2>
+                <th:block th:each="s : ${report.mid}">
+                    <div th:replace="~{fragments/report-bits :: section-card(${s}, true)}"></div>
+                </th:block>
+            </section>
+
+            <!-- STRONG -->
+            <section th:if="${!report.strong.isEmpty()}" class="report-group">
+                <h2 class="group-title strong"><i class="bi bi-check-circle-fill"></i> Strong — keep it up</h2>
+                <th:block th:each="s : ${report.strong}">
+                    <div th:replace="~{fragments/report-bits :: section-card(${s}, false)}"></div>
+                </th:block>
+            </section>
+
+            <div class="report-back">
+                <a class="btn btn-ghost" th:href="@{/student/dashboard(attempt=${backAttempt})}">
+                    <i class="bi bi-arrow-left"></i> Back to my attempts
+                </a>
+            </div>
+        </th:block>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+</body>
+</html>

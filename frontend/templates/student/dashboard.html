@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('My Attempts · PCA')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <div th:replace="~{fragments/common :: flash}"></div>
+
+        <section class="glass card-glass">
+
+            <!-- Attempt tabs + generate report -->
+            <div class="attempt-bar">
+                <div class="attempt-tabs">
+                    <a th:each="t : ${tabs}" th:href="@{/student/dashboard(attempt=${t})}"
+                       class="atab" th:classappend="${t == selected} ? ' active' : ''"
+                       th:text="'Attempt ' + ${t}">Attempt 1</a>
+                    <form th:action="@{/student/attempt/add}" method="post" class="atab-addform">
+                        <button class="atab atab-add" type="submit"><i class="bi bi-plus-lg"></i> Add attempt</button>
+                    </form>
+                </div>
+
+                <div class="repdrop" data-repdrop>
+                    <button type="button" class="btn btn-primary repdrop-trigger">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Generate Report
+                        <i class="bi bi-chevron-down repdrop-caret"></i>
+                    </button>
+                    <div class="repdrop-panel">
+                        <a th:href="@{/student/report(scope='all')}" class="repdrop-item">
+                            <i class="bi bi-collection"></i> Full report — all attempts
+                        </a>
+                        <div class="repdrop-sep" th:if="${!savedAttempts.isEmpty()}"></div>
+                        <a th:each="t : ${savedAttempts}" th:href="@{/student/report(attempt=${t})}"
+                           class="repdrop-item">
+                            <i class="bi bi-file-earmark-text"></i> <span th:text="'Report for Attempt ' + ${t}">Report for Attempt 1</span>
+                        </a>
+                        <div class="repdrop-empty" th:if="${savedAttempts.isEmpty()}">
+                            Save some marks to unlock per-attempt reports.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No questions yet -->
+            <div th:if="${sheet.rows.isEmpty()}" class="empty">
+                <div class="empty-icon"><i class="bi bi-hourglass-split"></i></div>
+                <p>Your teacher hasn't added any questions yet. Check back soon.</p>
+            </div>
+
+            <!-- Marking sheet -->
+            <form th:unless="${sheet.rows.isEmpty()}"
+                  th:action="@{/student/attempt/{n}/save(n=${selected})}" method="post"
+                  th:attr="data-autosave-url=@{/student/attempt/{n}/autosave(n=${selected})}"
+                  id="marks-form">
+                <div class="qmap-table">
+                    <div class="qmap-colhead">
+                        <span>Year</span>
+                        <span><span class="cdot c1"></span>Structure 1</span>
+                        <span><span class="cdot c2"></span>Structure 2</span>
+                        <span><span class="cdot c3"></span>Structure 3</span>
+                        <span><span class="cdot c4"></span>Structure 4</span>
+                    </div>
+
+                    <div class="qmap-row" th:each="row : ${sheet.rows}">
+                        <div class="qmap-ylabel">
+                            <b th:text="${row.year}">2021</b>
+                            <small><i class="bi bi-calendar3"></i> Paper</small>
+                        </div>
+
+                        <div th:each="cell : ${row.cells}" class="smark-cell"
+                             th:classappend="${cell.set} ? ' set' : ' empty'"
+                             th:style="${cell.set} ? ('--c:' + ${cell.color}) : null">
+                            <th:block th:if="${cell.set}">
+                                <span class="smark-sec" th:text="${cell.section}">Mechanics</span>
+                                <div class="markbox">
+                                    <input type="number" class="markin" inputmode="numeric"
+                                           th:name="'mark_' + ${cell.questionId}" th:value="${cell.mark}"
+                                           min="0" th:max="${cell.maxMarks}" placeholder="—">
+                                    <span class="markmax" th:text="'/ ' + ${cell.maxMarks}">/ 20</span>
+                                </div>
+                            </th:block>
+                            <th:block th:unless="${cell.set}">
+                                <span class="smark-none">—</span>
+                            </th:block>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sheet-foot">
+                    <span class="sheet-hint">
+                        <i class="bi bi-info-circle"></i>
+                        Marks save automatically. Leave any question blank — only the marks you enter are used in the report.
+                        <span th:if="${sheet.saved}" th:text="'Saved total: ' + ${sheet.obtained} + '/' + ${sheet.max} + ' (' + ${sheet.percentage} + '%).'"></span>
+                    </span>
+                    <span class="autosave-status" id="autosave-status" aria-live="polite">
+                        <i class="bi bi-cloud-check"></i> Saved
+                    </span>
+                </div>
+            </form>
+
+        </section>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+
+<script>
+    // Generate Report dropdown
+    (function () {
+        document.querySelectorAll("[data-repdrop]").forEach(function (drop) {
+            var trigger = drop.querySelector(".repdrop-trigger");
+            trigger.addEventListener("click", function (e) {
+                e.stopPropagation();
+                drop.classList.toggle("open");
+            });
+        });
+        document.addEventListener("click", function () {
+            document.querySelectorAll("[data-repdrop].open").forEach(function (d) { d.classList.remove("open"); });
+        });
+    })();
+
+    // Student marks autosave
+    (function () {
+        var form = document.getElementById("marks-form");
+        if (!form) return;
+
+        var status = document.getElementById("autosave-status");
+        var token = document.querySelector('meta[name="_csrf"]');
+        var header = document.querySelector('meta[name="_csrf_header"]');
+        var timer;
+        var controller;
+
+        function setStatus(kind, text, icon) {
+            status.className = "autosave-status " + kind;
+            status.innerHTML = '<i class="bi ' + icon + '"></i> ' + text;
+        }
+
+        function normalize(input) {
+            if (input.value === "") return;
+            var value = Number(input.value);
+            var max = Number(input.getAttribute("max") || "0");
+            if (!Number.isFinite(value)) {
+                input.value = "";
+                return;
+            }
+            if (value < 0) input.value = "0";
+            if (max > 0 && value > max) input.value = String(max);
+        }
+
+        function autosave() {
+            if (controller) controller.abort();
+            controller = new AbortController();
+
+            var data = new FormData(form);
+            var headers = { "Accept": "application/json" };
+            if (token && header) headers[header.getAttribute("content")] = token.getAttribute("content");
+
+            setStatus("saving", "Saving...", "bi-cloud-arrow-up");
+            fetch(form.getAttribute("data-autosave-url"), {
+                method: "POST",
+                body: data,
+                headers: headers,
+                signal: controller.signal
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.ok) setStatus("saved", "Saved", "bi-cloud-check");
+                    else setStatus("error", data.message || "Not saved", "bi-exclamation-triangle");
+                })
+                .catch(function (err) {
+                    if (err.name !== "AbortError") {
+                        setStatus("error", "Not saved", "bi-exclamation-triangle");
+                    }
+                });
+        }
+
+        form.querySelectorAll(".markin").forEach(function (input) {
+            input.addEventListener("input", function () {
+                normalize(input);
+                setStatus("dirty", "Waiting...", "bi-clock");
+                clearTimeout(timer);
+                timer = setTimeout(autosave, 450);
+            });
+            input.addEventListener("blur", function () {
+                normalize(input);
+                clearTimeout(timer);
+                autosave();
+            });
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            clearTimeout(timer);
+            autosave();
+        });
+    })();
+</script>
+</body>
+</html>

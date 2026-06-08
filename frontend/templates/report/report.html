@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>PCA Physics — Performance Report</title>
+    <style>
+        @page { size: A4; margin: 1.4cm 1.3cm; }
+        * { box-sizing: border-box; }
+        body { font-family: Helvetica, Arial, sans-serif; color: #1f2330; font-size: 11px; line-height: 1.5; margin: 0; }
+        h1, h2, h3 { margin: 0; }
+        .muted { color: #6b7280; }
+        .right { text-align: right; }
+        .center { text-align: center; }
+        .fw { font-weight: bold; }
+
+        /* Header */
+        .header { background-color: #1a13ac; color: #ffffff; padding: 16px 18px; border-radius: 10px; }
+        .header table { width: 100%; }
+        .header .logo { width: 54px; height: 54px; background: #ffffff; border-radius: 10px; padding: 4px; }
+        .header h1 { font-size: 18px; letter-spacing: .3px; }
+        .header .sub { color: #d9d3ff; font-size: 11px; margin-top: 2px; }
+        .header .meta { font-size: 10px; color: #e7e3ff; }
+
+        /* Cards */
+        .card { border: 1px solid #e3e6ef; border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+        .section-title { font-size: 13px; font-weight: bold; color: #2b2f3a; margin-bottom: 8px; }
+
+        /* Summary boxes */
+        .summary td { width: 25%; padding: 4px; vertical-align: top; }
+        .sbox { border: 1px solid #e3e6ef; border-radius: 9px; padding: 10px; }
+        .sbox .lab { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: #8a93a6; font-weight: bold; }
+        .sbox .val { font-size: 18px; font-weight: bold; margin-top: 3px; }
+
+        /* Tables */
+        table.data { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        table.data th, table.data td { padding: 7px 8px; border-bottom: 1px solid #eceef4; text-align: left; }
+        table.data th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: #8a93a6; background: #f7f8fc; }
+        table.data td.num, table.data th.num { text-align: right; }
+
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: bold; }
+        .weak   { color: #c2185b; background: #fde3ec; }
+        .mid    { color: #b06a00; background: #fdefd6; }
+        .strong { color: #0f7a55; background: #d8f5e9; }
+
+        .bar { height: 7px; background: #eceef4; border-radius: 6px; overflow: hidden; }
+        .bar > span { display: block; height: 7px; border-radius: 6px; }
+        .bar > span.weak { background: #e23b6d; }
+        .bar > span.mid { background: #e09b1a; }
+        .bar > span.strong { background: #19b87f; }
+
+        .weak-block { border: 1px solid #f3c9d8; border-left: 4px solid #e23b6d; border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+        .weak-block .topic { font-size: 12px; font-weight: bold; color: #b0144a; }
+        .ref { border-top: 1px dashed #e3e6ef; padding: 5px 0 2px; }
+        .ref .rt { font-weight: bold; }
+        .ref .rr { color: #4a5366; }
+        .ref .rn { color: #8a93a6; font-style: italic; }
+        .label-mini { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: #8a93a6; font-weight: bold; margin-top: 6px; }
+
+        .strength-pill { display: inline-block; color: #0f7a55; background: #d8f5e9; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: bold; margin: 0 4px 4px 0; }
+        .footer { margin-top: 16px; border-top: 1px solid #e3e6ef; padding-top: 8px; color: #8a93a6; font-size: 9px; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <table>
+        <tr>
+            <td style="width:60px; vertical-align:middle;">
+                <img class="logo" th:src="${logo}" alt="PCA"/>
+            </td>
+            <td style="vertical-align:middle;">
+                <h1>PCA Physics — Performance Report</h1>
+                <div class="sub">Physics Cube Academy · Exam Analyzer</div>
+            </td>
+            <td class="right" style="vertical-align:middle;">
+                <div class="meta fw" th:text="${a.studentName}">Student</div>
+                <div class="meta" th:text="${a.year} + ' · Attempt #' + ${a.attemptNumber}">2021 · Attempt #1</div>
+                <div class="meta" th:text="${#temporals.format(a.date,'dd MMM yyyy')}">date</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<!-- Overall summary -->
+<table class="summary" style="width:100%; margin-top:12px;">
+    <tr>
+        <td>
+            <div class="sbox"><div class="lab">Total score</div>
+                <div class="val" th:text="${a.totalObtained} + ' / ' + ${a.totalMax}">0 / 0</div>
+                <div class="muted" th:text="${a.roundedPercentage()} + '% overall'">0%</div></div>
+        </td>
+        <td>
+            <div class="sbox"><div class="lab">Overall status</div>
+                <div class="val"><span class="badge" th:classappend="${a.overall.cssClass}" th:text="${a.overall.label}">Status</span></div>
+                <div class="muted">vs 50% / 75% bands</div></div>
+        </td>
+        <td>
+            <div class="sbox"><div class="lab">Average</div>
+                <div class="val" th:text="${a.roundedAverage()} + '%'">0%</div>
+                <div class="muted" th:text="'across ' + ${a.totalAttempts} + ' attempt(s)'">attempts</div></div>
+        </td>
+        <td>
+            <div class="sbox"><div class="lab">Focus section</div>
+                <div class="val" style="font-size:13px;" th:text="${a.weakestTopic}">topic</div>
+                <div class="muted" th:text="'Strongest: ' + ${a.strongestTopic}">strongest</div></div>
+        </td>
+    </tr>
+</table>
+
+<!-- Section-wise table -->
+<div class="card">
+    <div class="section-title">Section-wise breakdown</div>
+    <table class="data">
+        <thead>
+        <tr><th>Section</th><th>Questions</th><th class="num">Marks</th><th style="width:120px;">Progress</th><th class="num">%</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="t : ${a.topics}">
+            <td class="fw" th:text="${t.topic}">Topic</td>
+            <td class="muted" th:text="${t.questionNumbersJoined()}">Q1</td>
+            <td class="num" th:text="${t.obtained} + ' / ' + ${t.max}">0 / 0</td>
+            <td><div class="bar"><span th:classappend="${t.classification.cssClass}" th:style="'width:' + ${t.roundedPercentage()} + '%'"></span></div></td>
+            <td class="num fw" th:text="${t.roundedPercentage()} + '%'">0%</td>
+            <td><span class="badge" th:classappend="${t.classification.cssClass}" th:text="${t.classification.label}">Status</span></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Areas needing attention -->
+<div class="card" th:if="${!a.weakAreas.isEmpty()}">
+    <div class="section-title" style="color:#b0144a;">Areas needing attention</div>
+    <div class="muted" style="margin-bottom:4px;">These sections scored below 50%. Study the references, then redo the listed questions.</div>
+
+    <div class="weak-block" th:each="t : ${a.weakAreas}">
+        <table style="width:100%;"><tr>
+            <td class="topic" th:text="${t.topic}">Topic</td>
+            <td class="right">
+                <span class="badge weak" th:text="${t.roundedPercentage()} + '%'">35%</span>
+                <span class="muted" th:text="' ' + ${t.obtained} + '/' + ${t.max} + ' · ' + ${t.questionNumbersJoined()}">score</span>
+            </td>
+        </tr></table>
+
+        <th:block th:if="${!t.studyReferences().isEmpty()}">
+            <div class="label-mini">What to study</div>
+            <div class="ref" th:each="r : ${t.studyReferences()}">
+                <span class="rt" th:text="${r.title}">Title</span>
+                <span class="muted" th:text="' (' + ${r.typeLabel} + ')'">(Book)</span><br/>
+                <span class="rr" th:text="${r.resource}">resource</span>
+                <span class="rn" th:if="${r.note}" th:text="' — ' + ${r.note}">note</span>
+            </div>
+        </th:block>
+
+        <th:block th:if="${!t.practiceReferences().isEmpty()}">
+            <div class="label-mini">Questions to practice</div>
+            <div class="ref" th:each="r : ${t.practiceReferences()}">
+                <span class="rt" th:text="${r.title}">Practice</span><br/>
+                <span class="rr" th:text="${r.resource}">resource</span>
+                <span class="rn" th:if="${r.note}" th:text="' — ' + ${r.note}">note</span>
+            </div>
+        </th:block>
+
+        <div class="muted" th:if="${t.studyReferences().isEmpty() and t.practiceReferences().isEmpty()}"
+             th:text="'Revise questions ' + ${t.questionNumbersJoined()} + '.'">revise</div>
+    </div>
+</div>
+
+<!-- Strengths -->
+<div class="card" th:if="${!a.strongAreas.isEmpty()}">
+    <div class="section-title" style="color:#0f7a55;">Your strengths</div>
+    <div>
+        <span class="strength-pill" th:each="t : ${a.strongAreas}"
+              th:text="${t.topic} + ' (' + ${t.roundedPercentage()} + '%)'">Topic</span>
+    </div>
+</div>
+
+<!-- Progress section -->
+<div class="card" th:if="${progress != null and progress.hasMultiple()}">
+    <div class="section-title">Progress across attempts</div>
+    <table class="data">
+        <thead>
+        <tr><th>Section</th>
+            <th class="num" th:each="lab : ${progress.attemptLabels}" th:text="${lab}">A1</th>
+            <th>Change</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="t : ${progress.topics}">
+            <td class="fw" th:text="${t.topic}">Topic</td>
+            <td class="num" th:each="p : ${t.percentages}" th:text="${p} + '%'">0%</td>
+            <td class="fw" th:text="${t.deltaLabel()}">+0%</td>
+        </tr>
+        <tr style="background:#f7f8fc;">
+            <td class="fw">Overall</td>
+            <td class="num fw" th:each="p : ${progress.overallPercentages}" th:text="${p} + '%'">0%</td>
+            <td></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="footer">
+    Generated by PCA Exam Analyzer on <span th:text="${#temporals.format(generatedAt,'dd MMM yyyy')}">date</span>.
+    Classification bands: Weak &lt; 50% · Mid-range 50–74% · Strong ≥ 75%.
+</div>
+
+</body>
+</html>

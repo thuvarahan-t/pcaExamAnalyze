@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/common :: head('Manage Questions · PCA')}"></head>
+<body>
+<div class="app-shell">
+    <nav th:replace="~{fragments/common :: navbar}"></nav>
+    <main class="app-main">
+
+        <div class="page-head">
+            <div class="eyebrow">
+                <a th:href="@{/teacher/papers}" style="color:inherit;text-decoration:none;">Papers</a>
+                / <span th:text="${paper.year}">2021</span>
+            </div>
+            <h1>Questions — <span th:text="${paper.title}">Title</span></h1>
+            <p>Add the four structured questions (Q1–Q4). Each is worth <b>20 marks</b> and belongs to one section.</p>
+        </div>
+
+        <div th:replace="~{fragments/common :: flash}"></div>
+
+        <!-- Sections (shared across every year) -->
+        <section class="glass card-glass mb-3">
+            <h2 class="section-title"><i class="bi bi-tags"></i> Sections
+                <span class="badge neutral" th:text="${#lists.size(sections)} + ' total'">0</span></h2>
+            <p class="field-hint mt-0 mb-2" style="margin-top:0;">
+                Sections are shared across all years. Add a new one any time straight from the
+                <b>Section</b> dropdown below — it shows up here instantly.
+            </p>
+            <div th:if="${sections.isEmpty()}" class="text-faint">
+                No sections yet — add your first from the <b>Section</b> dropdown when you add a question.
+            </div>
+            <div class="chip-row" th:unless="${sections.isEmpty()}">
+                <span th:each="sec : ${sections}" class="chip">
+                    <i class="bi bi-tag"></i> <span th:text="${sec.name}">Mechanics</span>
+                    <form th:action="@{/teacher/sections/{id}/delete(id=${sec.id})}" method="post"
+                          style="display:inline;" onsubmit="return confirm('Delete this section? (only if no question uses it)');">
+                        <input type="hidden" name="paperId" th:value="${paper.id}">
+                        <button type="submit" class="chip-x" title="Delete section">&times;</button>
+                    </form>
+                </span>
+            </div>
+        </section>
+
+        <!-- Add question -->
+        <section class="glass card-glass mb-3">
+            <h2 class="section-title"><i class="bi bi-plus-circle"></i> Add question</h2>
+            <form th:action="@{/teacher/papers/{id}/questions(id=${paper.id})}" method="post">
+                <div class="grid cols-3">
+                    <div class="form-group">
+                        <label>Question no.</label>
+                        <select class="input" name="questionNumber" required>
+                            <option th:each="n : ${questionNumbers}" th:value="${n}" th:text="${n}">Q1</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Section</label>
+                        <div class="combo" data-combo>
+                            <input type="hidden" class="combo-value" name="sectionId" required>
+                            <button type="button" class="combo-trigger input is-placeholder">
+                                <span class="combo-label">Choose a section…</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <div class="combo-panel">
+                                <input type="text" class="combo-search input" placeholder="Search or add a section…">
+                                <div class="combo-options">
+                                    <button type="button" class="combo-option" th:each="sec : ${sections}"
+                                            th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                                </div>
+                                <div class="combo-empty" hidden>No matching section.</div>
+                                <button type="button" class="combo-add">
+                                    <i class="bi bi-plus-circle"></i> Add &ldquo;<span class="combo-add-name"></span>&rdquo;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max marks</label>
+                        <input class="input" type="number" name="maxMarks" min="1" th:value="${defaultMarks}">
+                        <div class="field-hint">Structured questions are 20 by default.</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Focus Points (optional)</label>
+                    <input class="input" name="description" placeholder="What to focus on to score marks">
+                </div>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> Add question</button>
+            </form>
+        </section>
+
+        <!-- Questions table -->
+        <section class="glass card-glass">
+            <h2 class="section-title"><i class="bi bi-list-check"></i> Questions
+                <span class="badge neutral" th:text="${#lists.size(questions)} + ' / 4'">0</span></h2>
+
+            <div th:if="${questions.isEmpty()}" class="empty">
+                <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+                <p>No questions yet. Add the first one above.</p>
+            </div>
+
+            <div th:unless="${questions.isEmpty()}" class="table-wrap">
+                <table class="glass-table">
+                    <thead>
+                    <tr>
+                        <th>Question</th><th>Section</th>
+                        <th class="num">Max</th><th class="num">Refs</th><th style="width:1%;">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="q : ${questions}">
+                        <td class="fw-700" th:text="${q.questionNumber}">Q1</td>
+                        <td><span class="chip" th:text="${q.section.name}">Section</span></td>
+                        <td class="num" th:text="${q.maxMarks}">20</td>
+                        <td class="num" th:text="${refCounts.get(q.id)}">0</td>
+                        <td>
+                            <div class="flex gap-1">
+                                <a th:href="@{/teacher/questions/{id}/references(id=${q.id})}" class="btn btn-sm btn-primary" title="References">
+                                    <i class="bi bi-link-45deg"></i></a>
+                                <details style="position:relative;">
+                                    <summary class="btn btn-sm" style="list-style:none;"><i class="bi bi-pencil"></i></summary>
+                                    <div class="glass" style="position:absolute;right:0;z-index:30;width:300px;padding:1rem;margin-top:.4rem;">
+                                        <form th:action="@{/teacher/questions/{id}/update(id=${q.id})}" method="post">
+                                            <div class="form-group"><label>Question no.</label>
+                                                <select class="input" name="questionNumber" required>
+                                                    <option th:each="n : ${questionNumbers}" th:value="${n}" th:text="${n}"
+                                                            th:selected="${n == q.questionNumber}">Q1</option>
+                                                </select></div>
+                                            <div class="form-group"><label>Section</label>
+                                                <div class="combo" data-combo>
+                                                    <input type="hidden" class="combo-value" name="sectionId" th:value="${q.section.id}" required>
+                                                    <button type="button" class="combo-trigger input">
+                                                        <span class="combo-label" th:text="${q.section.name}">Section</span>
+                                                        <i class="bi bi-chevron-down"></i>
+                                                    </button>
+                                                    <div class="combo-panel">
+                                                        <input type="text" class="combo-search input" placeholder="Search or add a section…">
+                                                        <div class="combo-options">
+                                                            <button type="button" class="combo-option" th:each="sec : ${sections}"
+                                                                    th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                                                        </div>
+                                                        <div class="combo-empty" hidden>No matching section.</div>
+                                                        <button type="button" class="combo-add">
+                                                            <i class="bi bi-plus-circle"></i> Add &ldquo;<span class="combo-add-name"></span>&rdquo;
+                                                        </button>
+                                                    </div>
+                                                </div></div>
+                                            <div class="form-group"><label>Max marks</label>
+                                                <input class="input" type="number" name="maxMarks" min="1" th:value="${q.maxMarks}"></div>
+                                            <div class="form-group"><label>Focus Points</label>
+                                                <input class="input" name="description" th:value="${q.description}"></div>
+                                            <button class="btn btn-primary btn-sm btn-block" type="submit">Save</button>
+                                        </form>
+                                    </div>
+                                </details>
+                                <form th:action="@{/teacher/questions/{id}/delete(id=${q.id})}" method="post"
+                                      onsubmit="return confirm('Delete this question?');">
+                                    <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+    <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+<script th:src="@{/js/combo.js}"></script>
+</body>
+</html>

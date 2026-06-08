@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a13ac">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+    <title th:text="${title}">PCA Exam Analyzer</title>
+    <link rel="icon" type="image/png" th:href="@{/img/logo.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=4)}">
+</head>
+<body>
+
+<!-- ===================== Role-aware navbar ===================== -->
+<nav th:fragment="navbar" class="glass-nav">
+    <div class="nav-inner">
+        <a class="brand" th:href="@{/}">
+            <img th:src="@{/img/logo.png}" alt="PCA logo">
+            <span class="brand-text">
+                Physics Cube Academy
+                <small>Exam Analyzer</small>
+            </span>
+        </a>
+        <button type="button" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="nav-links" id="navLinks">
+            <th:block th:if="${isAuthenticated}">
+                <a th:if="${isTeacher}" th:href="@{/teacher/dashboard}"><i class="bi bi-table"></i> Question Map</a>
+                <a th:if="${isStudent}" th:href="@{/student/dashboard}"><i class="bi bi-grid-3x3-gap"></i> My Attempts</a>
+                <span class="nav-user">
+                    <span class="avatar" th:text="${currentUserName != null ? #strings.substring(currentUserName,0,1) : 'U'}">U</span>
+                    <span th:text="${currentUserName}">User</span>
+                </span>
+                <form th:action="@{/logout}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                </form>
+            </th:block>
+            <th:block th:unless="${isAuthenticated}">
+                <a th:href="@{/login}"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+                <a th:href="@{/register}" class="btn btn-primary btn-sm"><i class="bi bi-person-plus"></i> Register</a>
+            </th:block>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var btn = document.querySelector(".nav-toggle");
+            var links = document.getElementById("navLinks");
+            if (!btn || !links) return;
+            btn.addEventListener("click", function () {
+                var open = links.classList.toggle("open");
+                btn.setAttribute("aria-expanded", open ? "true" : "false");
+            });
+            // Close the menu after tapping a link (mobile).
+            links.addEventListener("click", function (e) {
+                if (e.target.closest("a")) { links.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); }
+            });
+        })();
+    </script>
+</nav>
+
+<!-- ===================== Flash messages ===================== -->
+<div th:fragment="flash">
+    <div th:if="${flashSuccess}" class="alert success">
+        <i class="bi bi-check-circle"></i><span th:text="${flashSuccess}"></span>
+    </div>
+    <div th:if="${flashInfo}" class="alert info">
+        <i class="bi bi-info-circle"></i><span th:text="${flashInfo}"></span>
+    </div>
+    <div th:if="${flashError}" class="alert error">
+        <i class="bi bi-exclamation-triangle"></i><span th:text="${flashError}"></span>
+    </div>
+</div>
+
+<!-- ===================== Footer ===================== -->
+<footer th:fragment="footer" class="app-footer">
+    <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2026</span> Physics Cube Academy (PCA) · Exam Analyzer</div>
+</footer>
+
+<!-- ===================== Scripts (Chart.js) ===================== -->
+<th:block th:fragment="charts-cdn">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script th:src="@{/js/charts.js}"></script>
+</th:block>
+
+</body>
+</html>
