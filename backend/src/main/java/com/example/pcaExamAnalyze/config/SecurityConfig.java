@@ -40,7 +40,8 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                        "/", "/login", "/register", "/register/username-available", "/forgot-password",
+                        "/", "/login", "/register", "/auth/login", "/auth/register",
+                        "/register/username-available", "/forgot-password",
                         "/css/**", "/js/**", "/img/**", "/favicon.ico",
                         "/webjars/**", "/h2-console/**"
                 ).permitAll()

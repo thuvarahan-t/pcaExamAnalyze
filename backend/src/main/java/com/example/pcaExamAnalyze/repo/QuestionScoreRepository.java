@@ -10,4 +10,10 @@ public interface QuestionScoreRepository extends JpaRepository<QuestionScore, Lo
 
     @EntityGraph(attributePaths = {"question", "attempt"})
     List<QuestionScore> findByAttemptIdIn(List<Long> attemptIds);
+
+    /** Remove every student score for a question (used when a teacher deletes/clears it). */
+    void deleteByQuestionId(Long questionId);
+
+    /** Remove every student score belonging to any question of a paper (used when a paper is deleted). */
+    void deleteByQuestion_PaperStructureId(Long paperId);
 }

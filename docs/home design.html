@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Physics Cube Academy · Exam Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #060814;
+    --bg-1: #0a0f26;
+    --ink: #eef3ff;
+    --ink-dim: #9fb0d6;
+    --ink-mute: #6f80a8;
+    --indigo: #4f5bff;
+    --blue: #2f7bff;
+    --cyan: #29d6f0;
+    --violet: #8b6bff;
+    --weak: #ff6b7d;
+    --mid: #ffba4a;
+    --strong: #2fe0a6;
+    --grad: linear-gradient(120deg, var(--indigo), var(--blue) 45%, var(--cyan));
+    --glass: rgba(255,255,255,0.045);
+    --glass-2: rgba(255,255,255,0.07);
+    --bd: rgba(150,180,255,0.14);
+    --bd-2: rgba(150,180,255,0.22);
+    --r: 18px;
+    --maxw: 1180px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg-0);
+    line-height: 1.6;
+    overflow-x: hidden;
+    position: relative;
+  }
+  h1,h2,h3,.display { font-family: "Sora", system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ----- backdrop layers ----- */
+  #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .mesh {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(60% 50% at 82% 8%, rgba(41,214,240,.16), transparent 60%),
+      radial-gradient(55% 50% at 12% 18%, rgba(79,91,255,.22), transparent 60%),
+      radial-gradient(70% 60% at 50% 108%, rgba(139,107,255,.16), transparent 60%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-0) 60%);
+  }
+  .grid-fade {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+    background-image:
+      linear-gradient(rgba(150,180,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(150,180,255,.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(80% 60% at 50% 30%, #000, transparent 80%);
+            mask-image: radial-gradient(80% 60% at 50% 30%, #000, transparent 80%);
+  }
+  .shell { position: relative; z-index: 2; }
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(18px, 4vw, 40px); }
+
+  /* ----- nav ----- */
+  header.nav {
+    position: sticky; top: 0; z-index: 50;
+    transition: background .35s ease, border-color .35s ease, backdrop-filter .35s ease;
+    border-bottom: 1px solid transparent;
+  }
+  header.nav.scrolled {
+    background: rgba(8,12,30,.72);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom-color: var(--bd);
+  }
+  .nav-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 42px; height: 42px; flex: none; filter: drop-shadow(0 4px 14px rgba(47,123,255,.5)); }
+  .brand .txt b { font-family: "Sora"; font-weight: 700; font-size: 17px; letter-spacing: -.01em; display: block; line-height: 1.1; }
+  .brand .txt span { font-size: 11.5px; color: var(--ink-mute); letter-spacing: .14em; text-transform: uppercase; }
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+  .btn {
+    font-family: "Plus Jakarta Sans"; font-weight: 600; font-size: 15px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 999px; cursor: pointer; border: 1px solid transparent;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, background .25s ease, border-color .25s ease;
+    white-space: nowrap;
+  }
+  .btn svg { width: 17px; height: 17px; }
+  .btn-ghost { color: var(--ink-dim); background: transparent; }
+  .btn-ghost:hover { color: var(--ink); background: var(--glass); }
+  .btn-outline { color: var(--ink); border-color: var(--bd-2); background: var(--glass); }
+  .btn-outline:hover { border-color: var(--cyan); transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgba(41,214,240,.5); }
+  .btn-primary {
+    color: #fff; background: var(--grad); background-size: 160% 160%;
+    box-shadow: 0 12px 30px -10px rgba(47,123,255,.65), inset 0 1px 0 rgba(255,255,255,.25);
+    animation: shift 7s ease infinite;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -10px rgba(47,123,255,.8), inset 0 1px 0 rgba(255,255,255,.3); }
+  .btn-lg { padding: 15px 28px; font-size: 16.5px; }
+  @keyframes shift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+  /* ----- hero ----- */
+  .hero { padding: clamp(36px, 6vw, 78px) 0 clamp(48px, 6vw, 90px); }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(28px, 4vw, 60px); align-items: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 12.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--cyan); padding: 7px 14px; border-radius: 999px;
+    background: var(--glass); border: 1px solid var(--bd);
+  }
+  .eyebrow .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 0 rgba(41,214,240,.6); animation: pulse 2.2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(41,214,240,.55);} 70%{ box-shadow: 0 0 0 9px rgba(41,214,240,0);} 100%{ box-shadow:0 0 0 0 rgba(41,214,240,0);} }
+
+  .hero h1 {
+    font-size: clamp(38px, 6.6vw, 70px); font-weight: 800; line-height: 1.02;
+    letter-spacing: -.03em; margin: 20px 0 0;
+  }
+  .hero h1 .grad-txt {
+    background: linear-gradient(100deg, #7da8ff, var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent;
+    position: relative;
+  }
+  .hero p.sub { color: var(--ink-dim); font-size: clamp(15.5px, 1.7vw, 18.5px); margin-top: 20px; max-width: 46ch; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: clamp(20px, 4vw, 42px); margin-top: 40px; }
+  .stat .num { font-family: "Sora"; font-weight: 700; font-size: clamp(24px, 3vw, 32px); line-height: 1; letter-spacing: -.02em; }
+  .stat .lbl { font-size: 12.5px; color: var(--ink-mute); margin-top: 7px; letter-spacing: .02em; }
+
+  /* reveal: content is visible by default; entrance is a transform-only rise
+     (no opacity hiding) so it can never leave content blank if animation is
+     unavailable. Real browsers play the rise; otherwise it just shows. */
+  .reveal { }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: riseIn .7s cubic-bezier(.2,.7,.2,1) both; }
+  }
+  @keyframes riseIn { from { transform: translateY(20px); } to { transform: none; } }
+
+  /* ----- hero illustration / study scene ----- */
+  .scene { position: relative; min-height: 460px; display: grid; place-items: center; }
+  .orbit-wrap {
+    position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  }
+  .atom { position: relative; width: min(420px, 84%); aspect-ratio: 1; }
+  .atom .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid rgba(150,180,255,.16);
+  }
+  .atom .ring.r1 { transform: rotate(0deg); animation: spin 16s linear infinite; }
+  .atom .ring.r2 { transform: rotate(60deg); animation: spin 22s linear infinite reverse; }
+  .atom .ring.r3 { transform: rotate(120deg); animation: spin 28s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .atom .ring::before {
+    content: ""; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px;
+    border-radius: 50%; background: var(--cyan); box-shadow: 0 0 16px 3px rgba(41,214,240,.8);
+  }
+  .atom .ring.r2::before { background: var(--violet); box-shadow: 0 0 16px 3px rgba(139,107,255,.8); }
+  .atom .ring.r3::before { background: var(--blue); box-shadow: 0 0 16px 3px rgba(47,123,255,.8); }
+  .atom .nucleus {
+    position: absolute; top: 50%; left: 50%; width: 26%; aspect-ratio: 1; transform: translate(-50%,-50%);
+    border-radius: 50%; background: radial-gradient(circle at 35% 30%, #bfe6ff, var(--blue) 55%, var(--indigo));
+    box-shadow: 0 0 50px 6px rgba(47,123,255,.55), inset 0 2px 8px rgba(255,255,255,.5);
+    animation: bob 5s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100%{ transform: translate(-50%,-52%);} 50%{ transform: translate(-50%,-48%);} }
+
+  /* live report card */
+  .report {
+    position: relative; z-index: 3; width: min(360px, 92%);
+    background: linear-gradient(180deg, rgba(18,24,54,.92), rgba(12,16,38,.92));
+    border: 1px solid var(--bd-2); border-radius: 22px; padding: 22px 22px 24px;
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.08);
+    backdrop-filter: blur(8px);
+    transform-style: preserve-3d; will-change: transform; transition: transform .4s cubic-bezier(.2,.8,.2,1);
+  }
+  .report .rhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .report .rhead .t { font-family: "Sora"; font-weight: 600; font-size: 15px; }
+  .report .rhead .t small { display: block; color: var(--ink-mute); font-size: 11.5px; font-weight: 500; letter-spacing: .03em; font-family: "Plus Jakarta Sans"; }
+  .ring-score { position: relative; width: 56px; height: 56px; flex: none; }
+  .ring-score svg { transform: rotate(-90deg); }
+  .ring-score .pct { position: absolute; inset: 0; display: grid; place-items: center; font-family: "Sora"; font-weight: 700; font-size: 15px; }
+
+  .topic { margin-bottom: 13px; }
+  .topic:last-child { margin-bottom: 0; }
+  .topic .tl { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; margin-bottom: 6px; }
+  .topic .tl .name { color: var(--ink-dim); font-weight: 500; }
+  .topic .tl .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.weak { color: var(--weak); background: rgba(255,107,125,.14); }
+  .tag.mid { color: var(--mid); background: rgba(255,186,74,.14); }
+  .tag.strong { color: var(--strong); background: rgba(47,224,166,.14); }
+  .track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .track > i { display: block; height: 100%; width: 0; border-radius: inherit; }
+  .fill-weak { background: linear-gradient(90deg, #ff5066, var(--weak)); }
+  .fill-mid { background: linear-gradient(90deg, #ff9f2e, var(--mid)); }
+  .fill-strong { background: linear-gradient(90deg, #16c98e, var(--strong)); }
+
+  /* floating formula chips */
+  .chip {
+    position: absolute; z-index: 4; font-family: "Sora"; font-weight: 600; font-size: 14px;
+    padding: 8px 13px; border-radius: 12px; color: var(--ink); white-space: nowrap;
+    background: rgba(20,28,60,.72); border: 1px solid var(--bd-2);
+    box-shadow: 0 12px 30px -14px rgba(0,0,0,.8); backdrop-filter: blur(6px);
+    animation: floaty 6s ease-in-out infinite;
+  }
+  .chip i { color: var(--cyan); font-style: normal; }
+  .chip.c1 { top: 4%; left: 2%; animation-delay: 0s; }
+  .chip.c2 { top: 24%; right: 2%; animation-delay: -1.5s; }
+  .chip.c3 { bottom: 16%; left: 0%; animation-delay: -3s; }
+  .chip.c4 { bottom: 4%; right: 8%; animation-delay: -2.2s; }
+  @keyframes floaty { 0%,100%{ transform: translateY(0) rotate(-1deg);} 50%{ transform: translateY(-14px) rotate(1.5deg);} }
+
+  /* ----- section heading ----- */
+  .sec { padding: clamp(50px, 8vw, 96px) 0; }
+  .sec-head { text-align: center; max-width: 640px; margin: 0 auto clamp(34px, 5vw, 56px); }
+  .sec-head .kick { font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); }
+  .sec-head h2 { font-size: clamp(28px, 4.4vw, 46px); font-weight: 700; letter-spacing: -.025em; margin-top: 12px; line-height: 1.08; }
+  .sec-head p { color: var(--ink-dim); font-size: clamp(15px, 1.7vw, 17.5px); margin-top: 16px; }
+
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(16px, 2.4vw, 26px); }
+  .card {
+    position: relative; padding: 30px 26px 28px; border-radius: 22px;
+    background: var(--glass); border: 1px solid var(--bd);
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s ease, border-color .45s ease, background .45s ease;
+    transform-style: preserve-3d; will-change: transform; overflow: hidden;
+  }
+  .card::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s ease;
+    background: radial-gradient(220px 220px at var(--mx,50%) var(--my,0%), rgba(41,214,240,.16), transparent 60%);
+  }
+  .card:hover { border-color: var(--bd-2); background: var(--glass-2); box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); }
+  .card:hover::after { opacity: 1; }
+  .step-no { font-family: "Sora"; font-weight: 700; font-size: 13px; color: var(--ink-mute); letter-spacing: .06em; }
+  .ic {
+    width: 54px; height: 54px; border-radius: 15px; display: grid; place-items: center; margin: 14px 0 18px;
+    background: var(--grad); box-shadow: 0 14px 30px -12px rgba(47,123,255,.7), inset 0 1px 0 rgba(255,255,255,.3);
+    transform: translateZ(30px);
+  }
+  .ic svg { width: 27px; height: 27px; color: #fff; }
+  .card h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; transform: translateZ(18px); }
+  .card p { color: var(--ink-dim); font-size: 15px; margin-top: 10px; transform: translateZ(10px); }
+
+  /* ----- breakdown demo ----- */
+  .demo-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(24px, 4vw, 50px); align-items: center; }
+  .panel {
+    background: linear-gradient(180deg, rgba(18,24,54,.7), rgba(12,16,38,.7));
+    border: 1px solid var(--bd); border-radius: 22px; padding: clamp(22px, 3vw, 30px);
+    box-shadow: 0 30px 70px -34px rgba(0,0,0,.8);
+  }
+  .panel .ptitle { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .panel .ptitle b { font-family: "Sora"; font-size: 16px; }
+  .panel .ptitle .yr { font-size: 12px; color: var(--ink-mute); padding: 5px 12px; border: 1px solid var(--bd); border-radius: 999px; }
+  .brow { margin-bottom: 16px; }
+  .brow:last-child { margin-bottom: 0; }
+  .brow .bl { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 7px; }
+  .brow .bl .nm { color: var(--ink-dim); font-weight: 500; }
+  .brow .bl .vv { font-family: "Sora"; font-weight: 600; }
+  .btrack { height: 11px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .btrack > i { display: block; height: 100%; width: 0; border-radius: inherit; box-shadow: 0 0 14px -2px currentColor; }
+
+  .legend-list { display: flex; flex-direction: column; gap: 18px; }
+  .leg { display: flex; gap: 15px; align-items: flex-start; }
+  .leg .sw { width: 14px; height: 14px; border-radius: 5px; margin-top: 5px; flex: none; }
+  .leg b { font-family: "Sora"; font-size: 16px; display: block; }
+  .leg span { color: var(--ink-dim); font-size: 14.5px; }
+
+  /* ----- cta band ----- */
+  .cta-band { position: relative; overflow: hidden; border-radius: 28px; padding: clamp(38px, 6vw, 70px); text-align: center;
+    background: linear-gradient(125deg, rgba(79,91,255,.28), rgba(41,214,240,.18));
+    border: 1px solid var(--bd-2); box-shadow: 0 40px 90px -40px rgba(47,123,255,.6); }
+  .cta-band::before { content:""; position:absolute; inset:0; background: radial-gradient(60% 120% at 50% -20%, rgba(41,214,240,.3), transparent 60%); pointer-events:none; }
+  .cta-band h2 { position: relative; font-size: clamp(26px, 4.4vw, 44px); font-weight: 700; letter-spacing: -.025em; }
+  .cta-band p { position: relative; color: var(--ink-dim); margin: 14px auto 0; max-width: 48ch; font-size: clamp(15px,1.7vw,17.5px); }
+  .cta-band .cta-row { position: relative; justify-content: center; }
+
+  /* ----- footer ----- */
+  footer { border-top: 1px solid var(--bd); margin-top: clamp(40px,6vw,80px); }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 30px 0; }
+  .foot .brand .txt b { font-size: 15px; }
+  .foot small { color: var(--ink-mute); font-size: 13px; }
+
+  /* ----- responsive ----- */
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .scene { order: -1; min-height: 400px; margin-bottom: 8px; }
+    .demo-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .brand .txt span { display: none; }
+    .brand .txt b { font-size: 15px; }
+    .logo { width: 36px; height: 36px; }
+    .nav-in { height: 64px; }
+    .btn { padding: 10px 16px; font-size: 14px; }
+    .btn-ghost { display: none; }
+    .stats { gap: 22px; }
+    .scene { min-height: 360px; }
+    .report { width: min(320px, 96%); }
+    .chip { font-size: 12px; padding: 6px 10px; }
+    .chip.c1 { left: 0; } .chip.c2 { right: 0; } .chip.c3 { left: 0; } .chip.c4 { right: 0; }
+    .cta-band { border-radius: 22px; }
+  }
+  @media (max-width: 380px) {
+    .chip.c2, .chip.c3 { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="mesh"></div>
+  <div class="grid-fade"></div>
+  <canvas id="stars"></canvas>
+
+  <div class="shell">
+    <!-- NAV -->
+    <header class="nav" id="nav">
+      <div class="wrap nav-in">
+        <a class="brand" href="#top" aria-label="Physics Cube Academy home">
+          <svg class="logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="lg" x1="6" y1="6" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#4f5bff"/><stop offset=".5" stop-color="#2f7bff"/><stop offset="1" stop-color="#29d6f0"/>
+              </linearGradient>
+            </defs>
+            <path d="M24 4 41 13.5v21L24 44 7 34.5v-21L24 4Z" fill="url(#lg)" opacity=".18"/>
+            <path d="M24 4 41 13.5v21L24 44 7 34.5v-21L24 4Z" stroke="url(#lg)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M24 14 33 19v10l-9 5-9-5V19l9-5Z" fill="url(#lg)"/>
+            <path d="M24 14v20M15 19l9 5 9-5" stroke="#bfe6ff" stroke-width="1.4" stroke-linejoin="round" opacity=".75"/>
+            <circle cx="24" cy="24" r="2.4" fill="#fff"/>
+          </svg>
+          <span class="txt"><b>Physics Cube Academy</b><span>Exam Analyzer</span></span>
+        </a>
+        <nav class="nav-actions">
+          <a class="btn btn-ghost" href="#login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Login
+          </a>
+          <a class="btn btn-primary" href="#register">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Register
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <main id="top">
+      <section class="hero wrap">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <span class="eyebrow reveal"><span class="pulse"></span> Physics · Past papers 2021–2025</span>
+            <h1 class="reveal">Know exactly<br><span class="grad-txt">what to revise.</span></h1>
+            <p class="sub reveal">Analyze your Physics past-paper performance, track every attempt, and get a personalized study report that pinpoints your weak, mid-range and strong topics — question by question.</p>
+            <div class="cta-row reveal">
+              <a class="btn btn-primary btn-lg" href="#get-started">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>
+                Get started
+              </a>
+              <a class="btn btn-outline btn-lg" href="#login">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Sign in
+              </a>
+            </div>
+            <div class="stats reveal">
+              <div class="stat"><div class="num">5</div><div class="lbl">Years of papers</div></div>
+              <div class="stat"><div class="num">40+</div><div class="lbl">Topics tracked</div></div>
+              <div class="stat"><div class="num">100%</div><div class="lbl">Personalized</div></div>
+            </div>
+          </div>
+
+          <!-- STUDY SCENE -->
+          <div class="scene reveal">
+            <div class="orbit-wrap"><div class="atom">
+              <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+              <div class="nucleus"></div>
+            </div></div>
+
+            <div class="chip c1">F = m<i>a</i></div>
+            <div class="chip c2">E = mc<i>²</i></div>
+            <div class="chip c3">λ = <i>h</i>/p</div>
+            <div class="chip c4">V = I<i>R</i></div>
+
+            <div class="report" id="report">
+              <div class="rhead">
+                <div class="t">Your topic report <small>2025 · Paper 1</small></div>
+                <div class="ring-score">
+                  <svg width="56" height="56" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
+                    <circle id="scoreRing" cx="28" cy="28" r="24" fill="none" stroke="url(#lg)" stroke-width="6" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="42.2"/>
+                  </svg>
+                  <div class="pct">72%</div>
+                </div>
+              </div>
+              <div class="topic"><div class="tl"><span class="name">Mechanics</span><span class="tag weak">Weak</span></div><div class="track"><i class="fill-weak" style="width:34%"></i></div></div>
+              <div class="topic"><div class="tl"><span class="name">Sound</span><span class="tag mid">Mid</span></div><div class="track"><i class="fill-mid" style="width:62%"></i></div></div>
+              <div class="topic"><div class="tl"><span class="name">Light</span><span class="tag strong">Strong</span></div><div class="track"><i class="fill-strong" style="width:88%"></i></div></div>
+              <div class="topic"><div class="tl"><span class="name">Heat</span><span class="tag mid">Mid</span></div><div class="track"><i class="fill-mid" style="width:55%"></i></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="sec wrap" id="how">
+        <div class="sec-head reveal">
+          <div class="kick">How it works</div>
+          <h2>Three steps to a sharper revision plan</h2>
+          <p>No guesswork. Enter your marks, let the analyzer do the maths, and walk away knowing exactly where to spend your time.</p>
+        </div>
+        <div class="steps">
+          <article class="card reveal">
+            <div class="step-no">STEP 01</div>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8 11h2M8 15h2"/><path d="M14 11l2 2 3-3" /></svg></div>
+            <h3>Enter your marks</h3>
+            <p>Pick a year, type your score per question. We validate every entry against that question's max marks — no impossible scores.</p>
+          </article>
+          <article class="card reveal">
+            <div class="step-no">STEP 02</div>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></div>
+            <h3>See your weak areas</h3>
+            <p>A topic-wise breakdown with clear weak / mid / strong colour coding and live charts, so patterns jump out instantly.</p>
+          </article>
+          <article class="card reveal">
+            <div class="step-no">STEP 03</div>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg></div>
+            <h3>Download your report</h3>
+            <p>A personalized PDF telling you what to study and which exact questions to redo before your next attempt.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- BREAKDOWN DEMO -->
+      <section class="sec wrap" id="breakdown">
+        <div class="sec-head reveal">
+          <div class="kick">The analysis</div>
+          <h2>Every topic, ranked by where you stand</h2>
+          <p>This is the heart of the analyzer — a clear read on each topic so you revise the right things, not everything.</p>
+        </div>
+        <div class="demo-grid">
+          <div class="panel reveal" id="panel">
+            <div class="ptitle"><b>Topic mastery</b><span class="yr">2024 · all papers</span></div>
+            <div class="brow"><div class="bl"><span class="nm">Kinematics</span><span class="vv" style="color:var(--strong)">88%</span></div><div class="btrack"><i style="width:88%;background:linear-gradient(90deg,#16c98e,var(--strong));color:var(--strong)"></i></div></div>
+            <div class="brow"><div class="bl"><span class="nm">Waves &amp; Optics</span><span class="vv" style="color:var(--mid)">61%</span></div><div class="btrack"><i style="width:61%;background:linear-gradient(90deg,#ff9f2e,var(--mid));color:var(--mid)"></i></div></div>
+            <div class="brow"><div class="bl"><span class="nm">Thermodynamics</span><span class="vv" style="color:var(--mid)">58%</span></div><div class="btrack"><i style="width:58%;background:linear-gradient(90deg,#ff9f2e,var(--mid));color:var(--mid)"></i></div></div>
+            <div class="brow"><div class="bl"><span class="nm">Electromagnetism</span><span class="vv" style="color:var(--weak)">34%</span></div><div class="btrack"><i style="width:34%;background:linear-gradient(90deg,#ff5066,var(--weak));color:var(--weak)"></i></div></div>
+            <div class="brow"><div class="bl"><span class="nm">Nuclear Physics</span><span class="vv" style="color:var(--weak)">29%</span></div><div class="btrack"><i style="width:29%;background:linear-gradient(90deg,#ff5066,var(--weak));color:var(--weak)"></i></div></div>
+          </div>
+          <div class="legend-list reveal">
+            <div class="leg"><span class="sw" style="background:var(--weak)"></span><div><b>Weak — revise first</b><span>Below 45%. These topics cost you the most marks. Start here with worked examples and the exact past questions you missed.</span></div></div>
+            <div class="leg"><span class="sw" style="background:var(--mid)"></span><div><b>Mid — almost there</b><span>45–75%. A little polish converts these to easy marks. Quick wins for your next attempt.</span></div></div>
+            <div class="leg"><span class="sw" style="background:var(--strong)"></span><div><b>Strong — keep warm</b><span>Above 75%. You've got these. Light review only, so you can focus your energy where it counts.</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="sec wrap" id="get-started" style="padding-top:0">
+        <div class="cta-band reveal">
+          <h2>Ready to find your weak spots?</h2>
+          <p>Create a free account, enter one paper, and see your personalized topic report in minutes.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary btn-lg" href="#register">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Create free account
+            </a>
+            <a class="btn btn-outline btn-lg" href="#login">Sign in</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <div class="brand">
+          <svg class="logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 4 41 13.5v21L24 44 7 34.5v-21L24 4Z" fill="url(#lg)" opacity=".18"/>
+            <path d="M24 14 33 19v10l-9 5-9-5V19l9-5Z" fill="url(#lg)"/>
+          </svg>
+          <span class="txt"><b>Physics Cube Academy</b><span>Exam Analyzer</span></span>
+        </div>
+        <small>© 2025 Physics Cube Academy · Built for smarter revision</small>
+      </div>
+    </footer>
+  </div>
+
+<script>
+  // ---------- nav scroll state ----------
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 12);
+  onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
+
+  // ===================================================================
+  //  Ambient motion only. Content is fully visible/final from base HTML+CSS;
+  //  JS just adds the drifting constellation and pointer tilt. (Entrance,
+  //  orbiting atom, floating formulas, shimmer = pure CSS.)
+  // ===================================================================
+  const REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- drifting constellation ----
+  const cv = document.getElementById('stars'); const ctx = cv.getContext('2d');
+  let cw, ch, dpr, pts; const COUNT = 70;
+  function sizeCanvas() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cw = cv.width = innerWidth * dpr; ch = cv.height = innerHeight * dpr;
+    cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  }
+  function initPts() {
+    pts = Array.from({ length: COUNT }, () => ({
+      x: Math.random() * cw, y: Math.random() * ch,
+      vx: (Math.random() - .5) * .14 * dpr, vy: (Math.random() - .5) * .14 * dpr,
+      r: (Math.random() * 1.6 + .5) * dpr
+    }));
+  }
+  sizeCanvas(); initPts();
+  let rzt; window.addEventListener('resize', () => { clearTimeout(rzt); rzt = setTimeout(() => { sizeCanvas(); initPts(); }, 200); });
+  function drawParticles() {
+    ctx.clearRect(0, 0, cw, ch);
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]; p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > cw) p.vx *= -1;
+      if (p.y < 0 || p.y > ch) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fillStyle = 'rgba(150,190,255,.55)'; ctx.fill();
+      for (let j = i + 1; j < pts.length; j++) {
+        const q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d2 = dx * dx + dy * dy, max = 130 * dpr;
+        if (d2 < max * max) {
+          ctx.strokeStyle = 'rgba(120,170,255,' + (1 - Math.sqrt(d2) / max) * .22 + ')';
+          ctx.lineWidth = dpr * .6; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
+      }
+    }
+  }
+  drawParticles();
+  if (!REDUCE) (function loop() { drawParticles(); requestAnimationFrame(loop); })();
+
+  // ---------- 3D tilt on cards + report (pointer-driven) ----------
+  function addTilt(el, max) {
+    el.addEventListener('pointermove', (ev) => {
+      if (window.matchMedia('(pointer: coarse)').matches) return;
+      const r = el.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width, py = (ev.clientY - r.top) / r.height;
+      el.style.transform = `perspective(900px) rotateY(${(px - .5) * 2 * max}deg) rotateX(${(.5 - py) * 2 * max}deg)`;
+      el.style.setProperty('--mx', px * 100 + '%'); el.style.setProperty('--my', py * 100 + '%');
+    });
+    el.addEventListener('pointerleave', () => { el.style.transform = ''; });
+  }
+  document.querySelectorAll('.card').forEach((c) => addTilt(c, 7));
+  const rep = document.getElementById('report'); if (rep) addTilt(rep, 6);
+</script>
+</body>
+</html>

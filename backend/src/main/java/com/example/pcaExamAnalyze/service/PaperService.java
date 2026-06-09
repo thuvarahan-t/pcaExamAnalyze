@@ -21,15 +21,18 @@ public class PaperService {
     private final QuestionRepository questions;
     private final QuestionReferenceRepository references;
     private final SectionRepository sections;
+    private final QuestionScoreRepository scores;
 
     public PaperService(PaperStructureRepository papers,
                         QuestionRepository questions,
                         QuestionReferenceRepository references,
-                        SectionRepository sections) {
+                        SectionRepository sections,
+                        QuestionScoreRepository scores) {
         this.papers = papers;
         this.questions = questions;
         this.references = references;
         this.sections = sections;
+        this.scores = scores;
     }
 
     // ---- Teacher grid (year × Structured 1–4 matrix) ----
@@ -119,8 +122,8 @@ public class PaperService {
      * replace its references with the submitted set. Powers the cell popup's Save.
      */
     @Transactional
-    public Long saveQuestionCell(Long paperId, String questionNumber, Long sectionId,
-                                 Integer maxMarks, String description, List<RefInput> refs) {
+    public GridCell saveQuestionCell(Long paperId, String questionNumber, Long sectionId,
+                                     Integer maxMarks, String description, List<RefInput> refs) {
         PaperStructure paper = requirePaper(paperId);
         Section section = requireSection(sectionId);
         Integer pos = positionOf(questionNumber);
@@ -147,7 +150,32 @@ public class PaperService {
             references.save(new QuestionReference(q, r.title().trim(), r.type(),
                     r.resource().trim(), blankToNull(r.note())));
         }
-        return q.getId();
+
+        // Hand back the freshly-saved cell so the matrix can update in place (no full reload).
+        List<RefView> saved = references.findByQuestionIdOrderByIdAsc(q.getId()).stream()
+                .map(r -> new RefView(r.getTitle(), r.getType().name(), r.getResource(), r.getNote()))
+                .toList();
+        String sec = section.getName();
+        Integer n = positionOf(q.getQuestionNumber());
+        return new GridCell("Q" + (n == null ? pos : n), q.getId(), section.getId(), sec, colorFor(sec),
+                q.getDescription(), q.getMaxMarks(), saved, toJson(saved));
+    }
+
+    /**
+     * Fully clear the Structured-{n} cell of a paper: delete the question at that
+     * position (its references and the matching marking-sheet scores cascade away).
+     * No-op if the cell is already empty. Powers the cell popup's "Clear" button.
+     */
+    @Transactional
+    public void clearQuestionCell(Long paperId, String questionNumber) {
+        Integer pos = positionOf(questionNumber);
+        questions.findByPaperStructureIdOrderByIdAsc(paperId).stream()
+                .filter(x -> Objects.equals(positionOf(x.getQuestionNumber()), pos))
+                .findFirst()
+                .ifPresent(q -> {
+                    scores.deleteByQuestionId(q.getId());   // drop dependent student marks first
+                    questions.delete(q);
+                });
     }
 
     /** First digit (1–4) found in a question number like "Q3" / "Q3(b)". */
@@ -196,6 +224,23 @@ public class PaperService {
                     "“" + s.getName() + "” is used by one or more questions — reassign them first.");
         }
         sections.delete(s);
+    }
+
+    /** Rename a section. Rejects blanks and names that clash with a different section. */
+    @Transactional
+    public Section renameSection(Long id, String name) {
+        Section s = requireSection(id);
+        String clean = name == null ? "" : name.trim();
+        if (clean.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Section name is required.");
+        }
+        sections.findByNameIgnoreCase(clean).ifPresent(other -> {
+            if (!other.getId().equals(id)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "A section called “" + clean + "” already exists.");
+            }
+        });
+        s.setName(clean);
+        return sections.save(s);
     }
 
     // ---- Papers ----
@@ -278,7 +323,11 @@ public class PaperService {
 
     @Transactional
     public void deletePaper(Long id) {
-        papers.delete(requirePaper(id));
+        PaperStructure p = requirePaper(id);
+        // Student marks reference questions but aren't cascaded by JPA — clear them first,
+        // then the paper delete cascades to its questions and their references.
+        scores.deleteByQuestion_PaperStructureId(id);
+        papers.delete(p);
     }
 
     // ---- Questions ----
@@ -340,6 +389,7 @@ public class PaperService {
     public Long deleteQuestion(Long id) {
         Question q = requireQuestion(id);
         Long paperId = q.getPaperStructure().getId();
+        scores.deleteByQuestionId(id);   // drop dependent student marks first
         questions.delete(q);
         return paperId;
     }

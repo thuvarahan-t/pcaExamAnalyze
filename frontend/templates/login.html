@@ -23,7 +23,7 @@
             <i class="bi bi-check-circle"></i><span>Password updated — sign in with your new password.</span>
         </div>
 
-        <form th:action="@{/login}" method="post">
+        <form th:action="@{/login}" method="post" target="_top">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input class="input" type="text" id="username" name="username"
@@ -32,10 +32,16 @@
             <div class="form-group">
                 <div class="flex items-center justify-between">
                     <label for="password" style="margin:0;">Password</label>
-                    <a th:href="@{/forgot-password}" style="font-size:.8rem;color:var(--brand);text-decoration:none;font-weight:600;">Forgot?</a>
+                    <a th:href="@{/forgot-password}" target="_top" style="font-size:.8rem;color:var(--brand);text-decoration:none;font-weight:600;">Forgot?</a>
                 </div>
-                <input class="input mt-1" type="password" id="password" name="password"
-                       placeholder="••••••••" required>
+                <div class="password-wrap mt-1">
+                    <input class="input" type="password" id="password" name="password"
+                           placeholder="••••••••" autocomplete="current-password" required>
+                    <button class="icon-btn password-toggle" type="button" data-target="password"
+                            aria-label="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
             <button class="btn btn-primary btn-block" type="submit">
                 <i class="bi bi-box-arrow-in-right"></i> Sign in
@@ -43,9 +49,71 @@
         </form>
 
         <div class="auth-switch">
-            New student? <a href="/register" th:href="@{/register}">Create an account</a>
+            New student? <a href="/register" th:href="@{/register}" target="_top">Create an account</a>
         </div>
     </div>
 </div>
+<style>
+    body {
+        background:
+            radial-gradient(55% 45% at 15% 10%, rgba(79, 91, 255, .22), transparent 62%),
+            radial-gradient(55% 50% at 85% 8%, rgba(41, 214, 240, .18), transparent 62%),
+            linear-gradient(180deg, #0a0f26, #060814 70%);
+        color: #eef3ff;
+    }
+    body::before,
+    body::after { display: none; }
+    .auth-wrap {
+        min-height: 100vh;
+        background: transparent;
+        padding: 1.2rem;
+    }
+    .auth-card {
+        background: linear-gradient(180deg, rgba(18, 24, 54, .92), rgba(12, 16, 38, .94));
+        border: 1px solid rgba(150, 180, 255, .22);
+        box-shadow: 0 34px 82px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .08);
+        color: #eef3ff;
+    }
+    .auth-logo img {
+        border-radius: 50%;
+        box-shadow: 0 14px 34px rgba(41, 214, 240, .24);
+    }
+    .auth-logo h1,
+    label { color: #eef3ff; }
+    .auth-logo p,
+    .auth-switch,
+    .text-dim { color: #9fb0d6; }
+    .input {
+        color: #eef3ff;
+        background: rgba(255, 255, 255, .07);
+        border-color: rgba(150, 180, 255, .22);
+    }
+    .input:focus {
+        border-color: #29d6f0;
+        background: rgba(255, 255, 255, .1);
+        box-shadow: 0 0 0 3px rgba(41, 214, 240, .14);
+    }
+    .input::placeholder { color: rgba(159, 176, 214, .7); }
+    .auth-switch a,
+    .password-wrap + a,
+    a { color: #29d6f0; }
+    .icon-btn { color: #9fb0d6; }
+    .password-toggle:hover { background: rgba(41, 214, 240, .12); color: #29d6f0; }
+</style>
+<script>
+    (function () {
+        document.querySelectorAll(".password-toggle").forEach(function (button) {
+            button.addEventListener("click", function () {
+                var target = document.getElementById(button.getAttribute("data-target"));
+                var icon = button.querySelector("i");
+                var show = target.type === "password";
+                target.type = show ? "text" : "password";
+                icon.className = show ? "bi bi-eye-slash" : "bi bi-eye";
+                button.setAttribute("aria-label", show ? "Hide password" : "Show password");
+                target.focus();
+            });
+        });
+    })();
+</script>
 </body>
 </html>

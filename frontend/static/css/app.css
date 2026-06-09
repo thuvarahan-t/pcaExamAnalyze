@@ -81,6 +81,8 @@ body::after {
     100% { transform: translate3d(-2vmax, 2vmax, 0) rotate(-5deg) scale(1.04); }
 }
 @media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
+/* Instant tap feedback while the (prefetched) next page loads. */
+.nav-pending { opacity: .6 !important; transition: opacity .1s ease; }
 
 /* ---- Glass surface ---- */
 .glass {
@@ -135,7 +137,7 @@ body::after {
 }
 .glass-nav .nav-inner { max-width: 1200px; margin: 0 auto; padding: .7rem 1.25rem; display: flex; align-items: center; gap: 1rem; }
 .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; color: var(--brand); font-weight: 800; }
-.brand img { height: 40px; width: 40px; border-radius: 10px; object-fit: contain; }
+.brand img { height: 40px; width: 40px; border-radius: 50%; object-fit: contain; }
 .brand .brand-text { line-height: 1.1; }
 .brand .brand-text small { display: block; font-weight: 600; color: var(--txt-faint); font-size: .68rem; letter-spacing: .04em; }
 .nav-links { margin-left: auto; display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
@@ -195,6 +197,10 @@ body::after {
 .btn-sm { padding: .38rem .7rem; font-size: .82rem; border-radius: 10px; }
 .btn-block { width: 100%; }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+/* Loading buttons: spin the leading icon and lock the button. */
+.btn.is-loading { cursor: progress; }
+.btn.is-loading > .bi:first-child { animation: btn-spin .7s linear infinite; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 
 /* ---- Forms ---- */
 .form-group { margin-bottom: 1.1rem; }
@@ -278,6 +284,20 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
 .auth-switch { text-align: center; margin-top: 1.2rem; color: var(--txt-dim); font-size: .9rem; }
 .auth-switch a { color: var(--brand); font-weight: 700; text-decoration: none; }
 
+/* ---- Password field + show/hide toggle (shared: login, register, reset) ---- */
+.password-wrap { position: relative; }
+.password-wrap .input { padding-right: 2.9rem; }
+.icon-btn {
+    width: 34px; height: 34px; display: inline-grid; place-items: center;
+    border: 0; border-radius: 9px; background: transparent; color: var(--txt-dim);
+    cursor: pointer; transition: background .2s, color .2s;
+}
+.password-toggle {
+    position: absolute; right: .4rem; top: 50%; transform: translateY(-50%);
+}
+.password-toggle:hover { background: rgba(26, 19, 172, .08); color: var(--brand); }
+.password-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
 /* ---- Footer ---- */
 .app-footer { text-align: center; padding: 1.5rem; color: var(--txt-faint); font-size: .82rem; }
 .app-footer a { color: var(--txt-dim); text-decoration: none; }
@@ -336,13 +356,27 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
 .combo-options { max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: .15rem; }
 .combo-option {
     display: flex; align-items: center; gap: .55rem; width: 100%; text-align: left;
-    padding: .55rem .7rem; border: 0; border-radius: 10px; background: transparent;
+    padding: .5rem .5rem .5rem .7rem; border: 0; border-radius: 10px; background: transparent;
     color: var(--txt); font: inherit; font-weight: 600; cursor: pointer; transition: background .15s;
 }
 .combo-option::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--brand-grad); flex: 0 0 auto; }
+.combo-label-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-option:hover, .combo-option.active { background: rgba(26, 19, 172, .08); }
 .combo-option.selected { background: rgba(26, 19, 172, .12); }
 .combo-empty { padding: .6rem .7rem; color: var(--txt-faint); font-size: .85rem; }
+
+/* Per-section edit / delete icons inside the dropdown */
+.combo-actions { display: inline-flex; gap: .1rem; flex: 0 0 auto; opacity: 0; transition: opacity .15s; }
+.combo-option:hover .combo-actions, .combo-option.active .combo-actions { opacity: 1; }
+.combo-edit, .combo-del {
+    display: inline-grid; place-items: center; width: 26px; height: 26px;
+    border: 0; border-radius: 7px; background: transparent; color: var(--txt-faint);
+    cursor: pointer; font-size: .82rem; line-height: 1; transition: background .15s, color .15s;
+}
+.combo-edit:hover { background: rgba(26, 19, 172, .12); color: var(--brand); }
+.combo-del:hover { background: rgba(229, 72, 77, .14); color: var(--weak); }
+/* Touch devices have no hover — keep the actions visible. */
+@media (hover: none) { .combo-actions { opacity: 1; } }
 
 .combo-add {
     display: none; align-items: center; gap: .5rem; width: 100%; text-align: left;
@@ -410,6 +444,22 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
 .qmap-ylabel b { font-size: clamp(20px, 2.6vw, 28px); font-weight: 800; letter-spacing: -.01em; line-height: 1; color: var(--brand); }
 .qmap-ylabel small { display: flex; align-items: center; gap: .3rem; font-size: 10px; color: var(--txt-faint); letter-spacing: .14em; text-transform: uppercase; margin-top: 5px; }
 .qmap-ylabel:hover { transform: translateY(-3px); filter: brightness(1.03); box-shadow: 0 18px 36px -16px rgba(26,19,172,.42), inset 0 1px 0 rgba(255,255,255,.9); }
+
+/* Year cell wraps the label + its delete button (first grid column). */
+.qmap-ycell { position: relative; display: flex; }
+.qmap-ycell > .qmap-ylabel { flex: 1; }
+.qmap-del {
+    position: absolute; top: 7px; right: 7px; z-index: 4;
+    width: 26px; height: 26px; padding: 0; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(229,72,77,.32); background: rgba(255,255,255,.78);
+    color: var(--weak); font-size: .82rem; line-height: 1; cursor: pointer;
+    opacity: .65; transition: opacity .15s var(--ease), background .15s var(--ease), transform .15s var(--ease);
+}
+.qmap-ycell:hover .qmap-del { opacity: 1; }
+.qmap-del:hover { background: var(--weak); color: #fff; transform: scale(1.08); border-color: var(--weak); }
+.qmap-del:focus-visible { outline: 2px solid var(--weak); outline-offset: 2px; opacity: 1; }
+.qmap-del:disabled { opacity: .4; cursor: default; }
 
 .qmap-cell {
     min-height: 104px; padding: 18px 16px 16px;
@@ -497,11 +547,13 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
         background: color-mix(in srgb, var(--brand) 5%, transparent);
         border: 1px solid var(--glass-border);
     }
+    .qmap-ycell { grid-column: 1 / -1; }
     .qmap-ylabel {
-        grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 10px;
+        flex-direction: row; align-items: baseline; gap: 10px;
         padding: 4px 6px; background: none; border: none; box-shadow: none;
         backdrop-filter: none; -webkit-backdrop-filter: none;
     }
+    .qmap-del { opacity: 1; }
     .qmap-ylabel small { margin: 0; }
     .qmap-cell { min-height: 92px; }
 }
@@ -514,6 +566,59 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
     animation: modal-fade .15s var(--ease);
 }
 .modal-overlay[hidden] { display: none; }
+
+/* Instant-save toast (cell popup) */
+.cm-toast {
+    position: fixed; left: 50%; bottom: 26px; z-index: 200;
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+    max-width: min(90vw, 420px); padding: .7rem 1.05rem; border-radius: 12px;
+    font-size: .92rem; font-weight: 600; color: #0e7a50;
+    background: #dcf5ea; border: 1px solid rgba(22, 160, 106, .35);
+    box-shadow: 0 12px 30px rgba(11, 20, 55, .18);
+    transition: opacity .22s var(--ease), transform .22s var(--ease);
+}
+.cm-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.cm-toast.err { color: #b42318; background: #fde8e6; border-color: rgba(229, 72, 77, .4); }
+
+/* Clean glass confirm dialog (replaces the native browser confirm popup) */
+.confirm-overlay {
+    position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center;
+    padding: 1.2rem; background: rgba(11, 20, 55, .42);
+    backdrop-filter: blur(9px) saturate(120%); -webkit-backdrop-filter: blur(9px) saturate(120%);
+    opacity: 0; transition: opacity .2s var(--ease);
+}
+.confirm-overlay.show { opacity: 1; }
+.confirm-card {
+    width: min(400px, 100%); padding: 1.7rem 1.5rem 1.4rem; border-radius: 20px;
+    background: var(--glass-bg-strong); text-align: center;
+    box-shadow: 0 26px 64px -20px rgba(11, 20, 55, .45);
+    transform: translateY(12px) scale(.96); transition: transform .22s var(--ease);
+}
+.confirm-overlay.show .confirm-card { transform: none; }
+.confirm-icon {
+    width: 56px; height: 56px; margin: 0 auto 1rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1.55rem;
+    background: rgba(26, 19, 172, .1); color: var(--brand);
+}
+.confirm-icon.danger { background: rgba(229, 72, 77, .12); color: var(--weak); }
+.confirm-title { margin: 0 0 .45rem; font-size: 1.18rem; font-weight: 800; color: var(--txt); }
+.confirm-msg { margin: 0 0 1.4rem; font-size: .92rem; line-height: 1.55; color: var(--txt-dim); }
+.confirm-actions { display: flex; gap: .6rem; justify-content: center; }
+.confirm-actions .btn { min-width: 118px; justify-content: center; }
+@media (max-width: 420px) {
+    .confirm-actions { flex-direction: column-reverse; }
+    .confirm-actions .btn { width: 100%; }
+}
+
+/* Saving spinner on the popup's primary button */
+.btn.is-loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn.is-loading::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 15px; height: 15px;
+    margin: -7.5px 0 0 -7.5px; border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .55); border-top-color: #fff;
+    animation: btn-spin .6s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 .modal-card {
     position: relative; width: min(640px, 100%); max-height: 90vh; overflow-y: auto;
     padding: 1.4rem 1.5rem; border-radius: 18px; background: var(--glass-bg-strong);
@@ -526,7 +631,12 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
     cursor: pointer; width: 34px; height: 34px; border-radius: 9px;
 }
 .modal-x:hover { background: rgba(229, 72, 77, .12); color: var(--weak); }
-.modal-foot { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.3rem; }
+.modal-foot { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.3rem; flex-wrap: wrap; }
+.modal-foot #cm-clear { margin-right: auto; }
+@media (max-width: 440px) {
+    .modal-foot { gap: .45rem; }
+    .modal-foot #cm-clear { margin-right: 0; order: 3; width: 100%; }
+}
 @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .ref-rows { display: flex; flex-direction: column; gap: .5rem; }
@@ -702,3 +812,38 @@ table.glass-table td.num, table.glass-table th.num { text-align: right; font-var
 }
 
 canvas { max-width: 100%; }
+
+/* ============================================================
+   Mobile performance + responsive polish
+   - Lighter glass blur and a static background so phones stay smooth.
+   - Tighter spacing and full-bleed cards on small screens.
+   ============================================================ */
+@media (max-width: 760px) {
+    :root { --glass-blur: 10px; }
+    /* A continuously animated, blurred full-screen layer is the biggest battery/
+       jank cost on phones — keep the colour wash but stop animating + blurring it. */
+    body::before { animation: none; filter: none; }
+
+    .app-main { padding: 1.1rem .9rem 3rem; }
+    .card-glass { padding: 1.15rem 1.05rem; }
+    .page-head { margin: .25rem 0 1.25rem; }
+
+    /* Tables scroll horizontally rather than squashing. */
+    .table-wrap { -webkit-overflow-scrolling: touch; }
+
+    /* Report header stacks cleanly. */
+    .report-head { gap: .6rem; }
+    .report-score { align-items: flex-start; text-align: left; }
+
+    /* Student attempt bar: generate button goes full width under the tabs. */
+    .attempt-bar { gap: .7rem; }
+    .repdrop { width: 100%; }
+    .repdrop .repdrop-trigger { width: 100%; }
+    .repdrop-panel { left: 0; right: 0; min-width: 0; }
+}
+
+@media (max-width: 460px) {
+    .card-glass { padding: 1rem .85rem; border-radius: 16px; }
+    .btn { padding: .55rem .9rem; }
+    .modal-card { padding: 1.1rem 1rem; }
+}

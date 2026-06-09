@@ -7,12 +7,65 @@
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <title th:text="${title}">PCA Exam Analyzer</title>
-    <link rel="icon" type="image/png" th:href="@{/img/logo.png}">
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png(v=2)}">
+    <link rel="apple-touch-icon" th:href="@{/img/favicon-circle.png(v=2)}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/app.css(v=4)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=8)}">
+    <!-- Perceived-speed boosters: speculatively prefetch internal pages on hover so a click
+         lands almost instantly, and give the tapped control immediate visual feedback. -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Links we must never pre-load: PDF generation (must save first), downloads,
+            // new-tab links and anything opted out with data-no-prefetch.
+            var SKIP = "[data-report],[data-no-prefetch],[download],[target=_blank]";
+
+            if (window.HTMLScriptElement && HTMLScriptElement.supports
+                    && HTMLScriptElement.supports("speculationrules")) {
+                var rules = { prefetch: [{
+                    source: "document",
+                    where: { and: [{ href_matches: "/*" }, { not: { selector_matches: SKIP } }] },
+                    eagerness: "moderate"
+                }] };
+                var tag = document.createElement("script");
+                tag.type = "speculationrules";
+                tag.textContent = JSON.stringify(rules);
+                document.body.appendChild(tag);
+            } else {
+                // Fallback: warm the cache with <link rel=prefetch> on hover / touch-start.
+                var seen = {};
+                var prefetch = function (a) {
+                    if (a.target === "_blank" || a.hasAttribute("download")
+                            || a.matches(SKIP)) return;
+                    var url;
+                    try { url = new URL(a.href, location.href); } catch (e) { return; }
+                    if (url.origin !== location.origin || seen[url.href]) return;
+                    if (url.pathname.indexOf("/report/pdf") !== -1) return;
+                    seen[url.href] = 1;
+                    var link = document.createElement("link");
+                    link.rel = "prefetch";
+                    link.href = url.href;
+                    document.head.appendChild(link);
+                };
+                var onHover = function (e) {
+                    var a = e.target.closest && e.target.closest("a[href]");
+                    if (a) prefetch(a);
+                };
+                document.addEventListener("pointerover", onHover, { passive: true });
+                document.addEventListener("touchstart", onHover, { passive: true });
+            }
+
+            // Instant feedback: the tapped nav control dims immediately, even before the
+            // (prefetched) next page paints.
+            document.addEventListener("click", function (e) {
+                var nav = e.target.closest && e.target.closest(
+                    "a.atab:not(.atab-add), a.yearchip, a.qmap-ylabel, .nav-links a");
+                if (nav) nav.classList.add("nav-pending");
+            }, true);
+        });
+    </script>
 </head>
 <body>
 

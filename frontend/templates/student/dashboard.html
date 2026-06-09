@@ -23,21 +23,21 @@
 
                 <div class="repdrop" data-repdrop>
                     <button type="button" class="btn btn-primary repdrop-trigger">
-                        <i class="bi bi-file-earmark-bar-graph"></i> Generate Report
+                        <i class="bi bi-file-earmark-bar-graph"></i> <span class="repdrop-label">Generate Report</span>
                         <i class="bi bi-chevron-down repdrop-caret"></i>
                     </button>
                     <div class="repdrop-panel">
-                        <a th:href="@{/student/report(scope='all')}" class="repdrop-item">
+                        <a th:href="@{/student/report/pdf(scope='all')}" class="repdrop-item" data-report>
                             <i class="bi bi-collection"></i> Full report — all attempts
                         </a>
+                        <a th:href="@{/student/report/pdf(attempt=${selected})}" class="repdrop-item" data-report>
+                            <i class="bi bi-file-earmark-text"></i> <span th:text="'Report for this attempt (Attempt ' + ${selected} + ')'">Report for this attempt</span>
+                        </a>
                         <div class="repdrop-sep" th:if="${!savedAttempts.isEmpty()}"></div>
-                        <a th:each="t : ${savedAttempts}" th:href="@{/student/report(attempt=${t})}"
-                           class="repdrop-item">
+                        <a th:each="t : ${savedAttempts}" th:href="@{/student/report/pdf(attempt=${t})}"
+                           class="repdrop-item" data-report th:if="${t != selected}">
                             <i class="bi bi-file-earmark-text"></i> <span th:text="'Report for Attempt ' + ${t}">Report for Attempt 1</span>
                         </a>
-                        <div class="repdrop-empty" th:if="${savedAttempts.isEmpty()}">
-                            Save some marks to unlock per-attempt reports.
-                        </div>
                     </div>
                 </div>
             </div>
@@ -106,30 +106,21 @@
 </div>
 
 <script>
-    // Generate Report dropdown
-    (function () {
-        document.querySelectorAll("[data-repdrop]").forEach(function (drop) {
-            var trigger = drop.querySelector(".repdrop-trigger");
-            trigger.addEventListener("click", function (e) {
-                e.stopPropagation();
-                drop.classList.toggle("open");
-            });
-        });
-        document.addEventListener("click", function () {
-            document.querySelectorAll("[data-repdrop].open").forEach(function (d) { d.classList.remove("open"); });
-        });
-    })();
-
-    // Student marks autosave
+    // Student marks autosave. Exposes window.flushMarks() -> Promise that resolves once
+    // any pending/in-flight save has been committed, so the report can guarantee the
+    // freshly typed marks are saved *before* it generates.
     (function () {
         var form = document.getElementById("marks-form");
-        if (!form) return;
-
         var status = document.getElementById("autosave-status");
         var token = document.querySelector('meta[name="_csrf"]');
         var header = document.querySelector('meta[name="_csrf_header"]');
         var timer;
         var controller;
+        var dirty = false;        // unsaved edits pending
+        var inFlight = null;      // current save promise (or null)
+
+        // No marking sheet on this page (e.g. no questions yet) — flush is a no-op.
+        if (!form) { window.flushMarks = function () { return Promise.resolve(); }; return; }
 
         function setStatus(kind, text, icon) {
             status.className = "autosave-status " + kind;
@@ -140,10 +131,7 @@
             if (input.value === "") return;
             var value = Number(input.value);
             var max = Number(input.getAttribute("max") || "0");
-            if (!Number.isFinite(value)) {
-                input.value = "";
-                return;
-            }
+            if (!Number.isFinite(value)) { input.value = ""; return; }
             if (value < 0) input.value = "0";
             if (max > 0 && value > max) input.value = String(max);
         }
@@ -151,33 +139,40 @@
         function autosave() {
             if (controller) controller.abort();
             controller = new AbortController();
+            dirty = false;
 
             var data = new FormData(form);
             var headers = { "Accept": "application/json" };
             if (token && header) headers[header.getAttribute("content")] = token.getAttribute("content");
 
             setStatus("saving", "Saving...", "bi-cloud-arrow-up");
-            fetch(form.getAttribute("data-autosave-url"), {
-                method: "POST",
-                body: data,
-                headers: headers,
-                signal: controller.signal
+            inFlight = fetch(form.getAttribute("data-autosave-url"), {
+                method: "POST", body: data, headers: headers, signal: controller.signal
             })
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.ok) setStatus("saved", "Saved", "bi-cloud-check");
                     else setStatus("error", data.message || "Not saved", "bi-exclamation-triangle");
+                    inFlight = null;
                 })
                 .catch(function (err) {
-                    if (err.name !== "AbortError") {
-                        setStatus("error", "Not saved", "bi-exclamation-triangle");
-                    }
+                    inFlight = null;
+                    if (err.name !== "AbortError") setStatus("error", "Not saved", "bi-exclamation-triangle");
                 });
+            return inFlight;
         }
+
+        // Commit everything now and resolve once the server has the latest marks.
+        window.flushMarks = function () {
+            clearTimeout(timer);
+            if (dirty || inFlight) return autosave();
+            return Promise.resolve();
+        };
 
         form.querySelectorAll(".markin").forEach(function (input) {
             input.addEventListener("input", function () {
                 normalize(input);
+                dirty = true;
                 setStatus("dirty", "Waiting...", "bi-clock");
                 clearTimeout(timer);
                 timer = setTimeout(autosave, 450);
@@ -185,14 +180,60 @@
             input.addEventListener("blur", function () {
                 normalize(input);
                 clearTimeout(timer);
-                autosave();
+                if (dirty) autosave();
             });
         });
 
         form.addEventListener("submit", function (event) {
             event.preventDefault();
-            clearTimeout(timer);
-            autosave();
+            window.flushMarks();
+        });
+    })();
+
+    // Generate Report dropdown — saves marks first, then opens the freshly generated PDF.
+    (function () {
+        document.querySelectorAll("[data-repdrop]").forEach(function (drop) {
+            var trigger = drop.querySelector(".repdrop-trigger");
+            var label = drop.querySelector(".repdrop-label");
+            var defaultLabel = label ? label.textContent : "";
+            var busy = false;
+
+            trigger.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (!busy) drop.classList.toggle("open");
+            });
+
+            drop.querySelectorAll("[data-report]").forEach(function (link) {
+                link.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    if (busy) return;
+                    busy = true;
+                    drop.classList.remove("open");
+                    trigger.disabled = true;
+                    if (label) label.textContent = "Saving & generating...";
+                    trigger.classList.add("is-loading");
+
+                    var url = link.getAttribute("href");
+                    // Open the tab now, inside the click gesture, so it isn't popup-blocked.
+                    // We redirect it to the PDF only after the marks have been saved.
+                    var tab = window.open("", "_blank");
+
+                    var done = function () {
+                        if (tab && !tab.closed) tab.location.href = url;   // new tab: marking sheet stays
+                        else window.location.href = url;                   // popup blocked -> same tab
+                        busy = false;
+                        trigger.disabled = false;
+                        trigger.classList.remove("is-loading");
+                        if (label) label.textContent = defaultLabel;
+                    };
+                    // Wait for the save to commit, then generate. Generate anyway if saving fails.
+                    Promise.resolve(window.flushMarks ? window.flushMarks() : null).then(done, done);
+                });
+            });
+        });
+
+        document.addEventListener("click", function () {
+            document.querySelectorAll("[data-repdrop].open").forEach(function (d) { d.classList.remove("open"); });
         });
     })();
 </script>

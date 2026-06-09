@@ -10,7 +10,7 @@
             <p>Join the correct batch and start tracking your exam performance.</p>
         </div>
 
-        <form th:action="@{/register}" th:object="${form}" method="post" id="register-form" novalidate>
+        <form th:action="@{/register}" th:object="${form}" method="post" id="register-form" target="_top" novalidate>
             <div class="register-grid">
                 <section class="register-section" aria-label="Student details">
                     <div class="section-kicker">Student details</div>
@@ -95,6 +95,7 @@
                                         </ul>
                                     </div>
                                     <div class="gselect-map">
+                                        <div class="map-title"><i class="bi bi-map"></i> Sri Lanka - click district</div>
                                         <div id="district-name" class="map-label">Tap your district on the map</div>
                                         <div id="map"></div>
                                     </div>
@@ -146,19 +147,23 @@
         </form>
 
         <div class="auth-switch">
-            Already have an account? <a th:href="@{/login}">Sign in</a>
+            Already have an account? <a th:href="@{/login}" target="_top">Sign in</a>
         </div>
     </div>
 </div>
 
 <style>
-    .register-page { background-color: #eef3f8; }
+    .register-page { background-color: #eaf6fb; }
     .register-wrap { align-items: center; padding: 1.4rem; }
     .register-card {
         max-width: 940px;
         padding: 1.55rem;
         border-radius: 18px;
-        background: rgba(255, 255, 255, .78);
+        background:
+            linear-gradient(145deg, rgba(255, 255, 255, .82), rgba(232, 249, 255, .64)),
+            rgba(255, 255, 255, .74);
+        border-color: rgba(14, 165, 233, .22);
+        box-shadow: 0 22px 64px rgba(15, 76, 129, .16), inset 0 1px 0 rgba(255, 255, 255, .88);
     }
     .register-logo { margin-bottom: 1.05rem; }
     .register-logo img { height: 62px; width: 62px; border-radius: 14px; }
@@ -172,9 +177,10 @@
     .register-section {
         min-width: 0;
         padding: 1rem;
-        border: 1px solid rgba(26, 19, 172, .12);
+        border: 1px solid rgba(14, 165, 233, .18);
         border-radius: 16px;
-        background: rgba(255, 255, 255, .58);
+        background: linear-gradient(145deg, rgba(255,255,255,.72), rgba(224,247,255,.42));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.76);
     }
     .section-kicker {
         margin-bottom: .85rem;
@@ -191,14 +197,15 @@
     .phone-input {
         min-height: 44px;
         border-radius: 11px;
-        border-color: rgba(39, 103, 232, .18);
-        background: rgba(255, 255, 255, .94);
+        border-color: rgba(14, 165, 233, .22);
+        background: rgba(255, 255, 255, .78);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.78);
     }
     .register-card .input:focus,
     .register-card .gselect.open .gselect-trigger,
     .phone-input:focus-within {
-        border-color: #2767e8;
-        box-shadow: 0 0 0 3px rgba(14, 179, 254, .16);
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, .17), 0 10px 24px rgba(14, 165, 233, .09);
         background: #fff;
     }
     .select-input {
@@ -309,40 +316,88 @@
         z-index: 30;
         left: 0;
         top: calc(100% + .45rem);
-        width: min(520px, calc(100vw - 2rem));
+        width: min(560px, calc(100vw - 2rem));
         max-width: calc(100vw - 2rem);
         padding: .65rem;
-        border: 1px solid rgba(39, 103, 232, .22);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, .96);
-        box-shadow: 0 18px 46px rgba(26, 19, 100, .16);
-        backdrop-filter: blur(16px) saturate(150%);
-        -webkit-backdrop-filter: blur(16px) saturate(150%);
+        border: 1px solid rgba(169, 189, 237, .42);
+        border-radius: 18px;
+        background:
+            radial-gradient(circle at 22% 0%, rgba(218, 229, 255, .78), transparent 46%),
+            linear-gradient(145deg, rgba(247, 250, 255, .9), rgba(231, 242, 255, .8)),
+            rgba(255, 255, 255, .82);
+        box-shadow: 0 24px 58px rgba(78, 103, 151, .2), inset 0 1px 0 rgba(255,255,255,.9);
+        backdrop-filter: blur(22px) saturate(170%);
+        -webkit-backdrop-filter: blur(22px) saturate(170%);
     }
     .gselect-panel.align-right { left: auto; right: 0; }
     .gselect-body { display: flex; gap: .75rem; }
     .gselect-left { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
     .gselect-map {
-        flex: 0 0 205px;
+        position: relative;
+        flex: 0 0 240px;
         min-width: 0;
-        padding: .55rem;
-        border: 1px solid rgba(39, 103, 232, .12);
-        border-radius: 14px;
+        padding: .72rem .72rem 1rem;
+        border: 1px solid rgba(181, 194, 232, .45);
+        border-radius: 18px;
         background:
-            linear-gradient(180deg, rgba(238, 247, 255, .92), rgba(255, 255, 255, .96));
+            radial-gradient(circle at 50% 22%, rgba(255,255,255,.9), transparent 42%),
+            linear-gradient(160deg, #eef5ff 0%, #e7f1ff 52%, #edf7ff 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 18px 34px rgba(76, 99, 143, .16);
+        backdrop-filter: blur(14px) saturate(170%);
+        -webkit-backdrop-filter: blur(14px) saturate(170%);
+        overflow: hidden;
+    }
+    .map-title {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        margin-bottom: .35rem;
+        color: #687084;
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .08em;
+        text-transform: uppercase;
     }
     .map-label {
-        min-height: 1.1em;
-        margin-bottom: .35rem;
+        position: absolute;
+        right: .58rem;
+        bottom: .56rem;
+        z-index: 2;
+        max-width: calc(100% - 1.16rem);
+        min-height: 0;
+        margin: 0;
+        padding: .52rem .9rem;
         text-align: center;
-        color: var(--brand);
-        font-size: .82rem;
-        font-weight: 800;
+        color: #fff;
+        font-size: .78rem;
+        font-weight: 900;
+        line-height: 1.08;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f24b99, #d81b72);
+        border: 1px solid rgba(255, 255, 255, .5);
+        box-shadow: 0 14px 30px rgba(216, 27, 114, .34), inset 0 1px 0 rgba(255,255,255,.34);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    #map { width: 100%; }
-    #map svg { filter: drop-shadow(0 9px 18px rgba(15, 23, 42, .16)); }
-    #map svg path { cursor: pointer; transition: stroke-width .12s ease, fill-opacity .12s ease; }
-    #map svg path:hover { fill-opacity: .86; }
+    #map {
+        width: 100%;
+        padding: 0 .3rem 1.25rem;
+        border-radius: 14px;
+        background:
+            radial-gradient(circle at 50% 45%, rgba(255,255,255,.72), transparent 48%),
+            linear-gradient(180deg, rgba(236,244,255,.16), rgba(186, 214, 255, .18));
+    }
+    #map svg { filter: drop-shadow(0 18px 20px rgba(80, 99, 135, .18)); }
+    #map svg path {
+        cursor: pointer;
+        outline: none;
+        transition: stroke-width .14s ease, fill-opacity .14s ease, filter .14s ease, transform .14s ease;
+    }
+    #map svg path:hover,
+    #map svg path:focus-visible { filter: none; }
+    #map svg path.is-selected { filter: drop-shadow(0 4px 11px rgba(216,27,114,.45)); }
     .gselect-search-wrap { position: relative; margin-bottom: .45rem; }
     .gselect-search-wrap .bi {
         position: absolute;
@@ -355,14 +410,14 @@
     .gselect-search {
         width: 100%;
         padding: .55rem .65rem .55rem 1.95rem;
-        border: 1px solid rgba(39, 103, 232, .18);
+        border: 1px solid rgba(14, 165, 233, .22);
         border-radius: 10px;
         background: #fff;
         color: var(--txt);
         font: inherit;
         font-size: .9rem;
     }
-    .gselect-search:focus { outline: none; border-color: #2767e8; box-shadow: 0 0 0 3px rgba(14,179,254,.13); }
+    .gselect-search:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,179,254,.14); }
     .gselect-list { list-style: none; margin: 0; padding: 0; max-height: 290px; overflow-y: auto; }
     .gselect-option {
         display: flex;
@@ -384,27 +439,170 @@
         background: var(--dot, #cbd5e1);
         box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(15, 23, 42, .14);
     }
-    .gselect-option:hover { background: rgba(14, 179, 254, .1); }
-    .gselect-option.active { background: rgba(26, 19, 172, .12); color: var(--brand); font-weight: 800; }
+    .gselect-option:hover { background: rgba(14, 165, 233, .12); }
+    .gselect-option.hover-match {
+        background: linear-gradient(120deg, rgba(14, 165, 233, .16), rgba(219, 234, 254, .2));
+        color: #075985;
+        font-weight: 800;
+        box-shadow: inset 0 0 0 1px rgba(14, 165, 233, .22);
+    }
+    .gselect-option.active {
+        background: linear-gradient(120deg, rgba(244, 114, 182, .18), rgba(251, 207, 232, .16));
+        color: #be185d;
+        font-weight: 800;
+        box-shadow: inset 0 0 0 1px rgba(244, 114, 182, .22);
+    }
     .gselect-option.is-hidden { display: none; }
 
     @media (max-width: 820px) {
         .register-card { max-width: 560px; }
         .register-grid { grid-template-columns: 1fr; }
+        .gselect-panel { width: 100%; max-width: 100%; }
+        .gselect-body { display: block; }
+        .gselect-map { display: none; }
+        .gselect-list { max-height: 260px; }
     }
     @media (max-width: 560px) {
-        .register-wrap { padding: .8rem; }
-        .register-card { padding: 1rem; border-radius: 16px; }
-        .register-section { padding: .85rem; }
-        .gselect-body { flex-direction: column; }
-        .gselect-map { flex: none; width: min(220px, 100%); margin: 0 auto; }
-        .gselect-panel { width: calc(100vw - 1.4rem); max-width: calc(100vw - 1.4rem); }
+        .register-wrap {
+            min-height: auto;
+            align-items: start;
+            padding: .7rem;
+        }
+        .register-card {
+            max-width: 100%;
+            padding: .9rem;
+            border-radius: 16px;
+        }
+        .register-logo { margin-bottom: .85rem; }
+        .register-logo img { height: 54px; width: 54px; border-radius: 50%; }
+        .register-logo h1 { font-size: 1.18rem; }
+        .register-logo p { font-size: .82rem; }
+        .register-grid { gap: .7rem; }
+        .register-section {
+            padding: .8rem;
+            border-radius: 14px;
+        }
+        .register-card .form-group { margin-bottom: .75rem; }
+        .register-card .input,
+        .register-card .gselect-trigger,
+        .phone-input { min-height: 42px; }
+        .gselect-panel {
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-width: 100%;
+            padding: .55rem;
+            border-radius: 14px;
+        }
+        .gselect-search { font-size: .86rem; }
+        .gselect-list { max-height: 230px; }
+        .gselect-option {
+            min-height: 40px;
+            padding: .55rem .6rem;
+        }
+    }
+
+    body.register-page {
+        background:
+            radial-gradient(55% 45% at 15% 10%, rgba(79, 91, 255, .22), transparent 62%),
+            radial-gradient(55% 50% at 85% 8%, rgba(41, 214, 240, .18), transparent 62%),
+            linear-gradient(180deg, #0a0f26, #060814 70%);
+        color: #eef3ff;
+    }
+    body.register-page::before,
+    body.register-page::after { display: none; }
+    .register-wrap {
+        min-height: 100vh;
+        background: transparent;
+    }
+    .register-card {
+        background: linear-gradient(180deg, rgba(18, 24, 54, .92), rgba(12, 16, 38, .94));
+        border-color: rgba(150, 180, 255, .22);
+        box-shadow: 0 34px 82px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .08);
+        color: #eef3ff;
+    }
+    .register-logo img {
+        border-radius: 50%;
+        box-shadow: 0 14px 34px rgba(41, 214, 240, .24);
+    }
+    .register-logo h1,
+    .register-card label { color: #eef3ff; }
+    .register-logo p,
+    .auth-switch,
+    .field-hint { color: #9fb0d6; }
+    .section-kicker,
+    .auth-switch a { color: #29d6f0; }
+    .register-section {
+        background: rgba(255, 255, 255, .045);
+        border-color: rgba(150, 180, 255, .16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+    }
+    .register-card .input,
+    .register-card .gselect-trigger,
+    .phone-input {
+        color: #eef3ff;
+        background: rgba(255, 255, 255, .07);
+        border-color: rgba(150, 180, 255, .22);
+        box-shadow: none;
+    }
+    .register-card .input:focus,
+    .register-card .gselect.open .gselect-trigger,
+    .phone-input:focus-within {
+        border-color: #29d6f0;
+        background: rgba(255, 255, 255, .1);
+        box-shadow: 0 0 0 3px rgba(41, 214, 240, .14);
+    }
+    .register-card .input::placeholder,
+    .phone-input input::placeholder { color: rgba(159, 176, 214, .7); }
+    .select-input option { background: #101634; color: #eef3ff; }
+    .phone-input input { color: #eef3ff; }
+    .icon-btn { color: #9fb0d6; }
+    .password-toggle:hover { background: rgba(41, 214, 240, .12); color: #29d6f0; }
+    .password-meter { background: rgba(255, 255, 255, .1); }
+    .gselect-panel {
+        background:
+            radial-gradient(circle at 22% 0%, rgba(41, 214, 240, .14), transparent 46%),
+            linear-gradient(145deg, rgba(18, 24, 54, .96), rgba(10, 15, 38, .94));
+        border-color: rgba(150, 180, 255, .24);
+        box-shadow: 0 24px 58px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+    }
+    .gselect-search {
+        color: #eef3ff;
+        background: rgba(255, 255, 255, .08);
+        border-color: rgba(150, 180, 255, .2);
+    }
+    .gselect-option { color: #eef3ff; }
+    .gselect-option:hover,
+    .gselect-option.hover-match {
+        color: #d8f7ff;
+        background: rgba(41, 214, 240, .12);
+        box-shadow: inset 0 0 0 1px rgba(41, 214, 240, .18);
+    }
+    .gselect-option.active {
+        color: #fff;
+        background: rgba(139, 107, 255, .18);
+        box-shadow: inset 0 0 0 1px rgba(139, 107, 255, .24);
+    }
+    .gselect-map {
+        background:
+            radial-gradient(circle at 50% 22%, rgba(41, 214, 240, .12), transparent 44%),
+            linear-gradient(160deg, rgba(18, 24, 54, .78), rgba(10, 15, 38, .82));
+        border-color: rgba(150, 180, 255, .2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+    }
+    .map-title,
+    .gselect-trigger .bi-chevron-down,
+    .gselect-search-wrap .bi { color: #9fb0d6; }
+    #map {
+        background:
+            radial-gradient(circle at 50% 45%, rgba(41, 214, 240, .08), transparent 48%),
+            linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(150, 180, 255, .07));
     }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
 <script th:src="@{/js/sl-district-map.js}"></script>
-<script th:src="@{/js/district-map-init.js}"></script>
+<script th:src="@{/js/district-map-init.js(v=3)}"></script>
 <script>
     (function () {
         var form = document.getElementById('register-form');

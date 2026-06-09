@@ -44,10 +44,17 @@
                     </div>
 
                     <div class="qmap-row" th:each="row : ${rows}">
-                        <a class="qmap-ylabel" th:href="@{/teacher/papers/{p}/questions(p=${row.paperId})}">
-                            <b th:text="${row.year}">2021</b>
-                            <small><i class="bi bi-calendar3"></i> Paper</small>
-                        </a>
+                        <div class="qmap-ycell">
+                            <a class="qmap-ylabel" th:href="@{/teacher/papers/{p}/questions(p=${row.paperId})}">
+                                <b th:text="${row.year}">2021</b>
+                                <small><i class="bi bi-calendar3"></i> Paper</small>
+                            </a>
+                            <button type="button" class="qmap-del"
+                                    th:attr="data-paper=${row.paperId}, data-year=${row.year}"
+                                    title="Delete this year" aria-label="Delete this year">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
 
                         <a href="#" th:each="cell,iter : ${row.cells}"
                            class="qmap-cell qcell-open"
@@ -97,8 +104,13 @@
                     <div class="combo-panel">
                         <input type="text" class="combo-search input" placeholder="Search or add a section…">
                         <div class="combo-options">
-                            <button type="button" class="combo-option" th:each="sec : ${sections}"
-                                    th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                            <div class="combo-option" th:each="sec : ${sections}" th:data-value="${sec.id}">
+                                <span class="combo-label-text" th:text="${sec.name}">Mechanics</span>
+                                <span class="combo-actions">
+                                    <button type="button" class="combo-edit" title="Rename" aria-label="Rename section"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="combo-del" title="Delete" aria-label="Delete section"><i class="bi bi-trash"></i></button>
+                                </span>
+                            </div>
                         </div>
                         <div class="combo-empty" hidden>No matching section.</div>
                         <button type="button" class="combo-add">
@@ -124,6 +136,9 @@
             </div>
 
             <div class="modal-foot">
+                <button type="button" class="btn btn-danger" id="cm-clear" hidden>
+                    <i class="bi bi-eraser"></i> Clear details
+                </button>
                 <button type="button" class="btn btn-ghost" data-close>Cancel</button>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Save</button>
             </div>
@@ -152,9 +167,9 @@
     </div>
 </template>
 
-<script th:src="@{/js/combo.js(v=2)}"></script>
+<script th:src="@{/js/combo.js(v=3)}"></script>
 <script th:src="@{/js/rtype.js(v=2)}"></script>
-<script th:src="@{/js/cell-modal.js(v=2)}"></script>
+<script th:src="@{/js/cell-modal.js(v=6)}"></script>
 <script th:src="@{/js/qmap-tilt.js(v=2)}"></script>
 </body>
 </html>

@@ -45,7 +45,7 @@ public class AuthController {
     }
 
     @GetMapping("/")
-    public String home() {
+    public String home(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
@@ -53,11 +53,19 @@ public class AuthController {
                     .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
             return teacher ? "redirect:/teacher/dashboard" : "redirect:/student/dashboard";
         }
+        addRegisterFormIfMissing(model);
         return "index";
     }
 
     @GetMapping("/login")
-    public String login() {
+    public String login(Model model) {
+        addRegisterFormIfMissing(model);
+        model.addAttribute("authModal", "login");
+        return "index";
+    }
+
+    @GetMapping("/auth/login")
+    public String loginPage() {
         return "login";
     }
 
@@ -65,9 +73,14 @@ public class AuthController {
 
     @GetMapping("/register")
     public String registerForm(Model model) {
-        if (!model.containsAttribute("form")) {
-            model.addAttribute("form", new RegisterForm());
-        }
+        addRegisterFormIfMissing(model);
+        model.addAttribute("authModal", "register");
+        return "index";
+    }
+
+    @GetMapping("/auth/register")
+    public String registerPage(Model model) {
+        addRegisterFormIfMissing(model);
         return "register";
     }
 
@@ -80,7 +93,8 @@ public class AuthController {
 
     @PostMapping("/register")
     public String register(@Valid @ModelAttribute("form") RegisterForm form,
-                           BindingResult binding) {
+                           BindingResult binding,
+                           Model model) {
         if (!form.passwordsMatch()) {
             binding.rejectValue("confirmPassword", "mismatch", "Passwords do not match");
         }
@@ -88,11 +102,18 @@ public class AuthController {
             binding.rejectValue("username", "taken", "That username is already taken");
         }
         if (binding.hasErrors()) {
-            return "register";
+            model.addAttribute("authModal", "register");
+            return "index";
         }
         userService.registerStudent(form);
         // No email verification — the account is active, so send them straight to sign in.
         return "redirect:/login?registered";
+    }
+
+    private void addRegisterFormIfMissing(Model model) {
+        if (!model.containsAttribute("form")) {
+            model.addAttribute("form", new RegisterForm());
+        }
     }
 
     // ---------- Forgot password (verified by NIC, no email) ----------

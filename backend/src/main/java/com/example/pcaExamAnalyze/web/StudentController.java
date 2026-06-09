@@ -3,8 +3,13 @@ package com.example.pcaExamAnalyze.web;
 import com.example.pcaExamAnalyze.analysis.ReportData;
 import com.example.pcaExamAnalyze.domain.User;
 import com.example.pcaExamAnalyze.service.AttemptService;
+import com.example.pcaExamAnalyze.service.PdfReportService;
 import com.example.pcaExamAnalyze.service.StudentReportService;
 import com.example.pcaExamAnalyze.service.UserService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +26,14 @@ public class StudentController {
     private final UserService userService;
     private final AttemptService attemptService;
     private final StudentReportService reportService;
+    private final PdfReportService pdfReportService;
 
     public StudentController(UserService userService, AttemptService attemptService,
-                            StudentReportService reportService) {
+                            StudentReportService reportService, PdfReportService pdfReportService) {
         this.userService = userService;
         this.attemptService = attemptService;
         this.reportService = reportService;
+        this.pdfReportService = pdfReportService;
     }
 
     private User current(Principal principal) {
@@ -140,5 +147,38 @@ public class StudentController {
         model.addAttribute("report", report);
         model.addAttribute("backAttempt", attempt);
         return "student/report";
+    }
+
+    /** Generate the report as a downloadable/inline PDF. */
+    @GetMapping("/report/pdf")
+    public ResponseEntity<byte[]> reportPdf(@RequestParam(required = false) Integer attempt,
+                                            @RequestParam(required = false) String scope,
+                                            Principal principal) {
+        User student = current(principal);
+
+        ReportData report;
+        String scopeLabel;
+        if (attempt != null && !"all".equalsIgnoreCase(scope)) {
+            report = reportService.forAttempt(student.getId(), attempt);
+            scopeLabel = "Attempt-" + attempt;
+        } else {
+            report = reportService.forAllAttempts(student.getId());
+            scopeLabel = "All-Attempts";
+        }
+
+        byte[] pdf = pdfReportService.render(report, student.getFullName());
+        String filename = "PCA-Report-" + slug(student.getFullName()) + "-" + scopeLabel + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(filename).build().toString())
+                .body(pdf);
+    }
+
+    /** Filename-safe version of a display name. */
+    private static String slug(String name) {
+        if (name == null || name.isBlank()) return "Student";
+        return name.trim().replaceAll("[^A-Za-z0-9]+", "-").replaceAll("(^-|-$)", "");
     }
 }

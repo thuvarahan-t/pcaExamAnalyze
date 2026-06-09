@@ -1,48 +1,1091 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head th:replace="~{fragments/common :: head('PCA Exam Analyzer')}"></head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060814">
+    <title>PCA Exam Analyzer</title>
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png(v=2)}">
+    <link rel="apple-touch-icon" th:href="@{/img/favicon-circle.png(v=2)}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-0: #060814;
+            --bg-1: #0a0f26;
+            --ink: #eef3ff;
+            --ink-dim: #9fb0d6;
+            --ink-mute: #6f80a8;
+            --indigo: #4f5bff;
+            --blue: #2f7bff;
+            --cyan: #29d6f0;
+            --violet: #8b6bff;
+            --weak: #ff6b7d;
+            --mid: #ffba4a;
+            --strong: #2fe0a6;
+            --grad: linear-gradient(120deg, var(--indigo), var(--blue) 45%, var(--cyan));
+            --glass: rgba(255, 255, 255, 0.045);
+            --glass-2: rgba(255, 255, 255, 0.07);
+            --bd: rgba(150, 180, 255, 0.14);
+            --bd-2: rgba(150, 180, 255, 0.22);
+            --maxw: 1180px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+        body {
+            min-height: 100vh;
+            font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+            color: var(--ink);
+            background: var(--bg-0);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .display { font-family: "Sora", system-ui, sans-serif; }
+        a { color: inherit; text-decoration: none; }
+        button, a { -webkit-tap-highlight-color: transparent; }
+
+        #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .mesh {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(60% 50% at 82% 8%, rgba(41, 214, 240, .16), transparent 60%),
+                radial-gradient(55% 50% at 12% 18%, rgba(79, 91, 255, .22), transparent 60%),
+                radial-gradient(70% 60% at 50% 108%, rgba(139, 107, 255, .16), transparent 60%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-0) 60%);
+        }
+        .grid-fade {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+            background-image:
+                linear-gradient(rgba(150, 180, 255, .05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(150, 180, 255, .05) 1px, transparent 1px);
+            background-size: 48px 48px;
+            -webkit-mask-image: radial-gradient(80% 60% at 50% 30%, #000, transparent 80%);
+            mask-image: radial-gradient(80% 60% at 50% 30%, #000, transparent 80%);
+        }
+        .shell { position: relative; z-index: 2; }
+        .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(18px, 4vw, 40px); }
+
+        .nav {
+            position: sticky; top: 0; z-index: 50;
+            transition: background .35s ease, border-color .35s ease, backdrop-filter .35s ease;
+            border-bottom: 1px solid transparent;
+        }
+        .nav.scrolled {
+            background: rgba(8, 12, 30, .72);
+            border-bottom-color: var(--bd);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+        }
+        .nav-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; }
+        .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .logo-wrap {
+            width: 46px; height: 46px; flex: 0 0 auto; display: grid; place-items: center;
+            border-radius: 50%; background: #fff; box-shadow: 0 10px 30px -12px rgba(41, 214, 240, .8);
+        }
+        .logo-wrap img { width: 40px; height: 40px; object-fit: contain; border-radius: 50%; }
+        .brand .txt { min-width: 0; }
+        .brand .txt b { display: block; font-family: "Sora"; font-size: 17px; font-weight: 700; line-height: 1.1; }
+        .brand .txt span {
+            display: block; color: var(--ink-mute); font-size: 11.5px; letter-spacing: .14em;
+            text-transform: uppercase; white-space: nowrap;
+        }
+        .nav-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 44px; padding: 11px 20px; border: 1px solid transparent;
+            border-radius: 999px; color: var(--ink); font-family: inherit; font-size: 15px;
+            font-weight: 700; line-height: 1; white-space: nowrap; cursor: pointer;
+            transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease, background .25s ease, border-color .25s ease;
+        }
+        .btn svg { width: 17px; height: 17px; flex: 0 0 auto; }
+        .btn-ghost { color: var(--ink-dim); background: transparent; }
+        .btn-ghost:hover { color: var(--ink); background: var(--glass); }
+        .btn-outline { background: var(--glass); border-color: var(--bd-2); }
+        .btn-outline:hover { border-color: var(--cyan); transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgba(41, 214, 240, .5); }
+        .btn-primary {
+            color: #fff; background: var(--grad); background-size: 160% 160%;
+            box-shadow: 0 12px 30px -10px rgba(47, 123, 255, .65), inset 0 1px 0 rgba(255, 255, 255, .25);
+            animation: shift 7s ease infinite;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -10px rgba(47, 123, 255, .8), inset 0 1px 0 rgba(255, 255, 255, .3); }
+        .btn-lg { min-height: 52px; padding: 15px 28px; font-size: 16.5px; }
+        .logout-form { display: inline; }
+
+        @keyframes shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero { padding: clamp(34px, 6vw, 78px) 0 clamp(48px, 6vw, 90px); }
+        .hero-grid {
+            display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+            gap: clamp(28px, 4vw, 60px); align-items: center;
+        }
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 9px; color: var(--cyan);
+            padding: 7px 14px; border: 1px solid var(--bd); border-radius: 999px;
+            background: var(--glass); font-size: 12.5px; font-weight: 700;
+            letter-spacing: .14em; text-transform: uppercase;
+        }
+        .eyebrow .pulse {
+            width: 7px; height: 7px; border-radius: 50%; background: var(--cyan);
+            box-shadow: 0 0 0 0 rgba(41, 214, 240, .6); animation: pulse 2.2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(41, 214, 240, .55); }
+            70% { box-shadow: 0 0 0 9px rgba(41, 214, 240, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(41, 214, 240, 0); }
+        }
+        .hero h1 {
+            margin-top: 20px; font-size: clamp(38px, 6.6vw, 70px); font-weight: 800;
+            line-height: 1.02; letter-spacing: -.03em;
+        }
+        .hero h1 .grad-txt {
+            color: transparent; background: linear-gradient(100deg, #7da8ff, var(--cyan));
+            -webkit-background-clip: text; background-clip: text;
+        }
+        .hero p.sub {
+            max-width: 46ch; margin-top: 20px; color: var(--ink-dim);
+            font-size: clamp(15.5px, 1.7vw, 18.5px);
+        }
+        .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+        .stats { display: flex; flex-wrap: wrap; gap: clamp(20px, 4vw, 42px); margin-top: 40px; }
+        .stat .num { font-family: "Sora"; font-size: clamp(24px, 3vw, 32px); font-weight: 700; line-height: 1; }
+        .stat .lbl { margin-top: 7px; color: var(--ink-mute); font-size: 12.5px; }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .reveal { animation: riseIn .7s cubic-bezier(.2, .7, .2, 1) both; }
+        }
+        @keyframes riseIn { from { transform: translateY(20px); } to { transform: none; } }
+
+        .scene { position: relative; min-height: 460px; display: grid; place-items: center; }
+        .orbit-wrap { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+        .atom { position: relative; width: min(420px, 84%); aspect-ratio: 1; }
+        .atom .ring { position: absolute; inset: 0; border: 1.5px solid rgba(150, 180, 255, .16); border-radius: 50%; }
+        .atom .ring.r1 { animation: spin 16s linear infinite; }
+        .atom .ring.r2 { transform: rotate(60deg); animation: spin 22s linear infinite reverse; }
+        .atom .ring.r3 { transform: rotate(120deg); animation: spin 28s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .atom .ring::before {
+            content: ""; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px;
+            margin-left: -6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 16px 3px rgba(41, 214, 240, .8);
+        }
+        .atom .ring.r2::before { background: var(--violet); box-shadow: 0 0 16px 3px rgba(139, 107, 255, .8); }
+        .atom .ring.r3::before { background: var(--blue); box-shadow: 0 0 16px 3px rgba(47, 123, 255, .8); }
+        .atom .nucleus {
+            position: absolute; top: 50%; left: 50%; width: 26%; aspect-ratio: 1;
+            transform: translate(-50%, -50%); border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #bfe6ff, var(--blue) 55%, var(--indigo));
+            box-shadow: 0 0 50px 6px rgba(47, 123, 255, .55), inset 0 2px 8px rgba(255, 255, 255, .5);
+            animation: bob 5s ease-in-out infinite;
+        }
+        @keyframes bob {
+            0%, 100% { transform: translate(-50%, -52%); }
+            50% { transform: translate(-50%, -48%); }
+        }
+
+        .report {
+            position: relative; z-index: 3; width: min(360px, 92%); padding: 22px 22px 24px;
+            border: 1px solid var(--bd-2); border-radius: 22px;
+            background: linear-gradient(180deg, rgba(18, 24, 54, .92), rgba(12, 16, 38, .92));
+            box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .08);
+            backdrop-filter: blur(8px); transform-style: preserve-3d; will-change: transform;
+            transition: transform .4s cubic-bezier(.2, .8, .2, 1);
+        }
+        .report .rhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+        .report .rhead .t { font-family: "Sora"; font-size: 15px; font-weight: 600; }
+        .report .rhead .t small {
+            display: block; color: var(--ink-mute); font-family: "Plus Jakarta Sans"; font-size: 11.5px; font-weight: 500;
+        }
+        .ring-score { position: relative; width: 56px; height: 56px; flex: 0 0 auto; }
+        .ring-score svg { transform: rotate(-90deg); }
+        .ring-score .pct { position: absolute; inset: 0; display: grid; place-items: center; font-family: "Sora"; font-size: 15px; font-weight: 700; }
+        .topic { margin-bottom: 13px; }
+        .topic:last-child { margin-bottom: 0; }
+        .topic .tl { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 12.5px; }
+        .topic .name { color: var(--ink-dim); font-weight: 600; }
+        .topic .tag {
+            padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+            letter-spacing: .06em; text-transform: uppercase;
+        }
+        .tag.weak { color: var(--weak); background: rgba(255, 107, 125, .14); }
+        .tag.mid { color: var(--mid); background: rgba(255, 186, 74, .14); }
+        .tag.strong { color: var(--strong); background: rgba(47, 224, 166, .14); }
+        .track, .btrack { border-radius: 999px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+        .track { height: 8px; }
+        .track > i, .btrack > i { display: block; height: 100%; border-radius: inherit; }
+        .fill-weak { background: linear-gradient(90deg, #ff5066, var(--weak)); }
+        .fill-mid { background: linear-gradient(90deg, #ff9f2e, var(--mid)); }
+        .fill-strong { background: linear-gradient(90deg, #16c98e, var(--strong)); }
+
+        .formula-chip {
+            position: absolute; z-index: 4; padding: 8px 13px; border: 1px solid var(--bd-2);
+            border-radius: 12px; color: var(--ink); background: rgba(20, 28, 60, .72);
+            box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .8); backdrop-filter: blur(6px);
+            font-family: "Sora"; font-size: 14px; font-weight: 600; white-space: nowrap;
+            animation: floaty 6s ease-in-out infinite;
+        }
+        .formula-chip i { color: var(--cyan); font-style: normal; }
+        .formula-chip.c1 { top: 4%; left: 2%; }
+        .formula-chip.c2 { top: 24%; right: 2%; animation-delay: -1.5s; }
+        .formula-chip.c3 { bottom: 16%; left: 0; animation-delay: -3s; }
+        .formula-chip.c4 { bottom: 4%; right: 8%; animation-delay: -2.2s; }
+        @keyframes floaty {
+            0%, 100% { transform: translateY(0) rotate(-1deg); }
+            50% { transform: translateY(-14px) rotate(1.5deg); }
+        }
+
+        .sec { padding: clamp(50px, 8vw, 96px) 0; }
+        .sec-head { max-width: 640px; margin: 0 auto clamp(34px, 5vw, 56px); text-align: center; }
+        .sec-head .kick { color: var(--cyan); font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+        .sec-head h2 { margin-top: 12px; font-size: clamp(28px, 4.4vw, 46px); font-weight: 700; line-height: 1.08; letter-spacing: -.025em; }
+        .sec-head p { margin-top: 16px; color: var(--ink-dim); font-size: clamp(15px, 1.7vw, 17.5px); }
+
+        .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 26px); }
+        .card {
+            position: relative; overflow: hidden; padding: 30px 26px 28px; border: 1px solid var(--bd);
+            border-radius: 22px; background: var(--glass); transform-style: preserve-3d; will-change: transform;
+            transition: transform .45s cubic-bezier(.2, .8, .2, 1), box-shadow .45s ease, border-color .45s ease, background .45s ease;
+        }
+        .card::after {
+            content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+            background: radial-gradient(220px 220px at var(--mx, 50%) var(--my, 0%), rgba(41, 214, 240, .16), transparent 60%);
+            transition: opacity .4s ease;
+        }
+        .card:hover { border-color: var(--bd-2); background: var(--glass-2); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .8); }
+        .card:hover::after { opacity: 1; }
+        .step-no { color: var(--ink-mute); font-family: "Sora"; font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+        .ic {
+            display: grid; place-items: center; width: 54px; height: 54px; margin: 14px 0 18px;
+            border-radius: 15px; background: var(--grad); box-shadow: 0 14px 30px -12px rgba(47, 123, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .3);
+            transform: translateZ(30px);
+        }
+        .ic svg { width: 27px; height: 27px; color: #fff; }
+        .card h3 { font-size: 20px; font-weight: 700; transform: translateZ(18px); }
+        .card p { margin-top: 10px; color: var(--ink-dim); font-size: 15px; transform: translateZ(10px); }
+
+        .demo-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: clamp(24px, 4vw, 50px); align-items: center; }
+        .panel {
+            padding: clamp(22px, 3vw, 30px); border: 1px solid var(--bd); border-radius: 22px;
+            background: linear-gradient(180deg, rgba(18, 24, 54, .7), rgba(12, 16, 38, .7));
+            box-shadow: 0 30px 70px -34px rgba(0, 0, 0, .8);
+        }
+        .panel .ptitle { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
+        .panel .ptitle b { font-family: "Sora"; font-size: 16px; }
+        .panel .ptitle .yr { padding: 5px 12px; border: 1px solid var(--bd); border-radius: 999px; color: var(--ink-mute); font-size: 12px; }
+        .brow { margin-bottom: 16px; }
+        .brow:last-child { margin-bottom: 0; }
+        .brow .bl { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 7px; font-size: 13.5px; }
+        .brow .nm { color: var(--ink-dim); font-weight: 600; }
+        .brow .vv { font-family: "Sora"; font-weight: 700; }
+        .btrack { height: 11px; }
+        .legend-list { display: flex; flex-direction: column; gap: 18px; }
+        .leg { display: flex; gap: 15px; align-items: flex-start; }
+        .leg .sw { width: 14px; height: 14px; margin-top: 5px; border-radius: 5px; flex: 0 0 auto; }
+        .leg b { display: block; font-family: "Sora"; font-size: 16px; }
+        .leg span { color: var(--ink-dim); font-size: 14.5px; }
+
+        .cta-band {
+            position: relative; overflow: hidden; padding: clamp(38px, 6vw, 70px); border: 1px solid var(--bd-2);
+            border-radius: 28px; text-align: center; background: linear-gradient(125deg, rgba(79, 91, 255, .28), rgba(41, 214, 240, .18));
+            box-shadow: 0 40px 90px -40px rgba(47, 123, 255, .6);
+        }
+        .cta-band::before {
+            content: ""; position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(60% 120% at 50% -20%, rgba(41, 214, 240, .3), transparent 60%);
+        }
+        .cta-band h2 { position: relative; font-size: clamp(26px, 4.4vw, 44px); font-weight: 700; letter-spacing: -.025em; }
+        .cta-band p { position: relative; max-width: 48ch; margin: 14px auto 0; color: var(--ink-dim); font-size: clamp(15px, 1.7vw, 17.5px); }
+        .cta-band .cta-row { position: relative; justify-content: center; }
+
+        footer { margin-top: clamp(40px, 6vw, 80px); border-top: 1px solid var(--bd); }
+        .foot { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 30px 0; }
+        .foot .brand .txt b { font-size: 15px; }
+        .foot small { color: var(--ink-mute); font-size: 13px; }
+
+        @media (max-width: 900px) {
+            .hero-grid, .demo-grid { grid-template-columns: 1fr; }
+            .scene { order: -1; min-height: 400px; margin-bottom: 8px; }
+            .steps { grid-template-columns: 1fr; }
+            .hero-copy { text-align: center; }
+            .hero p.sub { margin-left: auto; margin-right: auto; }
+            .cta-row, .stats { justify-content: center; }
+        }
+        @media (max-width: 650px) {
+            .nav-in { min-height: 64px; }
+            .brand { gap: 9px; }
+            .logo-wrap { width: 38px; height: 38px; }
+            .logo-wrap img { width: 33px; height: 33px; }
+            .brand .txt b { max-width: 164px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+            .brand .txt span { display: none; }
+            .nav-actions { gap: 7px; }
+            .nav-actions .btn { min-height: 38px; padding: 9px 13px; font-size: 13px; }
+            .nav-actions .btn svg { display: none; }
+            .hero { padding-top: 24px; }
+            .scene { min-height: 352px; }
+            .report { width: min(320px, 96%); }
+            .formula-chip { padding: 6px 10px; font-size: 12px; }
+            .formula-chip.c1 { left: 0; }
+            .formula-chip.c2 { right: 0; }
+            .formula-chip.c3 { left: 0; }
+            .formula-chip.c4 { right: 0; }
+            .stat { min-width: 78px; }
+            .panel .ptitle { align-items: flex-start; flex-direction: column; }
+            .cta-band { border-radius: 22px; }
+            .foot { justify-content: center; text-align: center; }
+        }
+        @media (max-width: 420px) {
+            .wrap { padding: 0 14px; }
+            .brand .txt b { max-width: 132px; }
+            .nav-actions .btn-ghost { display: none; }
+            .hero h1 { font-size: clamp(34px, 12vw, 46px); }
+            .cta-row .btn { width: 100%; }
+            .stats { gap: 18px; }
+            .formula-chip.c2, .formula-chip.c3 { display: none; }
+            .report { padding: 18px 16px 20px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+            }
+        }
+
+        .auth-overlay {
+            position: fixed; inset: 0; z-index: 100;
+            display: grid; place-items: center; padding: clamp(16px, 3vw, 34px);
+            background: rgba(6, 9, 24, .54);
+            backdrop-filter: blur(18px) saturate(135%);
+            -webkit-backdrop-filter: blur(18px) saturate(135%);
+        }
+        .auth-modal {
+            position: relative; width: min(440px, 100%); max-height: min(92vh, 760px);
+            overflow-y: auto; padding: clamp(28px, 4vw, 36px);
+            border: 1px solid rgba(26, 19, 172, .13); border-radius: 22px;
+            color: #161a3a;
+            background:
+                radial-gradient(520px 300px at 16% 0%, rgba(14, 179, 254, .16), transparent 62%),
+                linear-gradient(145deg, rgba(255, 255, 255, .92), rgba(236, 247, 255, .78)),
+                rgba(255, 255, 255, .86);
+            box-shadow: 0 34px 92px rgba(5, 10, 30, .42), inset 0 1px 0 rgba(255, 255, 255, .92);
+        }
+        .auth-modal.auth-register {
+            width: min(940px, 100%);
+            padding: clamp(22px, 3vw, 30px);
+        }
+        .auth-modal.auth-frame-modal {
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            border: 0;
+            box-shadow: 0 34px 92px rgba(5, 10, 30, .42);
+        }
+        .auth-modal.auth-frame-modal.auth-register {
+            width: min(980px, 100%);
+        }
+        .auth-frame {
+            display: block;
+            width: 100%;
+            height: min(760px, 92vh);
+            border: 0;
+            border-radius: 22px;
+            background: #eef2fc;
+        }
+        .auth-frame-modal.auth-register .auth-frame {
+            height: min(860px, 92vh);
+        }
+        .auth-close {
+            position: absolute; top: 14px; right: 14px; width: 38px; height: 38px;
+            display: grid; place-items: center; border: 1px solid rgba(26, 19, 172, .12);
+            border-radius: 50%; color: #4d567a; background: rgba(255, 255, 255, .72);
+            font-size: 24px; line-height: 1; cursor: pointer;
+            z-index: 2;
+        }
+        .auth-close:hover { color: var(--brand, #1a13ac); background: #fff; }
+        .auth-head { text-align: center; margin-bottom: 22px; }
+        .auth-head img {
+            width: 72px; height: 72px; object-fit: contain; border-radius: 16px;
+            padding: 5px; background: #fff; box-shadow: 0 14px 30px rgba(26, 19, 100, .16);
+        }
+        .auth-head h2 { margin-top: 14px; color: #161a3a; font-size: clamp(24px, 4vw, 32px); line-height: 1.1; }
+        .auth-head p { margin-top: 7px; color: #4d567a; font-size: 14px; }
+        .auth-form { display: grid; gap: 14px; }
+        .auth-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .form-group { min-width: 0; }
+        .form-group label {
+            display: block; margin-bottom: 6px; color: #4d567a;
+            font-size: 13px; font-weight: 700;
+        }
+        .input, .select-input {
+            width: 100%; min-height: 46px; padding: 12px 14px;
+            border: 1px solid rgba(26, 19, 172, .13); border-radius: 13px;
+            color: #161a3a; background: rgba(255, 255, 255, .82);
+            font: inherit; outline: none;
+            transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .input:focus, .select-input:focus {
+            border-color: #1a13ac; background: #fff;
+            box-shadow: 0 0 0 3px rgba(26, 19, 172, .13);
+        }
+        .input::placeholder { color: #8b93b3; }
+        .select-input option { color: #10152b; background: #fff; }
+        .field-hint { margin-top: 5px; color: #8b93b3; font-size: 12px; }
+        .field-error { margin-top: 5px; color: #e5484d; font-size: 12px; font-weight: 700; }
+        .alert {
+            display: flex; gap: 9px; align-items: flex-start; margin-bottom: 14px; padding: 12px 13px;
+            border: 1px solid transparent; border-radius: 14px; font-size: 13px; font-weight: 700;
+        }
+        .alert.error { color: #c5363b; background: #fde8e8; border-color: rgba(229, 72, 77, .3); }
+        .alert.info { color: #0a6fa3; background: #e0f3fe; border-color: rgba(14, 179, 254, .38); }
+        .alert.success { color: #0e7a50; background: #dcf5ea; border-color: rgba(22, 160, 106, .35); }
+        .password-wrap { position: relative; }
+        .password-wrap .input { padding-right: 76px; }
+        .password-toggle {
+            position: absolute; top: 50%; right: 7px; transform: translateY(-50%);
+            height: 32px; padding: 0 10px; border: 0; border-radius: 999px;
+            color: #1a13ac; background: rgba(26, 19, 172, .08);
+            font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
+        }
+        .phone-input {
+            display: flex; min-height: 46px; overflow: hidden;
+            border: 1px solid rgba(26, 19, 172, .13); border-radius: 13px;
+            background: rgba(255, 255, 255, .82);
+        }
+        .phone-input:focus-within { border-color: #1a13ac; box-shadow: 0 0 0 3px rgba(26, 19, 172, .13); }
+        .phone-prefix {
+            display: inline-flex; align-items: center; padding: 0 12px;
+            color: #fff; font-weight: 800; background: var(--grad);
+        }
+        .phone-input input {
+            width: 100%; min-width: 0; border: 0; outline: 0; padding: 12px 14px;
+            color: #161a3a; background: transparent; font: inherit;
+        }
+        .auth-switch { margin-top: 18px; color: #4d567a; text-align: center; font-size: 14px; }
+        .auth-switch a, .forgot-link { color: #1a13ac; font-weight: 800; text-decoration: none; }
+        .label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .label-row label { margin: 0; }
+        .auth-submit { width: 100%; margin-top: 4px; }
+        @media (max-width: 700px) {
+            .auth-overlay { align-items: start; overflow-y: auto; }
+            .auth-modal { border-radius: 20px; }
+            .auth-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 420px) {
+            .auth-overlay { padding: 10px; }
+            .auth-modal { padding: 20px 16px; }
+            .auth-head img { width: 58px; height: 58px; }
+        }
+    </style>
+</head>
 <body>
-<div class="app-shell">
-    <nav th:replace="~{fragments/common :: navbar}"></nav>
-    <main class="app-main">
+<div class="mesh"></div>
+<div class="grid-fade"></div>
+<canvas id="stars" aria-hidden="true"></canvas>
 
-        <section class="glass card-glass" style="padding: 3rem 2rem; text-align:center; margin-top:1.5rem;">
-            <img th:src="@{/img/logo.png}" alt="PCA logo"
-                 style="height:88px;width:88px;border-radius:20px;background:#fff;padding:8px;box-shadow:0 14px 36px rgba(26,19,100,.2);">
-            <div class="eyebrow mt-3">Physics Cube Academy</div>
-            <h1 style="font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-.03em;margin:.5rem 0 .6rem;">
-                Know exactly what to revise.
-            </h1>
-            <p class="text-dim" style="max-width:620px;margin:0 auto 1.6rem;font-size:1.05rem;">
-                Analyze your Physics past-paper performance (2021–2025), track every attempt,
-                and get a personalized study report pinpointing your weak, mid-range and strong topics.
-            </p>
-            <div class="flex gap-1 flex-wrap" style="justify-content:center;">
-                <a th:href="@{/register}" class="btn btn-primary"><i class="bi bi-rocket-takeoff"></i> Get started</a>
-                <a th:href="@{/login}" class="btn btn-ghost"><i class="bi bi-box-arrow-in-right"></i> Sign in</a>
+<div class="shell">
+    <header class="nav" id="nav">
+        <div class="wrap nav-in">
+            <a class="brand" th:href="@{/}" aria-label="Physics Cube Academy home">
+                <span class="logo-wrap"><img th:src="@{/img/logo.png}" alt="PCA logo"></span>
+                <span class="txt"><b>Physics Cube Academy</b><span>Exam Analyzer</span></span>
+            </a>
+
+            <nav class="nav-actions" aria-label="Primary navigation">
+                <th:block th:if="${isAuthenticated}">
+                    <a class="btn btn-ghost" th:if="${isTeacher}" th:href="@{/teacher/dashboard}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                        Question Map
+                    </a>
+                    <a class="btn btn-ghost" th:if="${isStudent}" th:href="@{/student/dashboard}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                        My Attempts
+                    </a>
+                    <form class="logout-form" th:action="@{/logout}" method="post">
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Logout
+                        </button>
+                    </form>
+                </th:block>
+                <th:block th:unless="${isAuthenticated}">
+                    <a class="btn btn-ghost" th:href="@{/login}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Login
+                    </a>
+                    <a class="btn btn-primary" th:href="@{/register}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Register
+                    </a>
+                </th:block>
+            </nav>
+        </div>
+    </header>
+
+    <main id="top">
+        <section class="hero wrap">
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <span class="eyebrow reveal"><span class="pulse"></span> Physics - Past papers 2021-2025</span>
+                    <h1 class="reveal">Know exactly<br><span class="grad-txt">what to revise.</span></h1>
+                    <p class="sub reveal">Analyze your Physics past-paper performance, track every attempt, and get a personalized study report that pinpoints your weak, mid-range and strong topics, question by question.</p>
+                    <div class="cta-row reveal">
+                        <a class="btn btn-primary btn-lg" th:unless="${isAuthenticated}" th:href="@{/register}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>
+                            Get started
+                        </a>
+                        <a class="btn btn-primary btn-lg" th:if="${isTeacher}" th:href="@{/teacher/dashboard}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>
+                            Open dashboard
+                        </a>
+                        <a class="btn btn-primary btn-lg" th:if="${isStudent}" th:href="@{/student/dashboard}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>
+                            Open dashboard
+                        </a>
+                        <a class="btn btn-outline btn-lg" th:unless="${isAuthenticated}" th:href="@{/login}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            Sign in
+                        </a>
+                        <a class="btn btn-outline btn-lg" th:if="${isAuthenticated}" href="#breakdown">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                            View analysis
+                        </a>
+                    </div>
+                    <div class="stats reveal" aria-label="Analyzer highlights">
+                        <div class="stat"><div class="num">5</div><div class="lbl">Years of papers</div></div>
+                        <div class="stat"><div class="num">40+</div><div class="lbl">Topics tracked</div></div>
+                        <div class="stat"><div class="num">100%</div><div class="lbl">Personalized</div></div>
+                    </div>
+                </div>
+
+                <div class="scene reveal" aria-label="Sample topic report preview">
+                    <div class="orbit-wrap"><div class="atom">
+                        <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+                        <div class="nucleus"></div>
+                    </div></div>
+
+                    <div class="formula-chip c1">F = m<i>a</i></div>
+                    <div class="formula-chip c2">E = mc<i>2</i></div>
+                    <div class="formula-chip c3">lambda = <i>h</i>/p</div>
+                    <div class="formula-chip c4">V = I<i>R</i></div>
+
+                    <div class="report" id="report">
+                        <div class="rhead">
+                            <div class="t">Your topic report <small>2025 - Paper 1</small></div>
+                            <div class="ring-score">
+                                <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+                                    <defs>
+                                        <linearGradient id="ringGrad" x1="4" y1="8" x2="52" y2="48" gradientUnits="userSpaceOnUse">
+                                            <stop stop-color="#4f5bff"/><stop offset=".5" stop-color="#2f7bff"/><stop offset="1" stop-color="#29d6f0"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
+                                    <circle cx="28" cy="28" r="24" fill="none" stroke="url(#ringGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="42.2"/>
+                                </svg>
+                                <div class="pct">72%</div>
+                            </div>
+                        </div>
+                        <div class="topic"><div class="tl"><span class="name">Mechanics</span><span class="tag weak">Weak</span></div><div class="track"><i class="fill-weak" style="width:34%"></i></div></div>
+                        <div class="topic"><div class="tl"><span class="name">Sound</span><span class="tag mid">Mid</span></div><div class="track"><i class="fill-mid" style="width:62%"></i></div></div>
+                        <div class="topic"><div class="tl"><span class="name">Light</span><span class="tag strong">Strong</span></div><div class="track"><i class="fill-strong" style="width:88%"></i></div></div>
+                        <div class="topic"><div class="tl"><span class="name">Heat</span><span class="tag mid">Mid</span></div><div class="track"><i class="fill-mid" style="width:55%"></i></div></div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="grid cols-3 mt-3">
-            <div class="glass card-glass hoverable">
-                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-clipboard-data"></i></div>
-                <h3 class="mt-2 mb-1">Enter your marks</h3>
-                <p class="text-dim mb-0">Pick a year, type your score per question. We validate against each question's max marks.</p>
+        <section class="sec wrap" id="how">
+            <div class="sec-head reveal">
+                <div class="kick">How it works</div>
+                <h2>Three steps to a sharper revision plan</h2>
+                <p>No guesswork. Enter your marks, let the analyzer do the maths, and walk away knowing exactly where to spend your time.</p>
             </div>
-            <div class="glass card-glass hoverable">
-                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-pie-chart"></i></div>
-                <h3 class="mt-2 mb-1">See your weak areas</h3>
-                <p class="text-dim mb-0">Topic-wise breakdown with clear weak / mid / strong colour coding and charts.</p>
-            </div>
-            <div class="glass card-glass hoverable">
-                <div class="ref-icon" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--brand-grad);color:#fff;font-size:1.3rem;"><i class="bi bi-file-earmark-pdf"></i></div>
-                <h3 class="mt-2 mb-1">Download your report</h3>
-                <p class="text-dim mb-0">A personalized PDF telling you what to study and which questions to redo.</p>
+            <div class="steps">
+                <article class="card reveal">
+                    <div class="step-no">STEP 01</div>
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8 11h2M8 15h2"/><path d="M14 11l2 2 3-3"/></svg></div>
+                    <h3>Enter your marks</h3>
+                    <p>Pick a year, type your score per question. We validate every entry against that question's max marks.</p>
+                </article>
+                <article class="card reveal">
+                    <div class="step-no">STEP 02</div>
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></div>
+                    <h3>See your weak areas</h3>
+                    <p>A topic-wise breakdown with clear weak / mid / strong colour coding and live charts, so patterns jump out instantly.</p>
+                </article>
+                <article class="card reveal">
+                    <div class="step-no">STEP 03</div>
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg></div>
+                    <h3>Download your report</h3>
+                    <p>A personalized PDF telling you what to study and which exact questions to redo before your next attempt.</p>
+                </article>
             </div>
         </section>
 
+        <section class="sec wrap" id="breakdown">
+            <div class="sec-head reveal">
+                <div class="kick">The analysis</div>
+                <h2>Every topic, ranked by where you stand</h2>
+                <p>This is the heart of the analyzer: a clear read on each topic so you revise the right things, not everything.</p>
+            </div>
+            <div class="demo-grid">
+                <div class="panel reveal" id="panel">
+                    <div class="ptitle"><b>Topic mastery</b><span class="yr">2024 - all papers</span></div>
+                    <div class="brow"><div class="bl"><span class="nm">Mechanics</span><span class="vv" style="color:var(--strong)">88%</span></div><div class="btrack"><i style="width:88%;background:linear-gradient(90deg,#16c98e,var(--strong));color:var(--strong)"></i></div></div>
+                    <div class="brow"><div class="bl"><span class="nm">Heat</span><span class="vv" style="color:var(--mid)">61%</span></div><div class="btrack"><i style="width:61%;background:linear-gradient(90deg,#ff9f2e,var(--mid));color:var(--mid)"></i></div></div>
+                    <div class="brow"><div class="bl"><span class="nm">Light</span><span class="vv" style="color:var(--mid)">58%</span></div><div class="btrack"><i style="width:58%;background:linear-gradient(90deg,#ff9f2e,var(--mid));color:var(--mid)"></i></div></div>
+                    <div class="brow"><div class="bl"><span class="nm">Sound</span><span class="vv" style="color:var(--weak)">34%</span></div><div class="btrack"><i style="width:34%;background:linear-gradient(90deg,#ff5066,var(--weak));color:var(--weak)"></i></div></div>
+                    <div class="brow"><div class="bl"><span class="nm">Electricity</span><span class="vv" style="color:var(--weak)">29%</span></div><div class="btrack"><i style="width:29%;background:linear-gradient(90deg,#ff5066,var(--weak));color:var(--weak)"></i></div></div>
+                </div>
+                <div class="legend-list reveal">
+                    <div class="leg"><span class="sw" style="background:var(--weak)"></span><div><b>Weak - revise first</b><span>Below 45%. These topics cost you the most marks. Start here with worked examples and the exact past questions you missed.</span></div></div>
+                    <div class="leg"><span class="sw" style="background:var(--mid)"></span><div><b>Mid - almost there</b><span>45-75%. A little polish converts these to easy marks. Quick wins for your next attempt.</span></div></div>
+                    <div class="leg"><span class="sw" style="background:var(--strong)"></span><div><b>Strong - keep warm</b><span>Above 75%. You've got these. Light review only, so you can focus your energy where it counts.</span></div></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sec wrap" id="get-started" style="padding-top:0">
+            <div class="cta-band reveal">
+                <h2>Ready to find your weak spots?</h2>
+                <p>Create a free account, enter one paper, and see your personalized topic report in minutes.</p>
+                <div class="cta-row">
+                    <a class="btn btn-primary btn-lg" th:unless="${isAuthenticated}" th:href="@{/register}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Create free account
+                    </a>
+                    <a class="btn btn-primary btn-lg" th:if="${isTeacher}" th:href="@{/teacher/dashboard}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Open dashboard
+                    </a>
+                    <a class="btn btn-primary btn-lg" th:if="${isStudent}" th:href="@{/student/dashboard}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Open dashboard
+                    </a>
+                    <a class="btn btn-outline btn-lg" th:if="${!isAuthenticated}" th:href="@{/login}">Sign in</a>
+                </div>
+            </div>
+        </section>
     </main>
-    <footer th:replace="~{fragments/common :: footer}"></footer>
+
+    <div class="auth-overlay" th:if="${authModal == 'login' || authModal == 'register'}"
+         th:attr="data-auth-modal=${authModal}" role="dialog" aria-modal="true">
+        <section class="auth-modal auth-frame-modal" th:if="${authModal == 'login'}" aria-label="Login popup">
+            <a class="auth-close" th:href="@{/}" aria-label="Close login popup">&times;</a>
+            <iframe class="auth-frame" th:src="@{/auth/login}" title="Login"></iframe>
+        </section>
+
+        <section class="auth-modal auth-frame-modal auth-register" th:if="${authModal == 'register'}" aria-label="Register popup">
+            <a class="auth-close" th:href="@{/}" aria-label="Close register popup">&times;</a>
+            <iframe class="auth-frame" th:src="@{/auth/register}" title="Register"></iframe>
+        </section>
+
+        <section class="auth-modal" th:if="${false}" aria-labelledby="loginTitle">
+            <a class="auth-close" th:href="@{/}" aria-label="Close login popup">&times;</a>
+            <div class="auth-head">
+                <img th:src="@{/img/logo.png}" alt="Physics Cube Academy logo">
+                <h2 id="loginTitle">Welcome back</h2>
+                <p>Sign in to continue your Physics revision plan.</p>
+            </div>
+
+            <div th:if="${param.error}" class="alert error">
+                <span>Invalid username or password. Please try again.</span>
+            </div>
+            <div th:if="${param.logout}" class="alert info">
+                <span>You have been logged out.</span>
+            </div>
+            <div th:if="${param.registered}" class="alert success">
+                <span>Account created. Please sign in.</span>
+            </div>
+            <div th:if="${param.reset}" class="alert success">
+                <span>Password updated. Sign in with your new password.</span>
+            </div>
+
+            <form class="auth-form" th:action="@{/login}" method="post">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input class="input" type="text" id="loginUsername" name="username"
+                           placeholder="Your username" autocomplete="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <div class="label-row">
+                        <label for="loginPassword">Password</label>
+                        <a class="forgot-link" th:href="@{/forgot-password}">Forgot?</a>
+                    </div>
+                    <div class="password-wrap">
+                        <input class="input" type="password" id="loginPassword" name="password"
+                               placeholder="Password" autocomplete="current-password" required>
+                        <button class="password-toggle" type="button" data-target="loginPassword">Show</button>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg auth-submit" type="submit">Sign in</button>
+            </form>
+
+            <div class="auth-switch">
+                New student? <a th:href="@{/register}">Create an account</a>
+            </div>
+        </section>
+
+        <section class="auth-modal auth-register" th:if="${false}" aria-labelledby="registerTitle">
+            <a class="auth-close" th:href="@{/}" aria-label="Close register popup">&times;</a>
+            <div class="auth-head">
+                <img th:src="@{/img/logo.png}" alt="Physics Cube Academy logo">
+                <h2 id="registerTitle">Create your account</h2>
+                <p>Join the correct batch and start tracking every attempt.</p>
+            </div>
+
+            <form class="auth-form" th:action="@{/register}" th:object="${form}" method="post" id="register-form" novalidate>
+                <div class="auth-grid">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input class="input" type="text" id="username" th:field="*{username}"
+                               th:classappend="${#fields.hasErrors('username')} ? 'is-invalid'"
+                               placeholder="kavin2026" minlength="3" maxlength="30" pattern="[a-z0-9]{3,30}"
+                               autocomplete="username" required>
+                        <div class="field-hint" id="username-help">Small letters and numbers only.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fullName">Name</label>
+                        <input class="input" type="text" id="fullName" th:field="*{fullName}"
+                               th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
+                               placeholder="Your full name" autocomplete="name" required>
+                        <div class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mobileLocal">WhatsApp number</label>
+                        <input type="hidden" id="mobile" th:field="*{mobile}">
+                        <div class="phone-input" th:classappend="${#fields.hasErrors('mobile')} ? ' is-invalid'">
+                            <span class="phone-prefix">+94</span>
+                            <input type="tel" id="mobileLocal" inputmode="numeric" autocomplete="tel"
+                                   placeholder="74 104 6208" maxlength="11" required>
+                        </div>
+                        <div class="field-hint" id="mobile-help">Do not start with 0.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('mobile')}" th:errors="*{mobile}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nic">NIC</label>
+                        <input class="input" type="text" id="nic" th:field="*{nic}"
+                               th:classappend="${#fields.hasErrors('nic')} ? 'is-invalid'"
+                               placeholder="200321812435" inputmode="numeric" maxlength="12" pattern="[0-9]{12}"
+                               autocomplete="off" required>
+                        <div class="field-hint">New NIC only: exactly 12 numbers.</div>
+                        <div class="field-error" th:if="${#fields.hasErrors('nic')}" th:errors="*{nic}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="batch">Batch</label>
+                        <select class="select-input" id="batch" th:field="*{batch}"
+                                th:classappend="${#fields.hasErrors('batch')} ? 'is-invalid'" required>
+                            <option value="">Select your batch</option>
+                            <option th:each="b : ${batches}" th:value="${b}" th:text="${b}"></option>
+                        </select>
+                        <div class="field-error" th:if="${#fields.hasErrors('batch')}" th:errors="*{batch}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="district">District</label>
+                        <select class="select-input" id="district" th:field="*{district}"
+                                th:classappend="${#fields.hasErrors('district')} ? 'is-invalid'" required>
+                            <option value="">Select your district</option>
+                            <option th:each="d : ${districts}" th:value="${d}" th:text="${d}"></option>
+                        </select>
+                        <div class="field-error" th:if="${#fields.hasErrors('district')}" th:errors="*{district}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input class="input" type="password" id="password" th:field="*{password}"
+                                   th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'"
+                                   placeholder="Password" autocomplete="new-password" minlength="6" required>
+                            <button class="password-toggle" type="button" data-target="password">Show</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm password</label>
+                        <div class="password-wrap">
+                            <input class="input" type="password" id="confirmPassword" th:field="*{confirmPassword}"
+                                   th:classappend="${#fields.hasErrors('confirmPassword')} ? 'is-invalid'"
+                                   placeholder="Re-enter password" autocomplete="new-password" required>
+                            <button class="password-toggle" type="button" data-target="confirmPassword">Show</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
+                    </div>
+                </div>
+
+                <div class="field-error" id="form-error" role="alert"
+                     style="display:none;text-align:center;font-weight:700;"></div>
+
+                <button class="btn btn-primary btn-lg auth-submit" id="register-submit" type="submit">Create account</button>
+            </form>
+
+            <div class="auth-switch">
+                Already have an account? <a th:href="@{/login}">Sign in</a>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="wrap foot">
+            <div class="brand">
+                <span class="logo-wrap"><img th:src="@{/img/logo.png}" alt="PCA logo"></span>
+                <span class="txt"><b>Physics Cube Academy</b><span>Exam Analyzer</span></span>
+            </div>
+            <small>Copyright <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2026</span> Physics Cube Academy (PCA) - Built for smarter revision</small>
+        </div>
+    </footer>
 </div>
+
+<script>
+    (function () {
+        var nav = document.getElementById("nav");
+        var onScroll = function () {
+            nav.classList.toggle("scrolled", window.scrollY > 12);
+        };
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var cv = document.getElementById("stars");
+        var ctx = cv && cv.getContext ? cv.getContext("2d") : null;
+        var cw, ch, dpr, pts;
+        var count = window.matchMedia("(max-width: 650px)").matches ? 42 : 70;
+
+        function sizeCanvas() {
+            if (!ctx) return;
+            dpr = Math.min(2, window.devicePixelRatio || 1);
+            cw = cv.width = window.innerWidth * dpr;
+            ch = cv.height = window.innerHeight * dpr;
+            cv.style.width = window.innerWidth + "px";
+            cv.style.height = window.innerHeight + "px";
+        }
+        function initPts() {
+            if (!ctx) return;
+            pts = Array.from({ length: count }, function () {
+                return {
+                    x: Math.random() * cw,
+                    y: Math.random() * ch,
+                    vx: (Math.random() - .5) * .14 * dpr,
+                    vy: (Math.random() - .5) * .14 * dpr,
+                    r: (Math.random() * 1.6 + .5) * dpr
+                };
+            });
+        }
+        function drawParticles() {
+            if (!ctx || !pts) return;
+            ctx.clearRect(0, 0, cw, ch);
+            for (var i = 0; i < pts.length; i++) {
+                var p = pts[i];
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > cw) p.vx *= -1;
+                if (p.y < 0 || p.y > ch) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, 7);
+                ctx.fillStyle = "rgba(150,190,255,.55)";
+                ctx.fill();
+                for (var j = i + 1; j < pts.length; j++) {
+                    var q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d2 = dx * dx + dy * dy, max = 130 * dpr;
+                    if (d2 < max * max) {
+                        ctx.strokeStyle = "rgba(120,170,255," + (1 - Math.sqrt(d2) / max) * .22 + ")";
+                        ctx.lineWidth = dpr * .6;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(q.x, q.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        sizeCanvas();
+        initPts();
+        drawParticles();
+        var resizeTimer;
+        window.addEventListener("resize", function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () { sizeCanvas(); initPts(); drawParticles(); }, 200);
+        }, { passive: true });
+        if (!reduce && ctx) {
+            (function loop() {
+                drawParticles();
+                window.requestAnimationFrame(loop);
+            })();
+        }
+
+        function addTilt(el, max) {
+            el.addEventListener("pointermove", function (ev) {
+                if (window.matchMedia("(pointer: coarse)").matches) return;
+                var r = el.getBoundingClientRect();
+                var px = (ev.clientX - r.left) / r.width;
+                var py = (ev.clientY - r.top) / r.height;
+                el.style.transform = "perspective(900px) rotateY(" + ((px - .5) * 2 * max) + "deg) rotateX(" + ((.5 - py) * 2 * max) + "deg)";
+                el.style.setProperty("--mx", px * 100 + "%");
+                el.style.setProperty("--my", py * 100 + "%");
+            });
+            el.addEventListener("pointerleave", function () {
+                el.style.transform = "";
+            });
+        }
+        document.querySelectorAll(".card").forEach(function (card) { addTilt(card, 7); });
+        var report = document.getElementById("report");
+        if (report) addTilt(report, 6);
+
+        var overlay = document.querySelector(".auth-overlay");
+        if (overlay) {
+            var closeHref = overlay.querySelector(".auth-close") ? overlay.querySelector(".auth-close").href : "/";
+            overlay.addEventListener("click", function (event) {
+                if (event.target === overlay) window.location.href = closeHref;
+            });
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") window.location.href = closeHref;
+            });
+            var focusTarget = overlay.querySelector("[autofocus], input, select, button");
+            if (focusTarget) setTimeout(function () { focusTarget.focus(); }, 80);
+        }
+
+        document.querySelectorAll(".password-toggle").forEach(function (button) {
+            button.addEventListener("click", function () {
+                var target = document.getElementById(button.getAttribute("data-target"));
+                if (!target) return;
+                var show = target.type === "password";
+                target.type = show ? "text" : "password";
+                button.textContent = show ? "Hide" : "Show";
+                target.focus();
+            });
+        });
+
+        var registerForm = document.getElementById("register-form");
+        if (registerForm) {
+            var username = document.getElementById("username");
+            var usernameHelp = document.getElementById("username-help");
+            var mobileHidden = document.getElementById("mobile");
+            var mobileLocal = document.getElementById("mobileLocal");
+            var mobileHelp = document.getElementById("mobile-help");
+            var nic = document.getElementById("nic");
+            var password = document.getElementById("password");
+            var confirmPassword = document.getElementById("confirmPassword");
+            var formError = document.getElementById("form-error");
+            var submit = document.getElementById("register-submit");
+            var availabilityTimer;
+            var usernameKnownTaken = false;
+
+            function showFormError(message, field) {
+                formError.textContent = message;
+                formError.style.display = "block";
+                if (field) field.focus();
+            }
+            function clearFormError() {
+                formError.textContent = "";
+                formError.style.display = "none";
+            }
+            function formatPhone(raw) {
+                var digits = raw.replace(/\D/g, "").slice(0, 9);
+                if (digits.charAt(0) === "0") digits = digits.slice(1);
+                return [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 9)].filter(Boolean).join(" ");
+            }
+            function syncPhone() {
+                if (!mobileLocal || !mobileHidden) return true;
+                mobileLocal.value = formatPhone(mobileLocal.value);
+                mobileHidden.value = mobileLocal.value ? "+94 " + mobileLocal.value : "";
+                var ok = /^\+94\s7\d\s\d{3}\s\d{4}$/.test(mobileHidden.value);
+                if (mobileHelp) {
+                    mobileHelp.textContent = ok ? "Looks good." : "Type like 74 104 6208.";
+                    mobileHelp.style.color = ok ? "var(--strong)" : "var(--ink-mute)";
+                }
+                return ok;
+            }
+            function hydratePhone() {
+                if (!mobileHidden || !mobileHidden.value || !mobileLocal) return;
+                mobileLocal.value = mobileHidden.value.replace(/^\+94\s?/, "");
+                syncPhone();
+            }
+            function syncUsername() {
+                if (!username) return;
+                var value = username.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30);
+                username.value = value;
+                usernameKnownTaken = false;
+                clearTimeout(availabilityTimer);
+                if (!/^[a-z0-9]{3,30}$/.test(value)) {
+                    if (usernameHelp) {
+                        usernameHelp.textContent = "Use at least 3 lowercase letters or numbers.";
+                        usernameHelp.style.color = "var(--weak)";
+                    }
+                    return;
+                }
+                if (usernameHelp) {
+                    usernameHelp.textContent = "Checking availability...";
+                    usernameHelp.style.color = "var(--ink-mute)";
+                }
+                availabilityTimer = setTimeout(function () {
+                    fetch("/register/username-available?username=" + encodeURIComponent(value), { headers: { "Accept": "application/json" } })
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            usernameKnownTaken = !data.available;
+                            if (usernameHelp) {
+                                usernameHelp.textContent = data.available ? "Username is available." : "This username is already taken.";
+                                usernameHelp.style.color = data.available ? "var(--strong)" : "var(--weak)";
+                            }
+                        })
+                        .catch(function () {
+                            if (usernameHelp) usernameHelp.textContent = "We will check again when you submit.";
+                        });
+                }, 280);
+            }
+
+            if (username) username.addEventListener("input", syncUsername);
+            if (mobileLocal) mobileLocal.addEventListener("input", syncPhone);
+            if (nic) nic.addEventListener("input", function () { nic.value = nic.value.replace(/\D/g, "").slice(0, 12); });
+
+            registerForm.addEventListener("submit", function (event) {
+                clearFormError();
+                syncPhone();
+                if (!/^[a-z0-9]{3,30}$/.test(username.value)) {
+                    event.preventDefault();
+                    showFormError("Enter a valid username: 3 to 30 lowercase letters or numbers.", username);
+                    return;
+                }
+                if (usernameKnownTaken) {
+                    event.preventDefault();
+                    showFormError("That username is already taken. Please choose another.", username);
+                    return;
+                }
+                if (!/^\+94\s7\d\s\d{3}\s\d{4}$/.test(mobileHidden.value)) {
+                    event.preventDefault();
+                    showFormError("Enter a valid WhatsApp number, e.g. 74 104 6208.", mobileLocal);
+                    return;
+                }
+                if (!/^\d{12}$/.test(nic.value)) {
+                    event.preventDefault();
+                    showFormError("NIC must be exactly 12 digits.", nic);
+                    return;
+                }
+                if (password.value.length < 6) {
+                    event.preventDefault();
+                    showFormError("Password must be at least 6 characters.", password);
+                    return;
+                }
+                if (password.value !== confirmPassword.value) {
+                    event.preventDefault();
+                    showFormError("Both passwords must match.", confirmPassword);
+                    return;
+                }
+                submit.disabled = true;
+            });
+
+            hydratePhone();
+            if (username && username.value) syncUsername();
+        }
+    })();
+</script>
 </body>
 </html>

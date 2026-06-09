@@ -62,8 +62,13 @@
                             <div class="combo-panel">
                                 <input type="text" class="combo-search input" placeholder="Search or add a section…">
                                 <div class="combo-options">
-                                    <button type="button" class="combo-option" th:each="sec : ${sections}"
-                                            th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                                    <div class="combo-option" th:each="sec : ${sections}" th:data-value="${sec.id}">
+                                        <span class="combo-label-text" th:text="${sec.name}">Mechanics</span>
+                                        <span class="combo-actions">
+                                            <button type="button" class="combo-edit" title="Rename" aria-label="Rename section"><i class="bi bi-pencil"></i></button>
+                                            <button type="button" class="combo-del" title="Delete" aria-label="Delete section"><i class="bi bi-trash"></i></button>
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="combo-empty" hidden>No matching section.</div>
                                 <button type="button" class="combo-add">
@@ -116,7 +121,7 @@
                                     <i class="bi bi-link-45deg"></i></a>
                                 <details style="position:relative;">
                                     <summary class="btn btn-sm" style="list-style:none;"><i class="bi bi-pencil"></i></summary>
-                                    <div class="glass" style="position:absolute;right:0;z-index:30;width:300px;padding:1rem;margin-top:.4rem;">
+                                    <div class="glass" style="position:absolute;right:0;z-index:30;width:min(300px,86vw);max-width:86vw;padding:1rem;margin-top:.4rem;">
                                         <form th:action="@{/teacher/questions/{id}/update(id=${q.id})}" method="post">
                                             <div class="form-group"><label>Question no.</label>
                                                 <select class="input" name="questionNumber" required>
@@ -133,8 +138,13 @@
                                                     <div class="combo-panel">
                                                         <input type="text" class="combo-search input" placeholder="Search or add a section…">
                                                         <div class="combo-options">
-                                                            <button type="button" class="combo-option" th:each="sec : ${sections}"
-                                                                    th:data-value="${sec.id}" th:text="${sec.name}">Mechanics</button>
+                                                            <div class="combo-option" th:each="sec : ${sections}" th:data-value="${sec.id}">
+                                                                <span class="combo-label-text" th:text="${sec.name}">Mechanics</span>
+                                                                <span class="combo-actions">
+                                                                    <button type="button" class="combo-edit" title="Rename" aria-label="Rename section"><i class="bi bi-pencil"></i></button>
+                                                                    <button type="button" class="combo-del" title="Delete" aria-label="Delete section"><i class="bi bi-trash"></i></button>
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                         <div class="combo-empty" hidden>No matching section.</div>
                                                         <button type="button" class="combo-add">
@@ -165,6 +175,6 @@
     </main>
     <footer th:replace="~{fragments/common :: footer}"></footer>
 </div>
-<script th:src="@{/js/combo.js}"></script>
+<script th:src="@{/js/combo.js(v=3)}"></script>
 </body>
 </html>

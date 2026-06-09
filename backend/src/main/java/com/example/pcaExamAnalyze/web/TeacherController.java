@@ -98,6 +98,19 @@ public class TeacherController {
         return "redirect:/teacher/papers";
     }
 
+    /** AJAX: delete a whole year/paper (and its questions, resources, student marks) from the matrix. */
+    @PostMapping(value = "/papers/{id}/delete", headers = "X-Requested-With=XMLHttpRequest")
+    @ResponseBody
+    public java.util.Map<String, Object> deletePaperAjax(@PathVariable Long id) {
+        try {
+            paperService.deletePaper(id);
+            return java.util.Map.of("ok", true, "message", "Year deleted.");
+        } catch (ResponseStatusException e) {
+            return java.util.Map.of("ok", false,
+                    "message", e.getReason() == null ? "Could not delete the year." : e.getReason());
+        }
+    }
+
     // ---------- Questions ----------
 
     @GetMapping("/papers/{paperId}/questions")
@@ -170,6 +183,26 @@ public class TeacherController {
         return "redirect:/teacher/papers/" + paperId + "/questions";
     }
 
+    /** AJAX: rename a section from the live section dropdown. */
+    @PostMapping("/sections/{id}/rename")
+    @ResponseBody
+    public Section renameSection(@PathVariable Long id, @RequestParam String name) {
+        return paperService.renameSection(id, name);
+    }
+
+    /** AJAX: delete a section from the live section dropdown (409 with a message if still in use). */
+    @PostMapping("/sections/{id}/remove")
+    @ResponseBody
+    public java.util.Map<String, Object> removeSection(@PathVariable Long id) {
+        try {
+            paperService.deleteSection(id);
+            return java.util.Map.of("ok", true);
+        } catch (ResponseStatusException e) {
+            return java.util.Map.of("ok", false,
+                    "message", e.getReason() == null ? "Could not delete the section." : e.getReason());
+        }
+    }
+
     @PostMapping("/questions/{id}/delete")
     public String deleteQuestion(@PathVariable Long id, RedirectAttributes ra) {
         Long paperId = paperService.deleteQuestion(id);
@@ -177,7 +210,55 @@ public class TeacherController {
         return "redirect:/teacher/papers/" + paperId + "/questions";
     }
 
-    /** One-shot save from the matrix cell popup: section + description + all resources. */
+    /** Assemble the popup's repeated resource rows into RefInput records (blank rows dropped). */
+    private static List<PaperService.RefInput> buildRefInputs(List<String> refTitle, List<String> refType,
+                                                              List<String> refResource, List<String> refNote) {
+        List<PaperService.RefInput> rows = new java.util.ArrayList<>();
+        if (refTitle == null) return rows;
+        for (int i = 0; i < refTitle.size(); i++) {
+            String t = refTitle.get(i);
+            String res = (refResource != null && i < refResource.size()) ? refResource.get(i) : null;
+            if (t == null || t.isBlank() || res == null || res.isBlank()) {
+                continue;
+            }
+            ReferenceType type = ReferenceType.FILE;
+            if (refType != null && i < refType.size()) {
+                try { type = ReferenceType.valueOf(refType.get(i)); } catch (IllegalArgumentException ignored) {}
+            }
+            String note = (refNote != null && i < refNote.size()) ? refNote.get(i) : null;
+            rows.add(new PaperService.RefInput(t, type, res, note));
+        }
+        return rows;
+    }
+
+    /**
+     * AJAX one-shot save from the matrix cell popup (section + description + resources).
+     * Returns the updated cell as JSON so the page can patch it in place — no full reload,
+     * which is what makes Save feel instant against the remote (Supabase) database.
+     */
+    @PostMapping(value = "/papers/{paperId}/questions/save", headers = "X-Requested-With=XMLHttpRequest")
+    @ResponseBody
+    public java.util.Map<String, Object> saveQuestionCellAjax(@PathVariable Long paperId,
+                                   @RequestParam String questionNumber,
+                                   @RequestParam Long sectionId,
+                                   @RequestParam(required = false) Integer maxMarks,
+                                   @RequestParam(required = false) String description,
+                                   @RequestParam(required = false) List<String> refTitle,
+                                   @RequestParam(required = false) List<String> refType,
+                                   @RequestParam(required = false) List<String> refResource,
+                                   @RequestParam(required = false) List<String> refNote) {
+        List<PaperService.RefInput> rows = buildRefInputs(refTitle, refType, refResource, refNote);
+        try {
+            PaperService.GridCell cell = paperService.saveQuestionCell(
+                    paperId, questionNumber, sectionId, maxMarks, description, rows);
+            return java.util.Map.of("ok", true, "message", "Saved " + questionNumber + ".", "cell", cell);
+        } catch (ResponseStatusException e) {
+            return java.util.Map.of("ok", false,
+                    "message", e.getReason() == null ? "Could not save the question." : e.getReason());
+        }
+    }
+
+    /** One-shot save from the matrix cell popup (non-AJAX fallback). */
     @PostMapping("/papers/{paperId}/questions/save")
     public String saveQuestionCell(@PathVariable Long paperId,
                                    @RequestParam String questionNumber,
@@ -189,28 +270,32 @@ public class TeacherController {
                                    @RequestParam(required = false) List<String> refResource,
                                    @RequestParam(required = false) List<String> refNote,
                                    RedirectAttributes ra) {
-        List<PaperService.RefInput> rows = new java.util.ArrayList<>();
-        if (refTitle != null) {
-            for (int i = 0; i < refTitle.size(); i++) {
-                String t = refTitle.get(i);
-                String res = (refResource != null && i < refResource.size()) ? refResource.get(i) : null;
-                if (t == null || t.isBlank() || res == null || res.isBlank()) {
-                    continue;
-                }
-                ReferenceType type = ReferenceType.FILE;
-                if (refType != null && i < refType.size()) {
-                    try { type = ReferenceType.valueOf(refType.get(i)); } catch (IllegalArgumentException ignored) {}
-                }
-                String note = (refNote != null && i < refNote.size()) ? refNote.get(i) : null;
-                rows.add(new PaperService.RefInput(t, type, res, note));
-            }
-        }
+        List<PaperService.RefInput> rows = buildRefInputs(refTitle, refType, refResource, refNote);
         try {
             paperService.saveQuestionCell(paperId, questionNumber, sectionId, maxMarks, description, rows);
             ra.addFlashAttribute("flashSuccess", "Saved " + questionNumber + ".");
         } catch (ResponseStatusException e) {
             ra.addFlashAttribute("flashError", e.getReason());
         }
+        return "redirect:/teacher/dashboard";
+    }
+
+    /** AJAX: fully clear a matrix cell (delete the question at that position) — patched in place. */
+    @PostMapping(value = "/papers/{paperId}/questions/clear", headers = "X-Requested-With=XMLHttpRequest")
+    @ResponseBody
+    public java.util.Map<String, Object> clearQuestionCellAjax(@PathVariable Long paperId,
+                                    @RequestParam String questionNumber) {
+        paperService.clearQuestionCell(paperId, questionNumber);
+        return java.util.Map.of("ok", true, "message", "Cleared " + questionNumber + ".");
+    }
+
+    /** Fully clear a matrix cell (non-AJAX fallback). */
+    @PostMapping("/papers/{paperId}/questions/clear")
+    public String clearQuestionCell(@PathVariable Long paperId,
+                                    @RequestParam String questionNumber,
+                                    RedirectAttributes ra) {
+        paperService.clearQuestionCell(paperId, questionNumber);
+        ra.addFlashAttribute("flashSuccess", "Cleared " + questionNumber + ".");
         return "redirect:/teacher/dashboard";
     }
 

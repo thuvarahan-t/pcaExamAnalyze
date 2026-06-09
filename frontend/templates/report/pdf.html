@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>PCA Physics — Performance Report</title>
+    <style>
+        @page { size: A4; margin: 1.3cm 1.25cm; }
+        * { box-sizing: border-box; }
+        body { font-family: Helvetica, Arial, sans-serif; color: #1f2330; font-size: 11px; line-height: 1.5; margin: 0; }
+        h1, h2, h3 { margin: 0; }
+        .muted { color: #6b7280; }
+        .right { text-align: right; }
+        .fw { font-weight: bold; }
+
+        /* Header */
+        .header { background-color: #1a13ac; color: #ffffff; padding: 16px 18px; border-radius: 10px; }
+        .header table { width: 100%; border-collapse: collapse; }
+        .header .logo { width: 52px; height: 52px; background: #ffffff; border-radius: 10px; padding: 4px; }
+        .header h1 { font-size: 18px; letter-spacing: .3px; }
+        .header .sub { color: #d9d3ff; font-size: 10.5px; margin-top: 2px; }
+        .header .meta { font-size: 10px; color: #e7e3ff; }
+
+        /* Summary boxes */
+        .summary { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .summary td { width: 33.33%; padding: 4px; vertical-align: top; }
+        .sbox { border: 1px solid #e3e6ef; border-radius: 9px; padding: 10px 12px; }
+        .sbox .lab { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: #8a93a6; font-weight: bold; }
+        .sbox .val { font-size: 20px; font-weight: bold; margin-top: 3px; }
+
+        /* Cards */
+        .card { border: 1px solid #e3e6ef; border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+        .group-title { font-size: 13px; font-weight: bold; margin-bottom: 2px; }
+        .group-lead { color: #6b7280; font-size: 10px; margin-bottom: 8px; }
+
+        /* Section rows */
+        .secrow { border: 1px solid #e3e6ef; border-radius: 9px; padding: 9px 12px; margin-top: 8px; }
+        .secrow table { width: 100%; border-collapse: collapse; }
+        .sec-name { font-size: 12px; font-weight: bold; color: #2b2f3a; }
+        .sec-score { font-size: 11px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: bold; }
+        .weak   { color: #c2185b; background: #fde3ec; }
+        .mid    { color: #b06a00; background: #fdefd6; }
+        .strong { color: #0f7a55; background: #d8f5e9; }
+        .bar { height: 7px; background: #eceef4; border-radius: 6px; overflow: hidden; margin-top: 7px; }
+        .bar > span { display: block; height: 7px; border-radius: 6px; }
+
+        /* Resources */
+        .label-mini { font-size: 8.5px; text-transform: uppercase; letter-spacing: .4px; color: #8a93a6; font-weight: bold; margin-top: 8px; }
+        .ref { border-top: 1px dashed #e3e6ef; padding: 5px 0 2px; }
+        .ref .rt { font-weight: bold; }
+        .ref .rr { color: #4a5366; }
+        .ref .rn { color: #8a93a6; font-style: italic; }
+        .strength-pill { display: inline-block; color: #0f7a55; background: #d8f5e9; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: bold; margin: 0 4px 5px 0; }
+
+        .footer { margin-top: 16px; border-top: 1px solid #e3e6ef; padding-top: 8px; color: #8a93a6; font-size: 9px; }
+        .empty-note { border: 1px solid #e3e6ef; border-radius: 10px; padding: 24px; text-align: center; color: #6b7280; margin-top: 14px; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <table>
+        <tr>
+            <td style="width:60px; vertical-align:middle;">
+                <img class="logo" th:src="${logo}" alt="PCA"/>
+            </td>
+            <td style="vertical-align:middle;">
+                <h1>PCA Physics — Performance Report</h1>
+                <div class="sub">Physics Cube Academy · Exam Analyzer</div>
+            </td>
+            <td class="right" style="vertical-align:middle;">
+                <div class="meta fw" th:text="${studentName}">Student</div>
+                <div class="meta" th:text="${report.scopeLabel}">Attempt 1</div>
+                <div class="meta" th:text="${generatedAt}">date</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<!-- Empty -->
+<div th:if="${report.empty}" class="empty-note">
+    No marks have been entered for this scope yet. Enter your marks on the attempt sheet, then generate the report.
+</div>
+
+<th:block th:unless="${report.empty}">
+
+    <!-- Overall summary -->
+    <table class="summary">
+        <tr>
+            <td>
+                <div class="sbox"><div class="lab">Overall score</div>
+                    <div class="val" th:text="${report.obtained} + ' / ' + ${report.max}">0 / 0</div>
+                    <div class="muted" th:text="${report.roundedPercentage()} + '% overall'">0%</div></div>
+            </td>
+            <td>
+                <div class="sbox"><div class="lab">Status</div>
+                    <div class="val"><span class="badge" th:classappend="${report.overall.cssClass}" th:text="${report.overall.label}">Status</span></div>
+                    <div class="muted">Weak &lt; 50% · Mid 50-74% · Strong 75%+</div></div>
+            </td>
+            <td>
+                <div class="sbox"><div class="lab">Coverage</div>
+                    <div class="val" th:text="${report.answeredSections}">0</div>
+                    <div class="muted" th:text="${report.answeredQuestions} + ' question(s) answered'">questions</div></div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Weak -->
+    <div class="card" th:if="${!report.weak.isEmpty()}">
+        <div class="group-title" style="color:#c2185b;">Focus here — weak sections</div>
+        <div class="group-lead">Scored below 50%. Study the resources below, then redo these sections.</div>
+        <div class="secrow" th:each="s : ${report.weak}">
+            <table>
+                <tr>
+                    <td><span class="sec-name" th:text="${s.section}">Mechanics</span></td>
+                    <td class="right sec-score">
+                        <span class="fw" th:text="${s.roundedPercentage()} + '%'">35%</span>
+                        <span class="muted" th:text="' · ' + ${s.obtained} + '/' + ${s.max}"></span>
+                        <span class="badge weak" th:text="${s.classification.label}">Weak</span>
+                    </td>
+                </tr>
+            </table>
+            <div class="bar"><span th:style="'width:' + ${s.roundedPercentage()} + '%; background:' + ${s.classification.color}"></span></div>
+
+            <th:block th:if="${!s.resources.isEmpty()}">
+                <div class="label-mini">What to study to improve</div>
+                <div class="ref" th:each="r : ${s.resources}">
+                    <span class="rt" th:text="${r.title}">Title</span>
+                    <span class="muted" th:text="' (' + ${r.typeLabel} + ')'">(Files)</span><br/>
+                    <span class="rr" th:text="${r.resource}">resource</span>
+                    <span class="rn" th:if="${r.note}" th:text="' — ' + ${r.note}">note</span>
+                </div>
+            </th:block>
+            <div class="muted" th:if="${s.resources.isEmpty()}" style="margin-top:6px;">
+                No resources attached by your teacher for this section yet.
+            </div>
+        </div>
+    </div>
+
+    <!-- Mid -->
+    <div class="card" th:if="${!report.mid.isEmpty()}">
+        <div class="group-title" style="color:#b06a00;">Mid-range — push these up</div>
+        <div class="secrow" th:each="s : ${report.mid}">
+            <table>
+                <tr>
+                    <td><span class="sec-name" th:text="${s.section}">Optics</span></td>
+                    <td class="right sec-score">
+                        <span class="fw" th:text="${s.roundedPercentage()} + '%'">60%</span>
+                        <span class="muted" th:text="' · ' + ${s.obtained} + '/' + ${s.max}"></span>
+                        <span class="badge mid" th:text="${s.classification.label}">Mid-range</span>
+                    </td>
+                </tr>
+            </table>
+            <div class="bar"><span th:style="'width:' + ${s.roundedPercentage()} + '%; background:' + ${s.classification.color}"></span></div>
+
+            <th:block th:if="${!s.resources.isEmpty()}">
+                <div class="label-mini">Resources to strengthen this section</div>
+                <div class="ref" th:each="r : ${s.resources}">
+                    <span class="rt" th:text="${r.title}">Title</span>
+                    <span class="muted" th:text="' (' + ${r.typeLabel} + ')'">(Files)</span><br/>
+                    <span class="rr" th:text="${r.resource}">resource</span>
+                    <span class="rn" th:if="${r.note}" th:text="' — ' + ${r.note}">note</span>
+                </div>
+            </th:block>
+        </div>
+    </div>
+
+    <!-- Strong -->
+    <div class="card" th:if="${!report.strong.isEmpty()}">
+        <div class="group-title" style="color:#0f7a55;">Strong — keep it up</div>
+        <div style="margin-top:6px;">
+            <span class="strength-pill" th:each="s : ${report.strong}"
+                  th:text="${s.section} + ' (' + ${s.roundedPercentage()} + '%)'">Topic</span>
+        </div>
+    </div>
+
+</th:block>
+
+<div class="footer">
+    Generated by PCA Exam Analyzer on <span th:text="${generatedAt}">date</span>.
+    Classification bands: Weak below 50% · Mid-range 50-74% · Strong 75% and above.
+</div>
+
+</body>
+</html>
