@@ -40,15 +40,6 @@ cd backend
 > The app reads secrets from `.env` via `DotenvLoader`. `.env` is git-ignored — never commit it.
 
 ---
-
-## Seeded accounts
-
-| Role    | Username  | Password      | Notes                                      |
-|---------|-----------|---------------|--------------------------------------------|
-| Teacher | `teacher` | `teacher123@` | From `.env` (`TEACHER_*`). Change these.    |
-
-Students can self-register at `/register`; accounts are active immediately.
-
 ---
 
 ## Authentication
