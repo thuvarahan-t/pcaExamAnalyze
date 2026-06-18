@@ -17,6 +17,8 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     @EntityGraph(attributePaths = {"scores", "scores.question", "scores.question.section", "student"})
     Optional<Attempt> findWithScoresByStudentIdAndAttemptNumber(Long studentId, Integer attemptNumber);
 
+    Optional<Attempt> findByStudentIdAndAttemptNumber(Long studentId, Integer attemptNumber);
+
     /** All attempts of a student with scores eagerly loaded (for the combined report). */
     @EntityGraph(attributePaths = {"scores", "scores.question", "scores.question.section"})
     List<Attempt> findWithScoresByStudentId(Long studentId);

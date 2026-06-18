@@ -70,6 +70,21 @@ public class StudentController {
         return "redirect:/student/dashboard?attempt=" + n;
     }
 
+    @PostMapping("/attempt/{n}/delete")
+    public String deleteAttempt(@PathVariable int n,
+                                Principal principal,
+                                RedirectAttributes ra) {
+        User student = current(principal);
+        try {
+            int next = attemptService.deleteAttempt(student, n);
+            ra.addFlashAttribute("flashSuccess", "Attempt " + n + " deleted.");
+            return "redirect:/student/dashboard?attempt=" + next;
+        } catch (ResponseStatusException ex) {
+            ra.addFlashAttribute("flashError", ex.getReason() == null ? "Attempt not found." : ex.getReason());
+            return "redirect:/student/dashboard";
+        }
+    }
+
     @PostMapping("/attempt/{n}/save")
     public String saveSheet(@PathVariable int n,
                             @RequestParam Map<String, String> allParams,

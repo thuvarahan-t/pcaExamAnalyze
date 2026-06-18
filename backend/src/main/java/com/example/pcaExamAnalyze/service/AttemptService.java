@@ -153,6 +153,20 @@ public class AttemptService {
         return next;
     }
 
+    @Transactional
+    public int deleteAttempt(User student, int attemptNumber) {
+        Attempt attempt = attempts.findByStudentIdAndAttemptNumber(student.getId(), attemptNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attempt not found."));
+        attempts.delete(attempt);
+
+        List<Integer> remaining = savedAttemptNumbers(student.getId());
+        if (remaining.isEmpty()) return 1;
+        return remaining.stream()
+                .filter(n -> n < attemptNumber)
+                .reduce((first, second) -> second)
+                .orElse(remaining.get(0));
+    }
+
     /** First digit (1–4) found in a question number like "Q3" / "Q3(b)". */
     private static Integer positionOf(String questionNumber) {
         if (questionNumber == null) return null;

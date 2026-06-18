@@ -12,12 +12,15 @@
 
             <!-- Attempt tabs + generate report -->
             <div class="attempt-bar">
-                <div class="attempt-tabs">
-                    <a th:each="t : ${tabs}" th:href="@{/student/dashboard(attempt=${t})}"
-                       class="atab" th:classappend="${t == selected} ? ' active' : ''"
-                       th:text="'Attempt ' + ${t}">Attempt 1</a>
+                <div class="attempt-tabs" data-attempt-tabs>
+                    <span class="atab-indicator" aria-hidden="true"></span>
+                    <div th:each="t : ${tabs}" class="atab-wrap" th:classappend="${t == selected} ? ' active' : ''">
+                        <a th:href="@{/student/dashboard(attempt=${t})}"
+                           class="atab" th:classappend="${t == selected} ? ' active' : ''"
+                           th:text="'Attempt ' + ${t}">Attempt 1</a>
+                    </div>
                     <form th:action="@{/student/attempt/add}" method="post" class="atab-addform">
-                        <button class="atab atab-add" type="submit"><i class="bi bi-plus-lg"></i> Add attempt</button>
+                        <button class="atab atab-add" type="submit"><span class="atab-plus" aria-hidden="true">+</span> Add attempt</button>
                     </form>
                 </div>
 
@@ -93,9 +96,15 @@
                         Marks save automatically. Leave any question blank — only the marks you enter are used in the report.
                         <span th:if="${sheet.saved}" th:text="'Saved total: ' + ${sheet.obtained} + '/' + ${sheet.max} + ' (' + ${sheet.percentage} + '%).'"></span>
                     </span>
-                    <span class="autosave-status" id="autosave-status" aria-live="polite">
-                        <i class="bi bi-cloud-check"></i> Saved
-                    </span>
+                    <div class="sheet-actions">
+                        <span class="autosave-status" id="autosave-status" aria-live="polite">
+                            <i class="bi bi-cloud-check"></i> Saved
+                        </span>
+                        <button th:if="${sheet.saved}" type="button" class="btn btn-danger attempt-delete-trigger"
+                                th:attr="data-attempt-delete-trigger=${selected}">
+                            <i class="bi bi-trash3"></i> Delete attempt
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -103,6 +112,23 @@
 
     </main>
     <footer th:replace="~{fragments/common :: footer}"></footer>
+</div>
+
+<div th:if="${sheet.saved}" class="confirm-overlay attempt-delete-overlay" id="attempt-delete-overlay" hidden>
+    <div class="confirm-card glass" role="alertdialog" aria-modal="true" aria-labelledby="attemptDelTitle">
+        <div class="confirm-icon danger"><i class="bi bi-trash3"></i></div>
+        <h3 class="confirm-title" id="attemptDelTitle" th:text="'Delete Attempt ' + ${selected} + '?'">Delete Attempt?</h3>
+        <p class="confirm-msg"
+           th:text="'Only Attempt ' + ${selected} + ' and its saved marks will be removed. Other attempts will stay unchanged.'">
+            Only this attempt and its saved marks will be removed.
+        </p>
+        <div class="confirm-actions">
+            <button type="button" class="btn btn-ghost confirm-cancel">Cancel</button>
+            <form th:action="@{/student/attempt/{n}/delete(n=${selected})}" method="post" class="attempt-delete-confirm-form">
+                <button type="submit" class="btn btn-danger confirm-ok">Delete attempt</button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -190,6 +216,56 @@
         });
     })();
 
+    // Premium sliding highlight for attempt navigation.
+    (function () {
+        var tabs = document.querySelector("[data-attempt-tabs]");
+        if (!tabs) return;
+
+        var indicator = tabs.querySelector(".atab-indicator");
+        var active = tabs.querySelector(".atab.active");
+        if (!indicator || !active) return;
+
+        function moveIndicator(target) {
+            var tabsRect = tabs.getBoundingClientRect();
+            var targetRect = target.getBoundingClientRect();
+            tabs.style.setProperty("--atab-x", (targetRect.left - tabsRect.left) + "px");
+            tabs.style.setProperty("--atab-y", (targetRect.top - tabsRect.top) + "px");
+            tabs.style.setProperty("--atab-w", targetRect.width + "px");
+            tabs.style.setProperty("--atab-h", targetRect.height + "px");
+        }
+
+        function preview(target) {
+            tabs.classList.toggle("is-previewing", target !== active);
+        }
+
+        function clearPending() {
+            tabs.querySelectorAll(".atab-pending").forEach(function (el) {
+                el.classList.remove("atab-pending");
+            });
+        }
+
+        function ready() {
+            moveIndicator(active);
+            tabs.classList.add("is-ready");
+        }
+
+        requestAnimationFrame(ready);
+        window.addEventListener("resize", function () { moveIndicator(active); }, { passive: true });
+
+        tabs.querySelectorAll("a.atab").forEach(function (tab) {
+            tab.addEventListener("pointerenter", function () { moveIndicator(tab); preview(tab); });
+            tab.addEventListener("focus", function () { moveIndicator(tab); preview(tab); });
+            tab.addEventListener("pointerleave", function () { clearPending(); moveIndicator(active); preview(active); });
+            tab.addEventListener("blur", function () { clearPending(); moveIndicator(active); preview(active); });
+            tab.addEventListener("click", function () {
+                clearPending();
+                if (tab !== active) tab.classList.add("atab-pending");
+                moveIndicator(tab);
+                preview(tab);
+            });
+        });
+    })();
+
     // Generate Report dropdown — saves marks first, then opens the freshly generated PDF.
     (function () {
         document.querySelectorAll("[data-repdrop]").forEach(function (drop) {
@@ -234,6 +310,38 @@
 
         document.addEventListener("click", function () {
             document.querySelectorAll("[data-repdrop].open").forEach(function (d) { d.classList.remove("open"); });
+        });
+    })();
+
+    // Delete only the selected attempt after a glass confirmation popup.
+    (function () {
+        var trigger = document.querySelector("[data-attempt-delete-trigger]");
+        var overlay = document.getElementById("attempt-delete-overlay");
+        if (!trigger || !overlay) return;
+
+        function closeConfirm() {
+            overlay.classList.remove("show");
+            setTimeout(function () {
+                overlay.hidden = true;
+                document.body.style.overflow = "";
+            }, 180);
+        }
+
+        function openConfirm() {
+            overlay.hidden = false;
+            document.body.style.overflow = "hidden";
+            requestAnimationFrame(function () { overlay.classList.add("show"); });
+        }
+
+        overlay.querySelector(".confirm-cancel").addEventListener("click", closeConfirm);
+        overlay.addEventListener("click", function (e) {
+            if (e.target === overlay) closeConfirm();
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && !overlay.hidden) closeConfirm();
+        });
+        trigger.addEventListener("click", function () {
+            openConfirm();
         });
     })();
 </script>
