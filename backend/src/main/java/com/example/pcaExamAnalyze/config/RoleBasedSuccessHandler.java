@@ -20,6 +20,9 @@ public class RoleBasedSuccessHandler extends SimpleUrlAuthenticationSuccessHandl
                                          Authentication authentication) {
         boolean teacher = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
+        if (teacher && "true".equals(request.getParameter("adminLogin"))) {
+            return "/exam/admin";
+        }
         return teacher ? "/teacher/dashboard" : "/student/dashboard";
     }
 

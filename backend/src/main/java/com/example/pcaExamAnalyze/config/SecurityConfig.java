@@ -42,9 +42,12 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/", "/login", "/register", "/auth/login", "/auth/register",
                         "/register/username-available", "/forgot-password",
+                        "/exam", "/exam/", "/exam/p/**", "/exam/details", "/exam/details/clear",
+                        "/exam/session/**", "/exam/admin-login", "/exam/result", "/exam/results/**",
                         "/css/**", "/js/**", "/img/**", "/favicon.ico",
                         "/webjars/**", "/h2-console/**"
                 ).permitAll()
+                .requestMatchers("/exam/admin", "/exam/admin/**").hasRole("TEACHER")
                 .requestMatchers("/teacher/**").hasRole("TEACHER")
                 .requestMatchers("/student/**").hasRole("STUDENT")
                 .anyRequest().authenticated()

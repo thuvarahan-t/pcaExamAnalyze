@@ -3,8 +3,6 @@ package com.example.pcaExamAnalyze.web;
 import com.example.pcaExamAnalyze.service.UserService;
 import com.example.pcaExamAnalyze.web.dto.RegisterForm;
 import jakarta.validation.Valid;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -46,13 +44,8 @@ public class AuthController {
 
     @GetMapping("/")
     public String home(Model model) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
-            boolean teacher = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
-            return teacher ? "redirect:/teacher/dashboard" : "redirect:/student/dashboard";
-        }
+        // The root is the permanent PCA portal gateway. Authenticated Analyzer users
+        // must still be able to return here and choose the separate MCQ Exam System.
         addRegisterFormIfMissing(model);
         return "index";
     }

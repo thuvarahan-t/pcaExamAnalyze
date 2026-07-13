@@ -2,6 +2,7 @@ package com.example.pcaExamAnalyze.config;
 
 import com.example.pcaExamAnalyze.domain.*;
 import com.example.pcaExamAnalyze.repo.PaperStructureRepository;
+import com.example.pcaExamAnalyze.repo.McqBatchRepository;
 import com.example.pcaExamAnalyze.repo.SectionRepository;
 import com.example.pcaExamAnalyze.repo.UserRepository;
 
@@ -28,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PaperStructureRepository papers;
     private final SectionRepository sections;
     private final PasswordEncoder encoder;
+    private final McqBatchRepository mcqBatches;
 
     @Value("${pca.teacher.username}")
     private String teacherUsername;
@@ -39,26 +41,60 @@ public class DataInitializer implements CommandLineRunner {
     private boolean seedSampleData;
 
     public DataInitializer(UserRepository users, PaperStructureRepository papers,
-                           SectionRepository sections, PasswordEncoder encoder) {
+                           SectionRepository sections, PasswordEncoder encoder,
+                           McqBatchRepository mcqBatches) {
         this.users = users;
         this.papers = papers;
         this.sections = sections;
         this.encoder = encoder;
+        this.mcqBatches = mcqBatches;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
         seedTeacher();
+        seedMcqBatches();
         if (seedSampleData) {
             seedSamplePapers();
             seedDemoStudent();
         }
     }
 
+    private void seedMcqBatches() {
+        if (mcqBatches.count() > 0) return;
+        for (String name : new String[]{"2026 A/L", "2027 A/L", "2028 A/L", "Repeat Batch"}) {
+            mcqBatches.save(new McqBatch(name));
+        }
+        log.info("Seeded default PCA MCQ batches");
+    }
+
     private void seedTeacher() {
-        if (users.existsByUsernameIgnoreCase(teacherUsername)) {
-            log.info("Teacher account already present: {}", teacherUsername);
+        User existing = users.findByUsernameIgnoreCase(teacherUsername).orElse(null);
+        if (existing != null) {
+            boolean changed = false;
+            if (!encoder.matches(teacherPassword, existing.getPasswordHash())) {
+                existing.setPasswordHash(encoder.encode(teacherPassword));
+                changed = true;
+            }
+            if (!teacherName.equals(existing.getFullName())) {
+                existing.setFullName(teacherName);
+                changed = true;
+            }
+            if (existing.getRole() != Role.TEACHER) {
+                existing.setRole(Role.TEACHER);
+                changed = true;
+            }
+            if (!existing.isEnabled()) {
+                existing.setEnabled(true);
+                changed = true;
+            }
+            if (changed) {
+                users.save(existing);
+                log.info("Synchronized teacher account from environment: {}", teacherUsername);
+            } else {
+                log.info("Teacher account already synchronized: {}", teacherUsername);
+            }
             return;
         }
         User teacher = new User(teacherUsername, encoder.encode(teacherPassword), teacherName, Role.TEACHER);
