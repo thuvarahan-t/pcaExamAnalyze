@@ -1,0 +1,22 @@
+.pca-dialog-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px;background:rgba(7,20,43,.46);backdrop-filter:blur(12px) saturate(125%);-webkit-backdrop-filter:blur(12px) saturate(125%);animation:pca-dialog-fade .18s ease-out}
+.pca-dialog-card{width:min(430px,100%);overflow:hidden;border:1px solid rgba(255,255,255,.86);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(239,246,255,.95));box-shadow:0 30px 80px rgba(15,23,42,.28),inset 0 1px 0 #fff;animation:pca-dialog-in .22s cubic-bezier(.2,.8,.2,1)}
+.pca-dialog-content{padding:28px 28px 20px;text-align:center}
+.pca-dialog-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 16px;border-radius:19px;color:#1d4ed8;font-size:26px;background:linear-gradient(145deg,#dbeafe,#ecfeff);box-shadow:0 12px 25px rgba(37,99,235,.16)}
+.pca-dialog-icon.danger{color:#dc2626;background:linear-gradient(145deg,#fee2e2,#fff1f2)}
+.pca-dialog-icon.error{color:#dc2626;background:linear-gradient(145deg,#fee2e2,#fff1f2)}
+.pca-dialog-icon.success{color:#059669;background:linear-gradient(145deg,#d1fae5,#ecfdf5)}
+.pca-dialog-title{margin:0;color:#0f172a;font:800 21px/1.25 Sora,Inter,sans-serif}
+.pca-dialog-message{margin:10px 0 0;color:#64748b;font:500 14px/1.65 Inter,sans-serif;white-space:pre-line}
+.pca-dialog-input{width:100%;height:48px;margin-top:18px;padding:0 14px;border:1px solid #cbd5e1;border-radius:14px;outline:0;color:#0f172a;font:600 14px Inter,sans-serif;background:rgba(255,255,255,.9);transition:border-color .18s,box-shadow .18s}
+.pca-dialog-input:focus{border-color:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,.13)}
+.pca-dialog-actions{display:flex;gap:10px;padding:16px 20px 20px;border-top:1px solid rgba(148,163,184,.16)}
+.pca-dialog-btn{min-height:46px;flex:1;padding:11px 16px;border:0;border-radius:14px;cursor:pointer;font:800 14px Inter,sans-serif;transition:transform .16s,box-shadow .16s}
+.pca-dialog-btn:hover{transform:translateY(-1px)}
+.pca-dialog-btn.cancel{color:#475569;background:#e2e8f0}
+.pca-dialog-btn.primary{color:#fff;background:linear-gradient(135deg,#2563eb,#22bfe5);box-shadow:0 10px 22px rgba(37,99,235,.24)}
+.pca-dialog-btn.danger,.pca-dialog-btn.error{color:#fff;background:linear-gradient(135deg,#dc2626,#f43f5e);box-shadow:0 10px 22px rgba(220,38,38,.22)}
+.pca-dialog-flash{display:none!important}
+@keyframes pca-dialog-fade{from{opacity:0}to{opacity:1}}
+@keyframes pca-dialog-in{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:520px){.pca-dialog-overlay{align-items:end;padding:12px}.pca-dialog-card{border-radius:24px}.pca-dialog-content{padding:24px 20px 18px}.pca-dialog-actions{padding:14px 16px 16px}.pca-dialog-title{font-size:19px}.pca-dialog-message{font-size:13px}.pca-dialog-btn{min-height:48px}}
+@media(prefers-reduced-motion:reduce){.pca-dialog-overlay,.pca-dialog-card{animation:none}}
