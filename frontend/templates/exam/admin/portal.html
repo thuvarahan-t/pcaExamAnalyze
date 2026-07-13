@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1f3a">
+    <title>PCA MCQ Admin Portal</title>
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png(v=2)}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/exam-admin.css(v=2)}">
+    <link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=1)}">
+</head>
+<body>
+<div class="mobile-admin-gate">
+    <div class="gate-card">
+        <i class="bi bi-display"></i>
+        <h2>Larger screen required</h2>
+        <p>The PCA Exam Admin Portal is designed for secure laptop and desktop management. Please open it on a wider screen.</p>
+        <a class="btn" th:href="@{/exam}"><i class="bi bi-arrow-left"></i> Back to Exam Portal</a>
+    </div>
+</div>
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <a class="admin-brand" th:href="@{/exam/admin}">
+            <img th:src="@{/img/logo.png}" alt="PCA logo">
+            <span><strong>PCA Admin</strong><small>MCQ Exam System</small></span>
+        </a>
+
+        <div class="admin-menu-label">Workspace</div>
+        <a class="admin-nav-link" th:classappend="${adminPage == 'dashboard'} ? ' active'" th:href="@{/exam/admin}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+        <a class="admin-nav-link" th:classappend="${adminPage == 'exam-form'} ? ' active'" th:href="@{/exam/admin/exams/new}"><i class="bi bi-plus-square-fill"></i> Add Exam</a>
+        <a class="admin-nav-link" th:classappend="${adminPage == 'exams'} ? ' active'" th:href="@{/exam/admin/exams}"><i class="bi bi-journal-text"></i> Manage Exams</a>
+        <a class="admin-nav-link" th:classappend="${adminPage == 'submissions'} ? ' active'" th:href="@{/exam/admin/submissions}"><i class="bi bi-people-fill"></i> Submissions</a>
+
+        <div class="admin-sidebar-foot">
+            <div class="admin-user"><strong th:text="${currentUserName}">PCA Teacher</strong><small>Environment teacher account</small></div>
+            <a class="admin-exit" th:href="@{/exam}"><i class="bi bi-arrow-left-circle"></i> Student Exam Portal</a>
+            <form class="admin-logout-form" th:action="@{/logout}" method="post"><button class="admin-logout" type="submit"><i class="bi bi-box-arrow-right"></i> Log out</button></form>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="pca-dialog-flash" th:if="${success}" th:attr="data-dialog-flash=${success},data-dialog-type='success',data-dialog-title='Completed'"></div>
+        <div class="pca-dialog-flash" th:if="${error}" th:attr="data-dialog-flash=${error},data-dialog-type='danger',data-dialog-title='Unable to complete'"></div>
+
+        <th:block th:switch="${adminPage}">
+            <th:block th:case="'dashboard'">
+                <header class="admin-page-head">
+                    <div><h1>Dashboard</h1><p>Live overview of PCA MCQ examinations and submissions.</p></div>
+                    <div class="head-actions"><a class="btn primary" th:href="@{/exam/admin/exams/new}"><i class="bi bi-plus-lg"></i> Add Exam</a></div>
+                </header>
+
+                <section class="stats-grid">
+                    <a class="glass-card stat-card stat-link" th:href="@{/exam/admin/exams}"><div class="stat-value" th:text="${dashboard.totalExams}">0</div><div class="stat-label">Total Exams</div></a>
+                    <a class="glass-card stat-card stat-link" th:href="@{/exam/admin(popup='submissions')}"><div class="stat-value" th:text="${dashboard.last24Submissions}">0</div><div class="stat-label">Last 24 Hours Submissions</div><span class="stat-open">View details <i class="bi bi-arrow-up-right"></i></span></a>
+                    <a class="glass-card stat-card stat-link" th:href="@{/exam/admin(popup='batches')}"><div class="stat-value" th:text="${dashboard.activeBatches}">0</div><div class="stat-label">Active Batches</div><span class="stat-open">Manage batches <i class="bi bi-arrow-up-right"></i></span></a>
+                </section>
+
+                <section class="glass-card admin-panel table-card dashboard-recent">
+                        <div class="recent-head"><div><h2 class="panel-title">Recent 5 Exams</h2><p class="panel-subtitle">Latest exam configurations</p></div><a class="btn small" th:href="@{/exam/admin/exams}">View all</a></div>
+                        <div class="table-wrap" th:if="${!#lists.isEmpty(dashboard.recentExams)}"><table class="admin-table"><thead><tr><th>Exam</th><th>Batch</th><th>Opens</th><th>Answer Key</th><th>Status</th><th></th></tr></thead><tbody><tr th:each="row : ${dashboard.recentExams}"><td class="cell-title" th:text="${row.name}"></td><td th:text="${row.batches}"></td><td th:text="${row.opens}"></td><td th:text="|${row.keyCount} / ${row.totalQuestions}|"></td><td><span class="status" th:classappend="| status-${#strings.toLowerCase(#strings.replace(row.status, ' ', '-'))}|" th:text="${row.status}"></span></td><td><a class="btn link small" th:href="@{/exam/admin/exams/{id}/edit(id=${row.id})}">Edit</a></td></tr></tbody></table></div>
+                        <div class="empty-state" th:if="${#lists.isEmpty(dashboard.recentExams)}"><i class="bi bi-journal-plus"></i><h3>No exams created yet</h3><p>Create the first PCA MCQ examination to begin.</p><a class="btn primary" th:href="@{/exam/admin/exams/new}">Add Exam</a></div>
+                </section>
+            </th:block>
+
+            <th:block th:case="'exams'">
+                <header class="admin-page-head"><div><h1>Manage Exams</h1><p>Edit schedules, answer keys, publication and results.</p></div><div class="head-actions"><a class="btn primary" th:href="@{/exam/admin/exams/new}"><i class="bi bi-plus-lg"></i> Add Exam</a></div></header>
+                <form class="glass-card exam-filter-bar" th:action="@{/exam/admin/exams}" method="get"><div class="form-group"><label for="examSearch">Search exam</label><input class="form-input" id="examSearch" type="search" name="q" th:value="${search}" placeholder="Exam name..."></div><div class="form-group"><label for="manageBatch">Batch</label><select class="form-input" id="manageBatch" name="batch"><option value="">All batches</option><option th:each="item : ${adminBatches}" th:value="${item}" th:text="${item}" th:selected="${item == selectedBatch}"></option></select></div><div class="form-group"><label for="manageMonth">Month</label><select class="form-input" id="manageMonth" name="month"><option value="">All months</option><option th:each="item : ${adminMonths}" th:value="${item}" th:text="${item}" th:selected="${item == selectedMonth}"></option></select></div><div class="form-group"><label for="manageYear">Year</label><select class="form-input" id="manageYear" name="year"><option value="">All years</option><option th:each="item : ${adminYears}" th:value="${item}" th:text="${item}" th:selected="${item == selectedYear}"></option></select></div><button class="btn primary" type="submit">Filter</button><a class="btn" th:href="@{/exam/admin/exams}">Clear</a><span class="filter-total" th:text="|${examPage.totalItems} exams|">0 exams</span></form>
+                <section class="glass-card table-card simple-exam-table" th:if="${!#lists.isEmpty(examRows)}"><div class="table-wrap"><table class="admin-table"><thead><tr><th>Exam Name</th><th>Batch</th><th>Edit</th><th>Release</th><th>Copy Link</th><th>Delete</th></tr></thead><tbody>
+                    <tr class="clickable-row" th:each="row : ${examRows}" th:attr="data-row-href=@{/exam/admin/exams/{id}/analytics(id=${row.id})}">
+                        <td class="cell-title"><span th:text="${row.name}"></span><span class="cell-sub">Click row to open exam analysis</span></td>
+                        <td><span th:text="${row.batches}"></span></td>
+                        <td><a class="btn small" th:href="@{/exam/admin/exams/{id}/edit(id=${row.id})}">Edit</a></td>
+                        <td><div class="row-actions">
+                            <form th:if="${!row.resultsPublished}" th:action="@{/exam/admin/exams/{id}/release-results(id=${row.id})}" method="post" data-confirm="Release results for this examination?"><button class="btn link small" type="submit">Release</button></form>
+                            <span class="status status-result-released" th:if="${row.resultsPublished}">RELEASED</span>
+                        </div></td><td><button class="btn small" type="button" th:attr="data-copy-path=|/exam/p/${row.slug}|">Copy Link</button></td>
+                        <td><form th:action="@{/exam/admin/exams/{id}/delete(id=${row.id})}" method="post" data-confirm="This permanently deletes the exam, its answer key and every student submission. This action cannot be undone." data-confirm-title="Delete this exam?" data-confirm-action="Delete Exam" data-confirm-type="danger"><button class="btn small danger" type="submit"><i class="bi bi-trash3"></i> Delete</button></form></td>
+                    </tr>
+                </tbody></table></div></section>
+                <nav class="pagination" th:if="${examPage.totalPages > 1}" aria-label="Exam pages"><a class="page-link" th:classappend="${!examPage.hasPrevious} ? ' disabled'" th:href="${examPage.hasPrevious} ? @{/exam/admin/exams(page=${examPage.page - 1},q=${search},batch=${selectedBatch},month=${selectedMonth},year=${selectedYear})} : '#'"><i class="bi bi-chevron-left"></i></a><a class="page-link" th:each="number : ${#numbers.sequence(0, examPage.totalPages - 1)}" th:classappend="${number == examPage.page} ? ' active'" th:href="@{/exam/admin/exams(page=${number},q=${search},batch=${selectedBatch},month=${selectedMonth},year=${selectedYear})}" th:text="${number + 1}"></a><a class="page-link" th:classappend="${!examPage.hasNext} ? ' disabled'" th:href="${examPage.hasNext} ? @{/exam/admin/exams(page=${examPage.page + 1},q=${search},batch=${selectedBatch},month=${selectedMonth},year=${selectedYear})} : '#'"><i class="bi bi-chevron-right"></i></a></nav>
+                <section class="glass-card empty-state" th:if="${#lists.isEmpty(examRows)}"><i class="bi bi-journal-plus"></i><h3>No exams created yet</h3><p>Add your first MCQ examination and answer key.</p><a class="btn primary" th:href="@{/exam/admin/exams/new}">Add Exam</a></section>
+            </th:block>
+
+            <th:block th:case="'exam-form'">
+                <header class="admin-page-head"><div><h1 th:text="${formTitle}">Add Exam</h1><p>Configure the batch category, paper schedule and dynamic answer key.</p></div><div class="head-actions"><button class="btn primary" th:if="${editingExamSlug != null}" type="button" th:attr="data-copy-path=|/exam/p/${editingExamSlug}|"><i class="bi bi-link-45deg"></i> Copy Share Link</button><a class="btn" th:href="@{/exam/admin/exams}"><i class="bi bi-arrow-left"></i> Manage Exams</a></div></header>
+                <form th:action="${editingExamId == null} ? @{/exam/admin/exams} : @{/exam/admin/exams/{id}/update(id=${editingExamId})}" th:object="${examForm}" method="post" autocomplete="off">
+                    <section class="glass-card form-card">
+                        <h2 class="section-title"><i class="bi bi-sliders"></i> Exam Settings</h2>
+                        <div class="form-grid">
+                            <div class="form-group full"><label for="examName">Exam Name</label><input class="form-input" id="examName" type="text" th:field="*{name}" placeholder="2026 Batch Physics Exam 02" maxlength="180" required><div class="field-error" th:errors="*{name}"></div></div>
+                            <div class="form-group"><label for="examBatch">Exam Batch</label><select class="form-input" id="examBatch" th:field="*{batch}" required><option value="">Select batch</option><option th:each="batch : ${adminBatches}" th:value="${batch}" th:text="${batch}"></option></select><div class="field-hint">Used only to group and filter papers; it does not restrict access.</div><div class="field-error" th:errors="*{batch}"></div></div>
+                            <div class="form-group"><label for="totalQuestions">Number of Questions</label><input class="form-input" id="totalQuestions" type="number" th:field="*{totalQuestions}" min="0" max="50" inputmode="numeric" required><div class="field-hint">Enter any number from 0 to 50.</div><div class="field-error" th:errors="*{totalQuestions}"></div></div>
+                            <div class="form-group"><label for="examYear">Exam Year</label><select class="form-input" id="examYear" th:field="*{examYear}" required><option value="">Select year</option><option th:each="year : ${adminYears}" th:value="${year}" th:text="${year}"></option></select><div class="field-error" th:errors="*{examYear}"></div></div>
+                            <div class="form-group"><label for="examMonth">Exam Month</label><select class="form-input" id="examMonth" th:field="*{examMonth}" required><option value="">Select month</option><option th:each="month : ${adminMonths}" th:value="${month}" th:text="${month}"></option></select><div class="field-error" th:errors="*{examMonth}"></div></div>
+                            <div class="form-group full"><label for="paperDriveUrl">Google Drive PDF Link</label><input class="form-input" id="paperDriveUrl" type="url" th:field="*{paperDriveUrl}" placeholder="https://drive.google.com/file/d/FILE_ID/view" required><div class="field-hint">Share the file as “Anyone with the link can view”. Only Google Drive/Docs links are accepted.</div><div class="field-error" th:errors="*{paperDriveUrl}"></div></div>
+                            <div class="form-group"><label for="openAt">Open Exam At</label><input class="form-input" id="openAt" type="datetime-local" th:field="*{openAt}" required><div class="field-error" th:errors="*{openAt}"></div></div>
+                            <div class="form-group"><label for="resultReleaseAt">Release Result At</label><input class="form-input" id="resultReleaseAt" type="datetime-local" th:field="*{resultReleaseAt}" required><div class="field-error" th:errors="*{resultReleaseAt}"></div></div>
+                            <div class="form-group"><label for="durationMinutes">Duration (minutes)</label><input class="form-input" id="durationMinutes" type="number" th:field="*{durationMinutes}" min="1" max="600"><div class="field-error" th:errors="*{durationMinutes}"></div></div>
+                            <div class="form-group"><span class="group-label">Submission Policy</span><label class="check-pill"><input type="checkbox" th:field="*{allowResubmission}"><span>Allow student resubmission</span></label></div>
+                            <div class="form-group full"><label for="instructions">Instructions</label><textarea class="form-input" id="instructions" th:field="*{instructions}" maxlength="3000"></textarea><div class="field-error" th:errors="*{instructions}"></div></div>
+                        </div>
+                    </section>
+
+                    <section class="glass-card form-card" id="answer-key">
+                        <div class="answer-head"><h2 class="section-title"><i class="bi bi-ui-checks-grid"></i> Answer Key</h2><span class="key-count" id="key-count">0 / 50 set</span><div class="answer-actions"><button class="btn small danger" id="clear-key" type="button">Clear All</button><button class="btn small" id="validate-key" type="button">Validate Answers</button></div></div>
+                        <p class="panel-subtitle">Choose one or more accepted options for each question. Students can still select only one answer. Partial keys may be saved as draft; every question needs at least one accepted option before releasing results.</p>
+                        <div class="key-message" id="key-message"></div>
+                        <div class="answer-sheet">
+                            <div class="answer-row" th:each="q : ${questionNumbers}"><span class="question-number" th:text="${q}"></span><div class="answer-options"><span class="answer-option" th:each="option : ${optionNumbers}"><input type="checkbox" th:id="|answer-${q}-${option}|" th:name="|answers[${q}]|" th:value="${option}" th:attr="data-question=${q}" th:checked="${examForm.answers.get(q) != null and #lists.contains(examForm.answers.get(q), option)}"><label th:for="|answer-${q}-${option}|" th:text="${option}"></label></span></div></div>
+                        </div>
+                    </section>
+
+                    <div class="form-actions"><button class="btn" type="submit" name="action" value="draft"><i class="bi bi-save"></i> Save Draft</button><button class="btn primary" type="submit" name="action" value="publish"><i class="bi bi-calendar-check"></i> Save &amp; Schedule</button></div>
+                </form>
+            </th:block>
+
+            <th:block th:case="'exam-analytics'">
+                <header class="admin-page-head">
+                    <div><h1 th:text="${analytics.exam.name}">Exam Analysis</h1><p>Exam performance, question accuracy and every student submission.</p></div>
+                    <div class="head-actions"><a class="btn" th:href="@{/exam/admin/exams}"><i class="bi bi-arrow-left"></i> Manage Exams</a><a class="btn primary" th:href="@{/exam/admin/exams/{id}/export.csv(id=${analytics.exam.id})}"><i class="bi bi-download"></i> Export Results CSV</a></div>
+                </header>
+
+                <section class="analytics-summary">
+                    <div class="glass-card exam-detail-card"><span>Batch</span><strong th:text="${analytics.exam.batches}">Batch</strong></div>
+                    <div class="glass-card exam-detail-card"><span>Questions</span><strong th:text="${analytics.exam.totalQuestions}">0</strong></div>
+                    <div class="glass-card exam-detail-card"><span>Submissions</span><strong th:text="${analytics.exam.submissions}">0</strong></div>
+                    <div class="glass-card exam-detail-card"><span>Status</span><strong th:text="${analytics.exam.status}">Status</strong></div>
+                    <div class="glass-card exam-detail-card"><span>Opens</span><strong th:text="${analytics.exam.opens}">-</strong></div>
+                </section>
+
+                <section class="analytics-grid">
+                    <article class="glass-card admin-panel">
+                        <h2 class="panel-title">Score Distribution</h2><p class="panel-subtitle">Number of students within each mark range.</p>
+                        <div class="chart score-chart">
+                            <div class="chart-item" th:each="bar : ${analytics.scoreDistribution}"><span class="chart-value" th:text="${bar.value}">0</span><span class="chart-bar" th:style="|height:${bar.height}%;|"></span><span class="chart-label" th:text="${bar.label}"></span></div>
+                        </div>
+                    </article>
+                    <article class="glass-card admin-panel">
+                        <div class="panel-row"><div><h2 class="panel-title">Exam Details</h2><p class="panel-subtitle">Configured paper information.</p></div><a class="btn small" th:href="@{/exam/admin/exams/{id}/edit(id=${analytics.exam.id})}">Edit Exam</a></div>
+                        <dl class="exam-detail-list"><div><dt>Duration</dt><dd th:text="|${analytics.durationMinutes} minutes|"></dd></div><div><dt>Answer key</dt><dd th:text="|${analytics.exam.keyCount} / ${analytics.exam.totalQuestions} set|"></dd></div><div><dt>Result</dt><dd th:text="${analytics.exam.resultsPublished} ? 'Released' : 'Not released'"></dd></div><div><dt>Paper</dt><dd><a class="text-link" th:href="${analytics.exam.paperUrl}" target="_blank" rel="noopener">Open PDF <i class="bi bi-box-arrow-up-right"></i></a></dd></div></dl>
+                        <p class="exam-instructions" th:if="${!#strings.isEmpty(analytics.instructions)}" th:text="${analytics.instructions}"></p>
+                    </article>
+                </section>
+
+                <section class="glass-card admin-panel question-analysis">
+                    <h2 class="panel-title">Question Correctness</h2><p class="panel-subtitle">Correct answers as a percentage of students who answered each question.</p>
+                    <div class="question-bars"><div class="question-bar-row" th:each="item : ${analytics.questions}"><strong th:text="|Q${item.question}|">Q1</strong><div class="question-bar-track"><span th:style="|width:${item.percentage}%;|"></span></div><span th:text="|${item.correct} / ${item.answered} (${item.percentage}%)|">0 / 0</span></div></div>
+                </section>
+
+                <section class="glass-card table-card analytics-submissions" th:if="${!#lists.isEmpty(analytics.submissions)}">
+                    <div class="table-section-head"><div><h2 class="panel-title">Student Submissions</h2><p class="panel-subtitle">Click a student to open their submitted MCQ sheet.</p></div></div>
+                    <div class="table-wrap"><table class="admin-table"><thead><tr><th>Student</th><th>Registration ID</th><th>Batch</th><th>Submitted Time</th><th>Score</th></tr></thead><tbody><tr class="clickable-row" th:each="row : ${analytics.submissions}" th:attr="data-row-href=@{/exam/admin/submissions/{id}(id=${row.id})}"><td class="cell-title"><span th:text="${row.studentName}"></span><span class="cell-sub" th:text="${row.email}"></span></td><td th:text="${row.registrationId}"></td><td th:text="${row.batch}"></td><td th:text="${row.submitted}"></td><td><strong th:text="${row.score}"></strong></td></tr></tbody></table></div>
+                </section>
+                <section class="glass-card empty-state" th:if="${#lists.isEmpty(analytics.submissions)}"><i class="bi bi-inbox"></i><h3>No submissions yet</h3><p>This exam has not received a student submission.</p></section>
+            </th:block>
+
+            <th:block th:case="'submission-detail'">
+                <header class="admin-page-head">
+                    <div><h1 th:text="${submissionDetail.studentName}">Student Submission</h1><p th:text="|${submissionDetail.examName} submitted ${submissionDetail.submitted}|">Exam submission</p></div>
+                    <div class="head-actions"><a class="btn" th:href="@{/exam/admin/exams/{id}/analytics(id=${submissionDetail.examId})}"><i class="bi bi-arrow-left"></i> Exam Analysis</a></div>
+                </header>
+                <section class="submission-detail-grid">
+                    <article class="glass-card admin-panel submission-profile-panel"><h2 class="panel-title"><i class="bi bi-person-vcard-fill"></i> Student Details</h2><dl class="exam-detail-list"><div><dt>Full Name</dt><dd th:text="${submissionDetail.studentName}"></dd></div><div><dt>Registration ID</dt><dd th:text="${submissionDetail.registrationId}"></dd></div><div><dt>NIC Number</dt><dd class="detail-mono" th:text="${submissionDetail.nic}"></dd></div><div><dt>Email Address</dt><dd th:text="${submissionDetail.email}"></dd></div><div><dt>School</dt><dd th:text="${submissionDetail.school}"></dd></div><div><dt>Batch</dt><dd th:text="${submissionDetail.batch}"></dd></div><div><dt>Stream</dt><dd th:text="${submissionDetail.stream}"></dd></div><div><dt>District</dt><dd th:text="${submissionDetail.district}"></dd></div></dl></article>
+                    <article class="glass-card admin-panel submission-profile-panel"><h2 class="panel-title"><i class="bi bi-file-earmark-check-fill"></i> Submission Details</h2><dl class="exam-detail-list"><div><dt>Examination</dt><dd th:text="${submissionDetail.examName}"></dd></div><div><dt>Receipt Number</dt><dd class="detail-mono" th:text="${submissionDetail.receipt}"></dd></div><div><dt>Started At</dt><dd th:text="${submissionDetail.started}"></dd></div><div><dt>Submitted At</dt><dd th:text="${submissionDetail.submitted}"></dd></div><div><dt>Status</dt><dd th:text="${submissionDetail.status}"></dd></div><div><dt>Answered</dt><dd th:text="|${submissionDetail.answers.size()} / ${submissionDetail.totalQuestions}|"></dd></div><div><dt>Score</dt><dd th:text="${submissionDetail.resultsPublished} ? |${submissionDetail.score} / ${submissionDetail.totalQuestions}| : 'Pending release'"></dd></div><div><dt>Percentage</dt><dd th:text="${submissionDetail.resultsPublished and submissionDetail.percentage != null} ? |${#numbers.formatDecimal(submissionDetail.percentage,1,1)}%| : 'Pending release'"></dd></div></dl></article>
+                </section>
+                <div class="privacy-note" th:if="${!submissionDetail.resultsPublished}"><i class="bi bi-lock-fill"></i> Results are not released. The student's selected answers are shown, but the answer key remains hidden.</div>
+                <div class="privacy-note released-note" th:if="${submissionDetail.resultsPublished}"><i class="bi bi-check-circle-fill"></i> Results are released. Green shows the correct answer; red shows an incorrect selected answer.</div>
+                <section class="glass-card form-card">
+                    <div class="answer-head"><h2 class="section-title"><i class="bi bi-ui-checks-grid"></i> Submitted MCQ Sheet</h2><span class="key-count" th:text="|${submissionDetail.totalQuestions} questions|">0 questions</span></div>
+                    <div class="answer-sheet review-answer-sheet">
+                        <div class="answer-row review-answer-row" th:each="answer : ${submissionDetail.answers}" th:classappend="${answer.question > submissionDetail.totalQuestions} ? ' unavailable'">
+                            <span class="question-number" th:text="${answer.question}"></span>
+                            <div class="answer-options"><span th:each="option : ${optionNumbers}" th:class="${'review-option' + (answer.selectedOption == option ? ' selected' : '') + (submissionDetail.resultsPublished and answer.correctOptions.contains(option) ? ' correct' : '') + (submissionDetail.resultsPublished and answer.selectedOption == option and !answer.correctOptions.contains(option) ? ' wrong' : '')}" th:text="${option}"></span></div>
+                        </div>
+                    </div>
+                </section>
+            </th:block>
+
+            <th:block th:case="'submissions'">
+                <header class="admin-page-head"><div><h1>Submissions</h1><p>Search and review complete student submission details.</p></div></header>
+                <form class="glass-card filter-bar submission-filter" th:action="@{/exam/admin/submissions}" method="get"><div class="form-group"><label for="submissionSearch">Student or Registration ID</label><input class="form-input" id="submissionSearch" type="search" name="q" th:value="${search}" placeholder="Search..."></div><div class="form-group"><label for="submissionExamTrigger">Examination</label><input id="submissionExam" type="hidden" name="examId" th:value="${selectedExamId}"><div class="admin-gselect" id="submissionExamSelect"><button class="form-input admin-gselect-trigger" id="submissionExamTrigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span id="submissionExamText">All exams</span><i class="bi bi-chevron-down"></i></button><div class="admin-gselect-panel" id="submissionExamPanel" hidden><div class="admin-gselect-search"><i class="bi bi-search"></i><input id="submissionExamSearch" type="search" placeholder="Search exam..." autocomplete="off"></div><ul class="admin-gselect-list" role="listbox"><li class="admin-gselect-option" data-value="" role="option"><span class="option-icon"><i class="bi bi-collection"></i></span><span>All exams</span><i class="bi bi-check2 option-check"></i></li><li class="admin-gselect-option" th:each="exam : ${examRows}" th:attr="data-value=${exam.id}" role="option"><span class="option-icon"><i class="bi bi-file-earmark-text"></i></span><span th:text="${exam.name}"></span><i class="bi bi-check2 option-check"></i></li></ul><div class="admin-gselect-empty" hidden>No matching exams</div></div></div></div><div class="form-group"><label for="submissionDateFrom">Submitted from</label><input class="form-input" id="submissionDateFrom" type="date" name="from" th:value="${dateFrom}"></div><div class="form-group"><label for="submissionDateTo">Submitted to</label><input class="form-input" id="submissionDateTo" type="date" name="to" th:value="${dateTo}"></div><button class="btn primary" type="submit">Apply Filter</button><a class="btn" th:href="@{/exam/admin/submissions}">Clear</a><a class="btn" th:href="@{/exam/admin/submissions/export.csv(examId=${selectedExamId})}"><i class="bi bi-download"></i> Export CSV</a><span class="filter-total" th:text="|${submissionPage.totalItems} submissions|">0 submissions</span></form>
+                <section class="glass-card table-card" th:if="${!#lists.isEmpty(submissionRows)}"><div class="table-wrap"><table class="admin-table"><thead><tr><th>Receipt</th><th>Student</th><th>Registration ID</th><th>NIC</th><th>Exam</th><th>Batch / Stream</th><th>District</th><th>Submitted</th><th>Status</th><th>Score</th><th aria-label="Actions"></th></tr></thead><tbody><tr class="clickable-row" th:each="row : ${submissionRows}" th:attr="data-row-href=@{/exam/admin/submissions/{id}(id=${row.id})}"><td th:text="${row.receipt}"></td><td class="cell-title"><span th:text="${row.studentName}"></span><span class="cell-sub" th:text="${row.email}"></span></td><td th:text="${row.registrationId}"></td><td style="font-family:ui-monospace,monospace" th:text="${row.nic}"></td><td th:text="${row.examName}"></td><td><span th:text="${row.batch}"></span><span class="cell-sub" th:text="${row.stream}"></span></td><td th:text="${row.district}"></td><td th:text="${row.submitted}"></td><td><span class="status status-scheduled" th:text="${row.status}"></span></td><td style="font-weight:800" th:text="${row.score}"></td><td><form th:action="@{/exam/admin/submissions/{id}/delete(id=${row.id})}" method="post" data-confirm="This student submission and all its saved answers will be permanently deleted." data-confirm-title="Delete this submission?" data-confirm-action="Delete Submission" data-confirm-type="danger"><button class="submission-delete" type="submit" title="Delete submission" aria-label="Delete submission"><i class="bi bi-trash3-fill" aria-hidden="true"></i></button></form></td></tr></tbody></table></div></section>
+                <nav class="pagination" th:if="${submissionPage.totalPages > 1}" aria-label="Submission pages"><a class="page-link" th:classappend="${!submissionPage.hasPrevious} ? ' disabled'" th:href="${submissionPage.hasPrevious} ? @{/exam/admin/submissions(page=${submissionPage.page - 1},examId=${selectedExamId},q=${search},from=${dateFrom},to=${dateTo})} : '#'"><i class="bi bi-chevron-left"></i></a><a class="page-link" th:each="number : ${#numbers.sequence(0, submissionPage.totalPages - 1)}" th:classappend="${number == submissionPage.page} ? ' active'" th:href="@{/exam/admin/submissions(page=${number},examId=${selectedExamId},q=${search},from=${dateFrom},to=${dateTo})}" th:text="${number + 1}"></a><a class="page-link" th:classappend="${!submissionPage.hasNext} ? ' disabled'" th:href="${submissionPage.hasNext} ? @{/exam/admin/submissions(page=${submissionPage.page + 1},examId=${selectedExamId},q=${search},from=${dateFrom},to=${dateTo})} : '#'"><i class="bi bi-chevron-right"></i></a></nav>
+                <section class="glass-card empty-state" th:if="${#lists.isEmpty(submissionRows)}"><i class="bi bi-inbox"></i><h3>No submissions found</h3><p>Student submissions will appear here after an examination begins.</p></section>
+            </th:block>
+        </th:block>
+    </main>
+
+    <div class="admin-modal-overlay" th:if="${adminPage == 'dashboard' and dashboardPopup == 'batches'}">
+        <section class="admin-popup" role="dialog" aria-modal="true" aria-labelledby="batchPopupTitle">
+            <a class="popup-close" th:href="@{/exam/admin}" aria-label="Close">&times;</a>
+            <div class="popup-head"><div><h2 id="batchPopupTitle">Batch Management</h2><p>Add, activate, deactivate or delete exam batch filters.</p></div></div>
+            <form class="batch-add-form" th:action="@{/exam/admin/batches}" method="post"><input class="form-input" type="text" name="name" maxlength="80" placeholder="New batch name" required><button class="btn primary" type="submit"><i class="bi bi-plus-lg"></i> Add Batch</button></form>
+            <div class="batch-list">
+                <div class="batch-row" th:each="batch : ${batchRows}"><div><strong th:text="${batch.name}"></strong><span class="status" th:classappend="${batch.active} ? ' status-open' : ' status-archived'" th:text="${batch.active} ? 'ACTIVE' : 'INACTIVE'"></span></div><div class="batch-actions"><form class="batch-rename-form" th:action="@{/exam/admin/batches/{id}/rename(id=${batch.id})}" method="post" th:attr="data-current-name=${batch.name}"><input type="hidden" name="name" th:value="${batch.name}"><button class="btn small" type="submit">Rename</button></form><form th:action="@{/exam/admin/batches/{id}/toggle(id=${batch.id})}" method="post"><button class="btn small" type="submit" th:text="${batch.active} ? 'Deactivate' : 'Activate'"></button></form><form th:action="@{/exam/admin/batches/{id}/delete(id=${batch.id})}" method="post" data-confirm="Delete this batch filter?"><button class="btn small danger" type="submit">Delete</button></form></div></div>
+                <div class="popup-empty" th:if="${#lists.isEmpty(batchRows)}">No batches added yet.</div>
+            </div>
+        </section>
+    </div>
+
+    <div class="admin-modal-overlay" th:if="${adminPage == 'dashboard' and dashboardPopup == 'submissions'}">
+        <section class="admin-popup" role="dialog" aria-modal="true" aria-labelledby="submissionPopupTitle">
+            <a class="popup-close" th:href="@{/exam/admin}" aria-label="Close">&times;</a>
+            <div class="popup-head"><div><h2 id="submissionPopupTitle">Last 24 Hours Submissions</h2><p>Submission totals grouped by examination.</p></div></div>
+            <div class="submission-count-list">
+                <a class="submission-count-row" th:each="item : ${dashboard.submissionCounts}" th:href="@{/exam/admin/submissions(examId=${item.examId})}"><span th:text="${item.examName}"></span><strong th:text="${item.count}">0</strong><i class="bi bi-chevron-right"></i></a>
+                <div class="popup-empty" th:if="${#lists.isEmpty(dashboard.submissionCounts)}">No examinations received submissions during the last 24 hours.</div>
+            </div>
+        </section>
+    </div>
+</div>
+<script th:src="@{/js/exam-dialog.js(v=1)}"></script>
+<script th:src="@{/js/exam-admin.js(v=3)}"></script>
+</body>
+</html>
