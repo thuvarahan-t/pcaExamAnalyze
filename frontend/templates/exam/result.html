@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title th:text="|${result.examName} · Result|">Result</title>
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=7)}">
+</head>
+<body>
+<main class="result-wrap">
+    <section class="surface result-hero">
+        <div class="result-icon"><i class="bi bi-check2-circle"></i></div><h1>Paper submitted</h1><p th:text="${result.examName}"></p>
+        <div class="score-ring" th:if="${result.released}" th:style="|--score:${result.percentage}%|"><div><strong th:text="|${result.score}/${result.totalQuestions}|"></strong><span th:text="|${#numbers.formatDecimal(result.percentage,1,0)}%|"></span></div></div>
+        <div class="awaiting" th:unless="${result.released}"><strong>Result is not released yet.</strong><br>Your answers are safely submitted. Your score and corrected MCQ sheet will appear here when the teacher releases the result.</div>
+        <div class="receipt-grid"><div class="receipt-item"><span>Receipt</span><strong th:text="${result.receipt}"></strong></div><div class="receipt-item"><span>Registration ID</span><strong th:text="${result.registrationId}"></strong></div><div class="receipt-item"><span>NIC Number</span><strong th:text="${result.nic}"></strong></div><div class="receipt-item"><span>Submitted</span><strong th:text="${result.submittedAt}"></strong></div><div class="receipt-item"><span>Answered</span><strong th:text="|${result.answered} / ${result.totalQuestions}|"></strong></div></div>
+        <div class="result-actions"><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a><a class="nav-link primary" th:href="@{/exam/p/{slug}(slug=${result.slug})}"><i class="bi bi-file-text-fill"></i> Paper Details</a></div>
+    </section>
+    <section class="surface review-sheet corrected-sheet" th:if="${result.released}">
+        <div class="corrected-head"><div><h2>Corrected MCQ Sheet</h2><p>Blue X: your selection · Green: accepted answer · Red: incorrect selection</p></div><span th:text="|${result.score} / ${result.totalQuestions} correct|"></span></div>
+        <div class="answer-sheet result-omr-sheet">
+            <section class="answer-column" th:each="group : ${#numbers.sequence(0,4)}">
+                <div class="answer-row result-omr-row" th:each="q : ${#numbers.sequence(group * 10 + 1, group * 10 + 10)}" th:classappend="${q > result.totalQuestions} ? ' disabled'" th:with="answer=${q <= result.totalQuestions ? result.answers[q - 1] : null}">
+                    <span class="q-number" th:text="${q}"></span>
+                    <span class="result-omr-choice" th:each="option : ${#numbers.sequence(1,5)}"
+                          th:classappend="${(answer != null and #lists.contains(answer.correct, option) ? ' correct-option' : '') + (answer != null and answer.selected == option ? (answer.state == 'INCORRECT' ? ' selected-option wrong-option' : ' selected-option') : '')}">
+                        <span th:text="${option}"></span>
+                    </span>
+                </div>
+            </section>
+        </div>
+    </section>
+</main>
+</body>
+</html>

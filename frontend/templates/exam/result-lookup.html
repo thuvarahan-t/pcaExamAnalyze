@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title th:text="|View Result · ${exam.name}|">View Result</title>
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=7)}">
+</head>
+<body>
+<header class="student-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><a class="nav-link" th:href="@{/exam/p/{slug}(slug=${exam.slug})}"><i class="bi bi-arrow-left"></i> Paper Details</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>
+<main class="lookup-wrap">
+    <section class="surface lookup-card">
+        <div class="lookup-icon"><i class="bi bi-bar-chart-fill"></i></div><span class="lookup-kicker">RESULT LOOKUP</span><h1>View your result</h1><p class="lookup-exam" th:text="${exam.name}"></p>
+        <div class="alert" th:if="${lookupError}"><i class="bi bi-exclamation-circle"></i> <span th:text="${lookupError}"></span></div>
+        <form class="lookup-form" th:action="@{/exam/p/{slug}/result-lookup(slug=${exam.slug})}" method="post">
+            <div class="lookup-field"><label for="lookupRegistration">Registration ID</label><div><i class="bi bi-credit-card-2-front"></i><input id="lookupRegistration" name="registrationId" type="text" th:value="${registrationId}" placeholder="Enter Registration ID" maxlength="30" autocomplete="off" required autofocus></div></div>
+            <div class="lookup-field"><label for="lookupNic">NIC Number</label><div><i class="bi bi-person-badge"></i><input id="lookupNic" name="nic" type="text" inputmode="numeric" pattern="[0-9]{12}" minlength="12" maxlength="12" placeholder="Enter 12 digit NIC" autocomplete="off" required></div></div>
+            <button class="start-btn lookup-submit" type="submit">Find My Result <i class="bi bi-arrow-right"></i></button>
+        </form>
+    </section>
+</main>
+<script>document.getElementById('lookupNic').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,12)});</script>
+</body>
+</html>
