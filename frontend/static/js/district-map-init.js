@@ -151,6 +151,19 @@
             panel.classList.remove('align-right');
             var panelRect = panel.getBoundingClientRect();
             var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            var viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+            if (window.getComputedStyle(panel).position === 'fixed') {
+                var triggerRect = trigger.getBoundingClientRect();
+                var left = Math.max(12, Math.min(triggerRect.left, viewportWidth - panelRect.width - 12));
+                var top = triggerRect.bottom + 7;
+                if (top + panelRect.height > viewportHeight - 12) {
+                    top = Math.max(12, triggerRect.top - panelRect.height - 7);
+                }
+                panel.style.left = Math.round(left) + 'px';
+                panel.style.right = 'auto';
+                panel.style.top = Math.round(top) + 'px';
+                return;
+            }
             if (panelRect.right > viewportWidth - 12) {
                 panel.classList.add('align-right');
             }
@@ -229,13 +242,18 @@
             // Delegated click on the map container. The container never moves, so this stays
             // reliable even though hovering calls toFront() and reorders the path nodes —
             // a per-path native click can get swallowed when its node is moved mid-gesture.
-            mapBox.addEventListener('click', function (e) {
+            var selectFromMap = function (e) {
                 var node = e.target.closest('[data-district]');
                 if (!node || !mapBox.contains(node)) { return; }
+                e.preventDefault();
                 setDistrict(node.getAttribute('data-district'));
                 clearHoverOption();
                 openPanel(false);
-            });
+            };
+            // pointerup is more reliable after Raphael moves a hovered path to the front.
+            // Keep click as a fallback for browsers and keyboard-generated activation.
+            if (window.PointerEvent) { mapBox.addEventListener('pointerup', selectFromMap); }
+            else { mapBox.addEventListener('click', selectFromMap); }
 
             // Make the fixed-size Raphael SVG scale to its container.
             var svg = mapBox.querySelector('svg');
@@ -254,6 +272,10 @@
         // Reflect any pre-selected value (e.g. after a validation-error re-render).
         if (hidden.value) { setDistrict(hidden.value); }
         else { paintMap(null); if (label) { label.textContent = 'Tap your district'; } }
+
+        window.addEventListener('resize', function () {
+            if (!panel.hidden) { placePanel(); }
+        }, { passive: true });
     }
 
     if (document.readyState === 'loading') {
