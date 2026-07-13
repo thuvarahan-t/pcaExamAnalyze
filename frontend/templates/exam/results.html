@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#0b1f3a"><title>My Results · PCA MCQ</title>
+    <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png(v=2)}">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=9)}">
+</head>
+<body class="my-results-body">
+<header class="student-nav results-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><a class="nav-link primary" th:href="@{/exam/result}"><i class="bi bi-person-badge-fill"></i> Change ID</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>
+
+<main class="student-shell results-dashboard">
+    <section class="results-welcome">
+        <div><span class="results-kicker">PERSONAL PERFORMANCE</span><h1>My Results</h1><p>Hi <strong th:text="${dashboard.studentName}">Student</strong>, your latest PCA examinations are shown first.</p></div>
+        <div class="results-identity"><span><i class="bi bi-credit-card-2-front"></i> <b th:text="${dashboard.registrationId}"></b></span><span><i class="bi bi-person-badge"></i> <b th:text="${dashboard.nic}"></b></span></div>
+    </section>
+    <div class="alert" th:if="${examError}" th:text="${examError}"></div>
+
+    <section class="results-overview">
+        <div class="results-stats">
+            <article class="result-stat"><i class="bi bi-journal-check"></i><div><strong th:text="${dashboard.totalExams}">0</strong><span>Exams completed</span></div></article>
+            <article class="result-stat blue"><i class="bi bi-percent"></i><div><strong th:text="|${#numbers.formatDecimal(dashboard.averagePercentage,1,1)}%|">0%</strong><span>Average percentage</span></div></article>
+            <article class="result-stat violet"><i class="bi bi-graph-up-arrow"></i><div><strong th:text="|${#numbers.formatDecimal(dashboard.latestFiveAverage,1,1)}%|">0%</strong><span>Last 5 average</span></div></article>
+            <article class="result-stat amber"><i class="bi bi-patch-check-fill"></i><div><strong th:text="${dashboard.releasedResults}">0</strong><span>Results released</span></div></article>
+        </div>
+        <article class="results-chart-card">
+            <div class="results-section-head"><div><span>RECENT TREND</span><h2>Last 5 exam percentages</h2></div><i class="bi bi-bar-chart-line-fill"></i></div>
+            <div class="results-chart" th:if="${!#lists.isEmpty(dashboard.graph)}">
+                <div class="result-chart-item" th:each="point : ${dashboard.graph}"><span th:text="|${#numbers.formatDecimal(point.percentage,1,0)}%|">80%</span><div><i th:style="|--bar:${point.height}%|"></i></div><small th:text="${point.label}" th:title="${point.label}"></small></div>
+            </div>
+            <div class="results-chart-empty" th:if="${#lists.isEmpty(dashboard.graph)}"><i class="bi bi-hourglass-split"></i><span>Released results will build your graph here.</span></div>
+        </article>
+    </section>
+
+    <section class="results-list-section">
+        <div class="results-title-row"><div><span class="results-kicker">EXAM HISTORY</span><h2>All completed papers</h2></div><span id="resultCardCount" th:text="|${dashboard.totalExams} papers|">0 papers</span></div>
+        <form class="results-filters" id="resultsFilters" autocomplete="off">
+            <label class="results-search"><span>Search exam</span><div><i class="bi bi-search"></i><input id="resultSearch" type="search" placeholder="Type an exam name..."></div></label>
+            <label><span>Batch</span><select id="resultBatch"><option value="">All batches</option><option th:each="item : ${dashboard.batches}" th:value="${item}" th:text="${item}"></option></select></label>
+            <label><span>Month</span><select id="resultMonth"><option value="">All months</option><option th:each="item : ${dashboard.months}" th:value="${item}" th:text="${item}"></option></select></label>
+            <label><span>Year</span><select id="resultYear"><option value="">All years</option><option th:each="item : ${dashboard.years}" th:value="${item}" th:text="${item}"></option></select></label>
+            <button id="clearResultFilters" type="button"><i class="bi bi-arrow-counterclockwise"></i><span>Reset</span></button>
+        </form>
+
+        <div class="my-results-grid" id="myResultsGrid">
+            <a class="my-result-card" th:each="item : ${dashboard.results}" th:href="@{/exam/results/{id}(id=${item.submissionId})}" th:attr="data-name=${#strings.toLowerCase(item.examName)},data-batch=${item.batch},data-month=${item.month},data-year=${item.year}">
+                <div class="result-paper-preview"><div class="result-paper-fallback"><i class="bi bi-file-earmark-pdf-fill"></i><span>Loading paper preview...</span></div><iframe class="result-card-paper-frame" th:attr="data-src=${item.previewUrl}" loading="lazy" tabindex="-1" aria-hidden="true" title="Question paper preview"></iframe><span class="result-card-status" th:classappend="${item.released} ? ' released' : ' pending'"><i th:class="${item.released} ? 'bi bi-patch-check-fill' : 'bi bi-hourglass-split'"></i><b th:text="${item.released} ? 'RESULT RELEASED' : 'RESULTS COMING SOON'"></b></span></div>
+                <div class="result-card-content"><span class="result-period" th:text="${item.period}"></span><h3 th:text="${item.examName}"></h3><div class="result-card-meta"><span><i class="bi bi-people-fill"></i><b th:text="${item.batch}"></b></span><span><i class="bi bi-calendar-check-fill"></i><b th:text="${item.submittedAt}"></b></span></div>
+                    <div class="result-score-preview" th:if="${item.released}"><div><strong th:text="|${item.score}/${item.totalQuestions}|">0/50</strong><span>Marks</span></div><div><strong th:text="|${#numbers.formatDecimal(item.percentage,1,1)}%|">0%</strong><span>Percentage</span></div></div>
+                    <div class="result-pending-copy" th:unless="${item.released}"><i class="bi bi-shield-check"></i><span>Your paper is submitted safely. The score will appear after release.</span></div>
+                    <span class="view-result-link" th:text="${item.released} ? 'View corrected result' : 'View submission details'"></span>
+                </div>
+            </a>
+        </div>
+        <section class="results-no-match" id="resultsNoMatch" hidden><i class="bi bi-search"></i><h3>No matching results</h3><p>Change the exam name, batch, month or year filters.</p></section>
+        <section class="results-no-history" th:if="${#lists.isEmpty(dashboard.results)}"><i class="bi bi-inbox"></i><h3>No submitted examinations yet</h3><p>Completed exam papers matching this Registration ID and NIC will appear here.</p><a class="nav-link primary" th:href="@{/exam}">Browse Exams</a></section>
+    </section>
+</main>
+<script>
+(function(){
+  var search=document.getElementById('resultSearch'),batch=document.getElementById('resultBatch'),month=document.getElementById('resultMonth'),year=document.getElementById('resultYear'),count=document.getElementById('resultCardCount'),empty=document.getElementById('resultsNoMatch');
+  var cards=Array.prototype.slice.call(document.querySelectorAll('.my-result-card'));
+  function filter(){var q=(search.value||'').trim().toLowerCase(),visible=0;cards.forEach(function(card){var show=(!q||card.dataset.name.indexOf(q)!==-1)&&(!batch.value||card.dataset.batch===batch.value)&&(!month.value||card.dataset.month===month.value)&&(!year.value||card.dataset.year===year.value);card.hidden=!show;if(show)visible++;});count.textContent=visible+(visible===1?' paper':' papers');empty.hidden=visible!==0||cards.length===0;}
+  [search,batch,month,year].forEach(function(control){control.addEventListener(control===search?'input':'change',filter)});
+  document.getElementById('clearResultFilters').addEventListener('click',function(){search.value='';batch.value='';month.value='';year.value='';filter();search.focus()});
+  var frames=Array.prototype.slice.call(document.querySelectorAll('.result-card-paper-frame[data-src]'));
+  function loadFrame(frame){if(!frame.src){frame.src=frame.dataset.src;frame.addEventListener('load',function(){frame.classList.add('is-loaded')},{once:true})}}
+  if('IntersectionObserver' in window){var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){loadFrame(entry.target);observer.unobserve(entry.target)}})},{rootMargin:'180px'});frames.forEach(function(frame){observer.observe(frame)})}else{frames.forEach(loadFrame)}
+})();
+</script>
+</body>
+</html>
