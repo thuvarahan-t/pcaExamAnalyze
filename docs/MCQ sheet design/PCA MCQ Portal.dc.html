@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#EFF6FF}
+  *{box-sizing:border-box}
+  a{color:#2563EB;text-decoration:none}
+  a:hover{color:#1D4ED8}
+  input,select,button,textarea{font-family:'Inter',sans-serif}
+  @keyframes pcaFloat{0%,100%{transform:translateY(0px)}50%{transform:translateY(-16px)}}
+  @keyframes pcaDraw{from{stroke-dashoffset:70}to{stroke-dashoffset:0}}
+  @keyframes pcaPop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+  @keyframes pcaPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,0.4)}100%{box-shadow:0 0 0 12px rgba(37,99,235,0)}}
+  @keyframes pcaSpin{to{transform:rotate(360deg)}}
+  @keyframes pcaFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0px)}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important;transition-duration:0.01ms !important}}
+</style>
+</helmet>
+<div style="min-height:100vh;font-family:'Inter',sans-serif;color:#0F172A;background:#EFF6FF">
+
+<sc-if value="{{isStudent}}" hint-placeholder-val="{{true}}">
+  <div style="position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;padding:10px clamp(16px,4vw,40px);background:rgba(255,255,255,0.72);backdrop-filter:blur(18px);border-bottom:1px solid rgba(37,99,235,0.12)">
+    <img src="assets/pca-logo.png" alt="Physics Cube Academy" style="width:38px;height:38px;object-fit:contain">
+    <span style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;letter-spacing:-0.01em">Physics Cube Academy</span>
+    <div style="display:flex;gap:2px;margin-left:auto;align-items:center">
+      <button onClick="{{goHome}}" style="padding:8px 14px;border-radius:10px;border:none;background:transparent;font-weight:600;font-size:14px;color:#0F172A;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Home</button>
+      <button onClick="{{goExamsNav}}" style="padding:8px 14px;border-radius:10px;border:none;background:transparent;font-weight:600;font-size:14px;color:#0F172A;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Exams</button>
+      <button onClick="{{goLookup}}" style="padding:8px 14px;border-radius:10px;border:none;background:transparent;font-weight:600;font-size:14px;color:#0F172A;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">My Result</button>
+      <sc-if value="{{isDesktop}}" hint-placeholder-val="{{true}}">
+        <button onClick="{{goAdmin}}" style="margin-left:10px;padding:8px 16px;border-radius:10px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.6);font-weight:600;font-size:13px;color:#2563EB;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:rgba(37,99,235,0.08)"><span style="font-size:11px">●</span>Admin</button>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{isLanding}}" hint-placeholder-val="{{true}}">
+    <div data-screen-label="Landing" style="position:relative;overflow:hidden;background:linear-gradient(160deg,#0B1F3A 0%,#123063 60%,#1D4ED8 150%);min-height:calc(100vh - 59px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:clamp(40px,8vw,90px) 20px;text-align:center">
+      <div style="position:absolute;top:-120px;right:-80px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,0.22),transparent 65%)"></div>
+      <div style="position:absolute;bottom:-140px;left:-100px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(96,165,250,0.18),transparent 65%)"></div>
+      <span style="position:absolute;top:16%;left:10%;color:rgba(96,165,250,0.4);font-family:'Sora',sans-serif;font-size:clamp(14px,2vw,22px);animation:pcaFloat 7s ease-in-out infinite">E = mc²</span>
+      <span style="position:absolute;top:24%;right:12%;color:rgba(34,211,238,0.35);font-family:'Sora',sans-serif;font-size:clamp(13px,1.8vw,20px);animation:pcaFloat 9s ease-in-out infinite 1s">F = ma</span>
+      <span style="position:absolute;bottom:22%;left:16%;color:rgba(147,197,253,0.3);font-family:'Sora',sans-serif;font-size:clamp(12px,1.6vw,18px);animation:pcaFloat 8s ease-in-out infinite 0.5s">λf = v</span>
+      <span style="position:absolute;bottom:16%;right:14%;color:rgba(96,165,250,0.32);font-family:'Sora',sans-serif;font-size:clamp(12px,1.6vw,18px);animation:pcaFloat 10s ease-in-out infinite 2s">V = IR</span>
+      <div style="position:absolute;top:38%;left:6%;width:10px;height:10px;border-radius:50%;background:rgba(34,211,238,0.5);animation:pcaFloat 6s ease-in-out infinite 1.4s"></div>
+      <div style="position:absolute;top:60%;right:8%;width:7px;height:7px;border-radius:50%;background:rgba(96,165,250,0.55);animation:pcaFloat 7s ease-in-out infinite 0.7s"></div>
+      <div style="background:rgba(255,255,255,0.92);border-radius:28px;padding:14px;box-shadow:0 20px 60px rgba(2,8,23,0.45);animation:pcaFloat 6s ease-in-out infinite">
+        <img src="assets/pca-logo.png" alt="PCA logo" style="width:clamp(84px,13vw,120px);height:auto;display:block">
+      </div>
+      <h1 style="font-family:'Sora',sans-serif;font-weight:800;font-size:clamp(1.9rem,4.5vw,3.4rem);color:#FFFFFF;margin:28px 0 12px;letter-spacing:-0.02em;line-height:1.12">PCA MCQ Examination Portal</h1>
+      <p style="color:rgba(219,234,254,0.85);font-size:clamp(1rem,1.6vw,1.2rem);max-width:580px;margin:0 0 38px;line-height:1.6">Select your examination, mark your answers, and track your performance.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+        <button onClick="{{startFlow}}" style="padding:15px 32px;border-radius:14px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 12px 32px rgba(37,99,235,0.45);transition:transform 0.15s ease" style-hover="transform:translateY(-2px);background:#1D4ED8" style-active="transform:scale(0.98)">Start an Exam →</button>
+        <button onClick="{{goLookup}}" style="padding:15px 32px;border-radius:14px;border:1px solid rgba(255,255,255,0.35);background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);color:#FFFFFF;font-weight:600;font-size:16px;cursor:pointer;transition:background 0.15s ease" style-hover="background:rgba(255,255,255,0.2)">View My Result</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isRegister}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Student Registration" style="max-width:580px;margin:0 auto;padding:clamp(24px,5vw,56px) 16px;animation:pcaFadeUp 0.35s ease">
+      <div style="background:rgba(255,255,255,0.6);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.8);box-shadow:0 20px 50px rgba(15,23,42,0.1);border-radius:24px;padding:clamp(24px,4vw,40px)">
+        <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0 0 6px">Student Details</h2>
+        <p style="color:#64748B;font-size:14px;margin:0 0 24px;line-height:1.5">Enter your details once — they are remembered while you take the exam.</p>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Full Name</label>
+          <div style="position:relative">
+            <input value="{{fName}}" onChange="{{onName}}" onBlur="{{blurName}}" placeholder="A. B. Perera" style="{{nameInputStyle}}" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+            <sc-if value="{{okName}}" hint-placeholder-val="{{false}}"><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#22C55E;font-weight:700;animation:pcaPop 0.3s ease">✓</span></sc-if>
+          </div>
+          <sc-if value="{{errName}}" hint-placeholder-val="{{false}}"><div style="color:#EF4444;font-size:12px;margin-top:5px">{{errName}}</div></sc-if>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Batch</label>
+          <select value="{{batchVal}}" onChange="{{onBatch}}" style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(100,116,139,0.3);font-size:15px;outline:none;background:rgba(255,255,255,0.9)" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+            <option value="2026 A/L">2026 A/L</option>
+            <option value="2027 A/L">2027 A/L</option>
+            <option value="2028 A/L">2028 A/L</option>
+            <option value="Repeat Batch">Repeat Batch</option>
+          </select>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Registration Number</label>
+          <div style="position:relative">
+            <input value="{{fReg}}" onChange="{{onReg}}" onBlur="{{blurReg}}" placeholder="pca2026-014" style="{{regInputStyle}}" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+            <sc-if value="{{okReg}}" hint-placeholder-val="{{false}}"><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#22C55E;font-weight:700;animation:pcaPop 0.3s ease">✓</span></sc-if>
+          </div>
+          <sc-if value="{{errReg}}" hint-placeholder-val="{{false}}"><div style="color:#EF4444;font-size:12px;margin-top:5px">{{errReg}}</div></sc-if>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Phone Number</label>
+          <div style="position:relative">
+            <input value="{{fPhone}}" onChange="{{onPhone}}" onBlur="{{blurPhone}}" placeholder="0771234567" style="{{phoneInputStyle}}" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+            <sc-if value="{{okPhone}}" hint-placeholder-val="{{false}}"><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#22C55E;font-weight:700;animation:pcaPop 0.3s ease">✓</span></sc-if>
+          </div>
+          <sc-if value="{{errPhone}}" hint-placeholder-val="{{false}}"><div style="color:#EF4444;font-size:12px;margin-top:5px">{{errPhone}}</div></sc-if>
+        </div>
+        <div style="margin-bottom:22px">
+          <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">NIC Number</label>
+          <div style="position:relative">
+            <input value="{{fNic}}" onChange="{{onNic}}" onBlur="{{blurNic}}" placeholder="991234567V or 200012345678" style="{{nicInputStyle}}" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+            <sc-if value="{{okNic}}" hint-placeholder-val="{{false}}"><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#22C55E;font-weight:700;animation:pcaPop 0.3s ease">✓</span></sc-if>
+          </div>
+          <sc-if value="{{errNic}}" hint-placeholder-val="{{false}}"><div style="color:#EF4444;font-size:12px;margin-top:5px">{{errNic}}</div></sc-if>
+        </div>
+        <button onClick="{{submitRegister}}" style="width:100%;padding:15px;border-radius:14px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 26px rgba(37,99,235,0.35);transition:transform 0.15s ease" style-hover="background:#1D4ED8;transform:translateY(-1px)" style-active="transform:scale(0.99)">Continue to Exams →</button>
+        <p style="color:#64748B;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">Your NIC is used only to verify your result. It is never displayed publicly.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isExams}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Exam List" style="max-width:1100px;margin:0 auto;padding:clamp(24px,4vw,48px) 16px;animation:pcaFadeUp 0.35s ease">
+      <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:clamp(22px,3vw,28px);margin:0 0 6px">Available Exams</h2>
+      <p style="color:#64748B;font-size:14px;margin:0 0 20px">Select year and month to find your examination.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+        <select value="{{yearVal}}" onChange="{{onYear}}" style="padding:10px 14px;border-radius:12px;border:1.5px solid rgba(37,99,235,0.25);font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,0.85);color:#0F172A">
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+        <select value="{{monthVal}}" onChange="{{onMonth}}" style="padding:10px 14px;border-radius:12px;border:1.5px solid rgba(37,99,235,0.25);font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,0.85);color:#0F172A">
+          <option value="January">January</option>
+          <option value="February">February</option>
+          <option value="March">March</option>
+          <option value="April">April</option>
+          <option value="May">May</option>
+          <option value="June">June</option>
+          <option value="July">July</option>
+          <option value="August">August</option>
+          <option value="September">September</option>
+          <option value="October">October</option>
+          <option value="November">November</option>
+          <option value="December">December</option>
+        </select>
+        <select value="{{filterBatchVal}}" onChange="{{onFilterBatch}}" style="padding:10px 14px;border-radius:12px;border:1.5px solid rgba(37,99,235,0.25);font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,0.85);color:#0F172A">
+          <option value="2026 A/L">2026 A/L</option>
+          <option value="2027 A/L">2027 A/L</option>
+          <option value="2028 A/L">2028 A/L</option>
+          <option value="Repeat Batch">Repeat Batch</option>
+        </select>
+      </div>
+      <sc-if value="{{hasExams}}" hint-placeholder-val="{{true}}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px">
+          <sc-for list="{{examCards}}" as="ex" hint-placeholder-count="2">
+            <div style="background:rgba(255,255,255,0.6);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.8);box-shadow:0 14px 36px rgba(15,23,42,0.08);border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:10px;transition:transform 0.18s ease, box-shadow 0.18s ease" style-hover="transform:translateY(-4px);box-shadow:0 22px 48px rgba(37,99,235,0.16)">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <span style="{{ex.badgeStyle}}">{{ex.status}}</span>
+                <span style="color:#64748B;font-size:12px;font-weight:600">50 Questions · 5 Options</span>
+              </div>
+              <h3 style="font-family:'Sora',sans-serif;font-weight:700;font-size:18px;margin:2px 0 0;line-height:1.3">{{ex.name}}</h3>
+              <div style="color:#64748B;font-size:13px">{{ex.meta}}</div>
+              <div style="color:#0F172A;font-size:13px;font-weight:500;background:rgba(37,99,235,0.06);border-radius:10px;padding:8px 12px">{{ex.timing}}</div>
+              <button onClick="{{ex.action}}" disabled="{{ex.disabled}}" style="{{ex.btnStyle}}" style-hover="transform:translateY(-1px)" style-active="transform:scale(0.98)">{{ex.btnLabel}}</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{noExams}}" hint-placeholder-val="{{false}}">
+        <div style="background:rgba(255,255,255,0.6);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.8);border-radius:24px;padding:56px 24px;text-align:center;box-shadow:0 14px 36px rgba(15,23,42,0.06)">
+          <div style="position:relative;width:90px;height:90px;margin:0 auto 20px">
+            <div style="position:absolute;inset:0;border:2px dashed rgba(37,99,235,0.35);border-radius:50%;animation:pcaSpin 10s linear infinite"></div>
+            <div style="position:absolute;top:-5px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#22D3EE"></div>
+            <div style="position:absolute;inset:26px;border-radius:50%;background:rgba(37,99,235,0.12);display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:700;color:#2563EB;font-size:15px">0</div>
+          </div>
+          <h3 style="font-family:'Sora',sans-serif;font-weight:700;font-size:18px;margin:0 0 8px">No exams this month</h3>
+          <p style="color:#64748B;font-size:14px;margin:0;line-height:1.6;max-width:380px;margin-inline:auto">No exams are available for this month. Please select another month or check again later.</p>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isExamOpen}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Exam & Answer Sheet" style="width:100%;padding:clamp(16px,3vw,28px) clamp(16px,2.5vw,32px) 110px;animation:pcaFadeUp 0.35s ease">
+      <button onClick="{{backToExams}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:14px;cursor:pointer;padding:6px 0;margin-bottom:8px" style-hover="color:#1D4ED8">← All Exams</button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:clamp(20px,3vw,26px);margin:0">2026 Batch Physics Exam 01</h2>
+        <span style="background:rgba(34,197,94,0.14);color:#15803D;border:1px solid rgba(34,197,94,0.35);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700">OPEN</span>
+        <span style="margin-left:auto;color:#64748B;font-size:13px;font-weight:500">{{studentChip}}</span>
+      </div>
+      <div style="{{examLayoutStyle}}">
+        <div>
+          <div style="background:rgba(255,255,255,0.6);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.8);border-radius:22px;padding:18px;box-shadow:0 14px 36px rgba(15,23,42,0.07);position:sticky;top:74px">
+            <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:14px;margin-bottom:10px">Question Paper</div>
+            <div style="height:190px;border-radius:14px;background:repeating-linear-gradient(45deg,rgba(37,99,235,0.07),rgba(37,99,235,0.07) 10px,rgba(37,99,235,0.13) 10px,rgba(37,99,235,0.13) 20px);border:1px solid rgba(37,99,235,0.2);display:flex;align-items:center;justify-content:center">
+              <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#2563EB;background:rgba(255,255,255,0.85);padding:6px 10px;border-radius:8px">question paper PDF preview</span>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <a href="#" style="flex:1;text-align:center;padding:10px;border-radius:11px;background:#2563EB;color:#FFFFFF;font-weight:600;font-size:13px" style-hover="background:#1D4ED8;color:#FFFFFF">Open Full Paper</a>
+              <a href="#" style="flex:1;text-align:center;padding:10px;border-radius:11px;border:1px solid rgba(37,99,235,0.35);color:#2563EB;font-weight:600;font-size:13px;background:rgba(255,255,255,0.7)" style-hover="background:rgba(37,99,235,0.08)">Download PDF</a>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(37,99,235,0.12);color:#64748B;font-size:12.5px;line-height:1.6">Answer all 50 questions. Only one option per question. Your answers save automatically — you can safely refresh this page.</div>
+          </div>
+        </div>
+        <div>
+          <div style="position:sticky;top:66px;z-index:30;background:rgba(255,255,255,0.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:12px 16px;box-shadow:0 10px 28px rgba(15,23,42,0.08);margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px">{{answeredCount}} / 50 Answered</span>
+              <span style="color:#64748B;font-size:13px">{{pctText}}</span>
+              <sc-if value="{{savedVisible}}" hint-placeholder-val="{{false}}"><span style="margin-left:auto;color:#15803D;font-size:12px;font-weight:600;background:rgba(34,197,94,0.12);padding:3px 10px;border-radius:999px;animation:pcaPop 0.25s ease">Saved ✓</span></sc-if>
+            </div>
+            <div style="height:8px;border-radius:999px;background:rgba(37,99,235,0.12);margin-top:9px;overflow:hidden">
+              <div style="{{progressFillStyle}}"></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:11px">
+              <sc-for list="{{navItems}}" as="nv" hint-placeholder-count="10">
+                <button onClick="{{nv.go}}" style="{{nv.style}}">{{nv.n}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:14px;padding:clamp(14px,2.5vw,26px);box-shadow:0 14px 36px rgba(15,23,42,0.08)">
+            <div style="text-align:center;font-family:'Sora',sans-serif;font-weight:700;font-size:17px;margin-bottom:12px">MCQ  Answer Sheet</div>
+            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1.5px dashed #94A3B8;padding-bottom:12px;margin-bottom:14px;font-size:12.5px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600">Subject :</span><span style="border:1px solid #94A3B8;padding:4px 14px;min-width:180px;font-weight:600">2026 Batch Physics Exam 01</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600">Index No :</span><span style="border:1px solid #94A3B8;padding:4px 14px;min-width:110px;font-weight:600">{{resReg}}</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:2px 16px">
+            <sc-for list="{{examGroups}}" as="g" hint-placeholder-count="5">
+              <div>
+                <sc-for list="{{g.items}}" as="q">
+                  <div id="{{q.rowId}}" style="{{q.rowStyle}}">
+                    <span style="width:24px;font-weight:600;font-size:12.5px;color:#0F172A;flex:none;text-align:right">{{q.label}}</span>
+                    <div style="display:flex;gap:4px">
+                      <sc-for list="{{q.opts}}" as="o">
+                        <button onClick="{{o.pick}}" aria-label="{{o.aria}}" style="{{o.style}}" style-hover="{{o.hoverStyle}}">
+                          <span style="position:relative;z-index:1">{{o.v}}</span>
+                          <svg width="32" height="32" style="{{o.markStyle}}">
+                            <path d="M8 8 L24 24 M24 8 L8 24" style="{{o.pathStyle}}"></path>
+                          </svg>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="position:fixed;left:0;right:0;bottom:0;z-index:45;background:rgba(255,255,255,0.82);backdrop-filter:blur(20px);border-top:1px solid rgba(37,99,235,0.15);box-shadow:0 -10px 30px rgba(15,23,42,0.08)">
+        <div style="width:100%;padding:12px clamp(16px,2.5vw,32px);display:flex;align-items:center;gap:12px">
+          <div style="font-size:13.5px;font-weight:600;color:#0F172A"><span style="color:#2563EB">{{answeredCount}}</span> answered · {{unansweredCount}} remaining</div>
+          <button onClick="{{reviewUnanswered}}" style="margin-left:auto;padding:11px 16px;border-radius:12px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:13.5px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Review Unanswered</button>
+          <button onClick="{{openModal}}" style="padding:11px 22px;border-radius:12px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 8px 22px rgba(37,99,235,0.4)" style-hover="background:#1D4ED8">Submit Answers</button>
+        </div>
+      </div>
+      <sc-if value="{{showModal}}" hint-placeholder-val="{{false}}">
+        <div style="position:fixed;inset:0;z-index:100;background:rgba(11,31,58,0.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px">
+          <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:30px;max-width:420px;width:100%;box-shadow:0 30px 80px rgba(2,8,23,0.4);animation:pcaPop 0.25s ease">
+            <h3 style="font-family:'Sora',sans-serif;font-weight:700;font-size:20px;margin:0 0 14px">Submit your answers?</h3>
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <div style="flex:1;background:rgba(37,99,235,0.08);border-radius:14px;padding:12px;text-align:center"><div style="font-family:'Sora',sans-serif;font-weight:800;font-size:24px;color:#2563EB">{{answeredCount}}</div><div style="font-size:12px;color:#64748B;font-weight:600">Answered</div></div>
+              <div style="flex:1;background:rgba(245,158,11,0.1);border-radius:14px;padding:12px;text-align:center"><div style="font-family:'Sora',sans-serif;font-weight:800;font-size:24px;color:#B45309">{{unansweredCount}}</div><div style="font-size:12px;color:#64748B;font-weight:600">Unanswered</div></div>
+            </div>
+            <p style="color:#64748B;font-size:13.5px;line-height:1.6;margin:0 0 20px">Submission is final. You will not be able to change your answers after submitting.</p>
+            <div style="display:flex;gap:10px">
+              <button onClick="{{closeModal}}" style="flex:1;padding:13px;border-radius:13px;border:1px solid rgba(100,116,139,0.35);background:transparent;font-weight:600;font-size:14px;cursor:pointer;color:#0F172A" style-hover="background:rgba(15,23,42,0.05)">Review Answers</button>
+              <button onClick="{{confirmSubmit}}" style="flex:1;padding:13px;border-radius:13px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#1D4ED8">{{submitLabel}}</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isSubmitted}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Submission Success" style="max-width:520px;margin:0 auto;padding:clamp(32px,6vw,70px) 16px;animation:pcaFadeUp 0.35s ease">
+      <div style="background:rgba(255,255,255,0.62);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.85);border-radius:26px;padding:clamp(28px,5vw,44px);text-align:center;box-shadow:0 20px 50px rgba(15,23,42,0.1)">
+        <svg width="88" height="88" style="display:block;margin:0 auto 18px">
+          <circle cx="44" cy="44" r="40" style="fill:rgba(34,197,94,0.12);stroke:#22C55E;stroke-width:2.5"></circle>
+          <path d="M28 45 L39 56 L61 33" style="fill:none;stroke:#16A34A;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:70;stroke-dashoffset:70;animation:pcaDraw 0.6s ease 0.2s forwards"></path>
+        </svg>
+        <h2 style="font-family:'Sora',sans-serif;font-weight:800;font-size:24px;margin:0 0 8px">Submission Received!</h2>
+        <p style="color:#64748B;font-size:14px;margin:0 0 22px;line-height:1.6">Your answers have been securely recorded.</p>
+        <div style="text-align:left;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:16px;padding:16px 18px;font-size:13.5px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#64748B">Exam</span><span style="font-weight:600">2026 Batch Physics Exam 01</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#64748B">Student</span><span style="font-weight:600">{{resName}}</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#64748B">Registration No.</span><span style="font-weight:600">{{resReg}}</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#64748B">Submitted at</span><span style="font-weight:600">{{submittedTime}}</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:#64748B">Reference</span><span style="font-weight:700;color:#2563EB;font-family:ui-monospace,Menlo,monospace">{{refNo}}</span></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:24px">
+          <button onClick="{{viewMyResult}}" style="flex:1;padding:14px;border-radius:13px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 8px 22px rgba(37,99,235,0.35)" style-hover="background:#1D4ED8">View My Result</button>
+          <button onClick="{{backToExams}}" style="flex:1;padding:14px;border-radius:13px;border:1px solid rgba(37,99,235,0.35);background:transparent;color:#2563EB;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Return to Exams</button>
+        </div>
+        <sc-if value="{{resubAllowed}}" hint-placeholder-val="{{false}}">
+          <button onClick="{{reopenAnswers}}" style="margin-top:14px;border:none;background:transparent;color:#64748B;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Edit my answers (resubmission enabled)</button>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isLookup}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Result Lookup" style="max-width:460px;margin:0 auto;padding:clamp(32px,6vw,70px) 16px;animation:pcaFadeUp 0.35s ease">
+      <div style="background:rgba(255,255,255,0.62);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.85);border-radius:26px;padding:clamp(26px,5vw,40px);box-shadow:0 20px 50px rgba(15,23,42,0.1)">
+        <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0 0 6px">Check My Result</h2>
+        <p style="color:#64748B;font-size:14px;margin:0 0 22px;line-height:1.5">Enter the details you used when submitting.</p>
+        <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Registration Number</label>
+        <input value="{{lookupRegVal}}" onChange="{{onLookupReg}}" placeholder="pca2026-014" style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(100,116,139,0.3);font-size:15px;outline:none;background:rgba(255,255,255,0.9);margin-bottom:14px" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+        <label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">NIC Number</label>
+        <input value="{{lookupNicVal}}" onChange="{{onLookupNic}}" placeholder="991234567V" style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(100,116,139,0.3);font-size:15px;outline:none;background:rgba(255,255,255,0.9);margin-bottom:18px" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)">
+        <button onClick="{{doLookup}}" style="width:100%;padding:14px;border-radius:13px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 8px 22px rgba(37,99,235,0.35)" style-hover="background:#1D4ED8">View My Result</button>
+        <sc-if value="{{lookupErr}}" hint-placeholder-val="{{false}}">
+          <div style="margin-top:14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 14px;color:#B91C1C;font-size:13px;line-height:1.5">{{lookupErr}}</div>
+        </sc-if>
+        <p style="color:#94A3B8;font-size:12px;margin:16px 0 0;line-height:1.5;text-align:center">Demo tip: submit an exam first, then look up with the same details.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isPending}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Result Pending" style="max-width:500px;margin:0 auto;padding:clamp(32px,6vw,70px) 16px;animation:pcaFadeUp 0.35s ease">
+      <div style="background:rgba(255,255,255,0.62);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.85);border-radius:26px;padding:clamp(28px,5vw,44px);text-align:center;box-shadow:0 20px 50px rgba(15,23,42,0.1)">
+        <div style="position:relative;width:110px;height:110px;margin:0 auto 22px">
+          <div style="position:absolute;inset:0;border:2px dashed rgba(37,99,235,0.4);border-radius:50%;animation:pcaSpin 9s linear infinite"></div>
+          <div style="position:absolute;inset:14px;border:2px solid rgba(34,211,238,0.4);border-radius:50%;animation:pcaSpin 5s linear infinite reverse"></div>
+          <div style="position:absolute;top:-6px;left:50%;width:13px;height:13px;margin-left:-6px;border-radius:50%;background:#2563EB"></div>
+          <div style="position:absolute;inset:34px;border-radius:50%;background:rgba(37,99,235,0.1);display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:800;color:#2563EB;font-size:17px">PCA</div>
+        </div>
+        <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:22px;margin:0 0 10px">Submission received successfully</h2>
+        <p style="color:#64748B;font-size:14px;line-height:1.7;margin:0 0 18px">The answer key or result has not been released yet. Other students may still be completing the examination. Please come back later.</p>
+        <div style="background:rgba(37,99,235,0.06);border-radius:14px;padding:12px 16px;font-size:13.5px;font-weight:600;color:#2563EB">Expected release: {{releaseCountdown}}</div>
+        <button onClick="{{goHome}}" style="margin-top:20px;padding:12px 24px;border-radius:12px;border:1px solid rgba(37,99,235,0.35);background:transparent;color:#2563EB;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Back to Home</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isResult}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Released Result" style="width:100%;padding:clamp(20px,4vw,44px) clamp(16px,2.5vw,32px) 60px;animation:pcaFadeUp 0.35s ease">
+      <div style="background:rgba(255,255,255,0.62);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.85);border-radius:26px;padding:clamp(22px,4vw,36px);box-shadow:0 20px 50px rgba(15,23,42,0.1);display:flex;gap:28px;flex-wrap:wrap;align-items:center;margin-bottom:18px">
+        <div style="flex:1;min-width:240px">
+          <span style="{{perfChipStyle}}">{{perfLabel}}</span>
+          <h2 style="font-family:'Sora',sans-serif;font-weight:800;font-size:clamp(22px,3vw,28px);margin:12px 0 6px">{{resName}}</h2>
+          <div style="color:#64748B;font-size:14px;line-height:1.7">Reg. No. <strong style="color:#0F172A">{{resReg}}</strong><br>2026 Batch Physics Exam 01 · 2026 A/L</div>
+        </div>
+        <div style="position:relative;width:150px;height:150px;flex:none;margin:0 auto">
+          <svg width="150" height="150">
+            <circle cx="75" cy="75" r="60" style="fill:none;stroke:rgba(37,99,235,0.12);stroke-width:11"></circle>
+            <circle cx="75" cy="75" r="60" transform="rotate(-90 75 75)" style="{{ringStyle}}"></circle>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font-family:'Sora',sans-serif;font-weight:800;font-size:30px;color:#0F172A;line-height:1">{{score}}<span style="font-size:15px;color:#64748B;font-weight:600"> / 50</span></span>
+            <span style="color:#2563EB;font-weight:700;font-size:14px;margin-top:4px">{{pctRound}}%</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">
+        <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:18px;padding:16px;text-align:center"><div style="font-family:'Sora',sans-serif;font-weight:800;font-size:26px;color:#15803D">{{correctCount}}</div><div style="font-size:12.5px;font-weight:600;color:#166534">Correct</div></div>
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:18px;padding:16px;text-align:center"><div style="font-family:'Sora',sans-serif;font-weight:800;font-size:26px;color:#B91C1C">{{incorrectCount}}</div><div style="font-size:12.5px;font-weight:600;color:#991B1B">Incorrect</div></div>
+        <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:18px;padding:16px;text-align:center"><div style="font-family:'Sora',sans-serif;font-weight:800;font-size:26px;color:#B45309">{{unansweredFinal}}</div><div style="font-size:12.5px;font-weight:600;color:#92400E">Not Answered</div></div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:rgba(255,255,255,0.6);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.8);border-radius:16px;padding:12px 18px;margin-bottom:16px;font-size:12.5px;font-weight:600;color:#475569">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#22C55E;display:inline-block"></span>Correct</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#EF4444;display:inline-block"></span>Incorrect</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;background:#F59E0B;display:inline-block"></span>Not answered</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:50%;border:2.5px solid #22C55E;display:inline-block;background:transparent"></span>Correct answer</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #CBD5E1;border-radius:14px;padding:clamp(14px,2.5vw,26px);box-shadow:0 14px 36px rgba(15,23,42,0.08)">
+        <div style="text-align:center;font-family:'Sora',sans-serif;font-weight:700;font-size:17px;margin-bottom:12px">MCQ  Answer Sheet — Corrected</div>
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1.5px dashed #94A3B8;padding-bottom:12px;margin-bottom:14px;font-size:12.5px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600">Subject :</span><span style="border:1px solid #94A3B8;padding:4px 14px;min-width:180px;font-weight:600">2026 Batch Physics Exam 01</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600">Index No :</span><span style="border:1px solid #94A3B8;padding:4px 14px;min-width:110px;font-weight:600">{{resReg}}</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:2px 16px">
+        <sc-for list="{{resultGroups}}" as="g" hint-placeholder-count="5">
+          <div>
+            <sc-for list="{{g.items}}" as="q">
+              <div style="{{q.rowStyle}}">
+                <span style="width:24px;font-weight:600;font-size:12.5px;color:#0F172A;flex:none;text-align:right">{{q.label}}</span>
+                <div style="display:flex;gap:4px">
+                  <sc-for list="{{q.opts}}" as="o">
+                    <button aria-label="{{o.aria}}" style="{{o.style}}">
+                      <span style="position:relative;z-index:1">{{o.v}}</span>
+                      <svg width="32" height="32" style="{{o.markStyle}}">
+                        <path d="M8 8 L24 24 M24 8 L8 24" style="{{o.pathStyle}}"></path>
+                      </svg>
+                    </button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{q.hasNote}}" hint-placeholder-val="{{false}}"><span style="{{q.noteStyle}}">{{q.note}}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:26px">
+        <button onClick="{{goHome}}" style="padding:13px 28px;border-radius:13px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Back to Home</button>
+      </div>
+    </div>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{isAdmin}}" hint-placeholder-val="{{false}}">
+  <sc-if value="{{adminGate}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Admin Gate" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#0B1F3A,#123063)">
+      <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,0.25);border-radius:24px;padding:36px;max-width:400px;text-align:center;color:#FFFFFF">
+        <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:19px;margin-bottom:10px">Larger screen required</div>
+        <p style="color:rgba(219,234,254,0.8);font-size:14px;line-height:1.6;margin:0 0 20px">The Admin Dashboard is designed for laptop and desktop use. Please open it on a larger screen.</p>
+        <button onClick="{{exitAdmin}}" style="padding:12px 24px;border-radius:12px;border:1px solid rgba(255,255,255,0.35);background:rgba(255,255,255,0.12);color:#FFFFFF;font-weight:600;font-size:14px;cursor:pointer">← Back to student site</button>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{isAdminLogin}}" hint-placeholder-val="{{false}}">
+    <div data-screen-label="Admin Login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#0B1F3A 0%,#123063 60%,#1D4ED8 160%)">
+      <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.25);border-radius:26px;padding:40px;max-width:400px;width:100%;box-shadow:0 30px 80px rgba(2,8,23,0.5)">
+        <img src="assets/pca-logo.png" alt="PCA" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 16px;background:rgba(255,255,255,0.92);border-radius:16px;padding:6px">
+        <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:22px;color:#FFFFFF;text-align:center;margin:0 0 4px">Admin Login</h2>
+        <p style="color:rgba(219,234,254,0.7);font-size:13px;text-align:center;margin:0 0 24px">PCA MCQ Examination System</p>
+        <label style="display:block;font-weight:600;font-size:13px;color:rgba(219,234,254,0.9);margin-bottom:6px">Email</label>
+        <input value="{{adminEmailVal}}" onChange="{{onAdminEmail}}" placeholder="admin@physicscubeacademy.lk" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.12);color:#FFFFFF;margin-bottom:14px" style-focus="border-color:#22D3EE;box-shadow:0 0 0 3px rgba(34,211,238,0.2)">
+        <label style="display:block;font-weight:600;font-size:13px;color:rgba(219,234,254,0.9);margin-bottom:6px">Password</label>
+        <input type="password" value="{{adminPassVal}}" onChange="{{onAdminPass}}" placeholder="••••••••" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.12);color:#FFFFFF;margin-bottom:20px" style-focus="border-color:#22D3EE;box-shadow:0 0 0 3px rgba(34,211,238,0.2)">
+        <button onClick="{{adminLoginGo}}" style="width:100%;padding:14px;border-radius:13px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 10px 26px rgba(37,99,235,0.5)" style-hover="background:#1D4ED8">Log In</button>
+        <button onClick="{{exitAdmin}}" style="width:100%;margin-top:12px;padding:10px;border-radius:12px;border:none;background:transparent;color:rgba(219,234,254,0.7);font-weight:600;font-size:13px;cursor:pointer" style-hover="color:#FFFFFF">← Back to student site</button>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{isAdminApp}}" hint-placeholder-val="{{false}}">
+    <div style="display:flex;min-height:100vh;align-items:stretch">
+      <div style="width:232px;flex:none;background:#0B1F3A;color:#FFFFFF;display:flex;flex-direction:column;padding:18px 12px">
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 10px 18px">
+          <img src="assets/pca-logo.png" alt="PCA" style="width:34px;height:34px;object-fit:contain;background:rgba(255,255,255,0.92);border-radius:9px;padding:3px">
+          <div><div style="font-family:'Sora',sans-serif;font-weight:700;font-size:13.5px">PCA Admin</div><div style="font-size:10.5px;color:rgba(148,163,184,0.9)">MCQ Exam System</div></div>
+        </div>
+        <button onClick="{{goAdminDash}}" style="{{dashNavStyle}}">Dashboard</button>
+        <button onClick="{{goAdminAdd}}" style="{{addNavStyle}}">Add Exam</button>
+        <button onClick="{{goAdminManage}}" style="{{manageNavStyle}}">Manage Exams</button>
+        <button onClick="{{goAdminSubs}}" style="{{subsNavStyle}}">Submissions</button>
+        <div style="padding:10px 12px;font-size:13.5px;color:rgba(148,163,184,0.6);font-weight:600">Analytics</div>
+        <div style="padding:10px 12px;font-size:13.5px;color:rgba(148,163,184,0.6);font-weight:600">Result Publishing</div>
+        <div style="padding:10px 12px;font-size:13.5px;color:rgba(148,163,184,0.6);font-weight:600">Settings</div>
+        <button onClick="{{exitAdmin}}" style="margin-top:auto;padding:11px 12px;border-radius:11px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(219,234,254,0.85);font-weight:600;font-size:13px;cursor:pointer;text-align:left" style-hover="background:rgba(255,255,255,0.08)">← Exit to student site</button>
+      </div>
+      <div style="flex:1;padding:28px 32px;min-width:0">
+        <sc-if value="{{isAdminDash}}" hint-placeholder-val="{{true}}">
+          <div data-screen-label="Admin Dashboard">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+              <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0">Dashboard</h2>
+              <sc-if value="{{adminToast}}" hint-placeholder-val="{{false}}"><span style="background:rgba(34,197,94,0.12);color:#15803D;border:1px solid rgba(34,197,94,0.35);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600;animation:pcaPop 0.25s ease">{{adminToast}}</span></sc-if>
+              <button onClick="{{goAdminAdd}}" style="margin-left:auto;padding:11px 20px;border-radius:12px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 8px 20px rgba(37,99,235,0.35)" style-hover="background:#1D4ED8">+ Add Exam</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
+              <sc-for list="{{adminStats}}" as="st" hint-placeholder-count="8">
+                <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:16px 18px;box-shadow:0 10px 26px rgba(15,23,42,0.05)">
+                  <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:24px;color:#0F172A">{{st.value}}</div>
+                  <div style="font-size:12.5px;font-weight:600;color:#64748B;margin-top:2px">{{st.label}}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">
+              <button onClick="{{goAdminAdd}}" style="padding:10px 16px;border-radius:11px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Add Answer Key</button>
+              <button onClick="{{toastRelease}}" style="padding:10px 16px;border-radius:11px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Release Results</button>
+              <button onClick="{{toastExport}}" style="padding:10px 16px;border-radius:11px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Export Results (CSV)</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+              <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:20px;box-shadow:0 10px 26px rgba(15,23,42,0.05)">
+                <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px">Score Distribution</div>
+                <div style="color:#64748B;font-size:12px;margin-bottom:14px">2026 Batch Physics Exam 01 · 184 submissions</div>
+                <div style="display:flex;align-items:flex-end;gap:12px;height:170px">
+                  <sc-for list="{{distBars}}" as="b" hint-placeholder-count="5">
+                    <div style="flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px">
+                      <span style="font-size:12px;font-weight:700;color:#2563EB">{{b.v}}</span>
+                      <div style="{{b.style}}"></div>
+                      <span style="font-size:11px;color:#64748B;font-weight:600">{{b.label}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:20px;box-shadow:0 10px 26px rgba(15,23,42,0.05)">
+                <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px">Submissions by Hour</div>
+                <div style="color:#64748B;font-size:12px;margin-bottom:14px">Today · peak at 11 AM</div>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:170px">
+                  <sc-for list="{{hourBars}}" as="b" hint-placeholder-count="12">
+                    <div style="flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px">
+                      <span style="font-size:10.5px;font-weight:700;color:#0E7490">{{b.v}}</span>
+                      <div style="{{b.style}}"></div>
+                      <span style="font-size:10px;color:#64748B;font-weight:600">{{b.label}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:20px;box-shadow:0 10px 26px rgba(15,23,42,0.05)">
+                <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px">Average Score by Batch</div>
+                <div style="color:#64748B;font-size:12px;margin-bottom:14px">Across July exams</div>
+                <div style="display:flex;flex-direction:column;gap:16px;justify-content:center;height:170px">
+                  <sc-for list="{{batchBars}}" as="b" hint-placeholder-count="4">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px"><span style="color:#0F172A">{{b.label}}</span><span style="color:#2563EB">{{b.v}}</span></div>
+                      <div style="height:10px;border-radius:999px;background:rgba(37,99,235,0.1)"><div style="{{b.style}}"></div></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isAdminManage}}" hint-placeholder-val="{{false}}">
+          <div data-screen-label="Manage Exams">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+              <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0">Manage Exams</h2>
+              <sc-if value="{{adminToast}}" hint-placeholder-val="{{false}}"><span style="background:rgba(34,197,94,0.12);color:#15803D;border:1px solid rgba(34,197,94,0.35);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600;animation:pcaPop 0.25s ease">{{adminToast}}</span></sc-if>
+            </div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:6px 18px;box-shadow:0 10px 26px rgba(15,23,42,0.05);overflow-x:auto;margin-bottom:26px">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:760px">
+                <thead><tr style="text-align:left;color:#64748B"><th style="padding:12px 8px;font-weight:600">Exam</th><th style="padding:12px 8px;font-weight:600">Batch</th><th style="padding:12px 8px;font-weight:600">Opens</th><th style="padding:12px 8px;font-weight:600">Result Release</th><th style="padding:12px 8px;font-weight:600">Submissions</th><th style="padding:12px 8px;font-weight:600">Answer Key</th><th style="padding:12px 8px;font-weight:600">Status</th><th style="padding:12px 8px;font-weight:600">Actions</th></tr></thead>
+                <tbody>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">2026 Batch Physics Exam 01</td><td style="padding:12px 8px">2026 A/L</td><td style="padding:12px 8px">Jul 11, 8:00 AM</td><td style="padding:12px 8px">Jul 20, 6:00 PM</td><td style="padding:12px 8px">184</td><td style="padding:12px 8px;color:#15803D;font-weight:600">50 / 50</td><td style="padding:12px 8px"><span style="background:rgba(34,197,94,0.14);color:#15803D;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700">OPEN</span></td><td style="padding:12px 8px"><button onClick="{{goAdminAdd}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Edit</button><button onClick="{{toastRelease}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Release</button></td></tr>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">2026 Batch Physics Exam 02</td><td style="padding:12px 8px">2026 A/L</td><td style="padding:12px 8px">Jul 18, 8:00 AM</td><td style="padding:12px 8px">Jul 27, 6:00 PM</td><td style="padding:12px 8px">—</td><td style="padding:12px 8px;color:#B45309;font-weight:600">0 / 50</td><td style="padding:12px 8px"><span style="background:rgba(96,165,250,0.16);color:#1D4ED8;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700">SCHEDULED</span></td><td style="padding:12px 8px"><button onClick="{{goAdminAdd}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Edit</button><button onClick="{{goAdminAdd}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Add Key</button></td></tr>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">2026 Batch Physics Exam June</td><td style="padding:12px 8px">2026 A/L</td><td style="padding:12px 8px">Jun 13, 8:00 AM</td><td style="padding:12px 8px">Released</td><td style="padding:12px 8px">201</td><td style="padding:12px 8px;color:#15803D;font-weight:600">50 / 50</td><td style="padding:12px 8px"><span style="background:rgba(34,211,238,0.16);color:#0E7490;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700">RESULT RELEASED</span></td><td style="padding:12px 8px"><button onClick="{{goAdminAdd}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Edit</button><button onClick="{{toastExport}}" style="border:none;background:transparent;color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px">Export</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isAdminSubs}}" hint-placeholder-val="{{false}}">
+          <div data-screen-label="Submissions">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+              <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0">Submissions</h2>
+              <sc-if value="{{adminToast}}" hint-placeholder-val="{{false}}"><span style="background:rgba(34,197,94,0.12);color:#15803D;border:1px solid rgba(34,197,94,0.35);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600;animation:pcaPop 0.25s ease">{{adminToast}}</span></sc-if>
+            </div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:18px;padding:6px 18px;box-shadow:0 10px 26px rgba(15,23,42,0.05);overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:680px">
+                <thead><tr style="text-align:left;color:#64748B"><th style="padding:12px 8px;font-weight:600">Student</th><th style="padding:12px 8px;font-weight:600">Reg. No.</th><th style="padding:12px 8px;font-weight:600">NIC</th><th style="padding:12px 8px;font-weight:600">Phone</th><th style="padding:12px 8px;font-weight:600">Submitted</th><th style="padding:12px 8px;font-weight:600">Score</th></tr></thead>
+                <tbody>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">K. Jayasinghe</td><td style="padding:12px 8px">pca2026-041</td><td style="padding:12px 8px;font-family:ui-monospace,Menlo,monospace">2007******41</td><td style="padding:12px 8px">077***2214</td><td style="padding:12px 8px">Today, 10:42 AM</td><td style="padding:12px 8px;font-weight:700;color:#15803D">44 / 50</td></tr>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">S. Fernando</td><td style="padding:12px 8px">pca2026-017</td><td style="padding:12px 8px;font-family:ui-monospace,Menlo,monospace">2006******89</td><td style="padding:12px 8px">071***8830</td><td style="padding:12px 8px">Today, 10:31 AM</td><td style="padding:12px 8px;font-weight:700;color:#15803D">38 / 50</td></tr>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">M. Perera</td><td style="padding:12px 8px">pca2026-096</td><td style="padding:12px 8px;font-family:ui-monospace,Menlo,monospace">2007******12</td><td style="padding:12px 8px">076***1109</td><td style="padding:12px 8px">Today, 10:18 AM</td><td style="padding:12px 8px;font-weight:700;color:#B45309">27 / 50</td></tr>
+                  <tr style="border-top:1px solid rgba(37,99,235,0.1)"><td style="padding:12px 8px;font-weight:600">A. Wickrama</td><td style="padding:12px 8px">pca2026-063</td><td style="padding:12px 8px;font-family:ui-monospace,Menlo,monospace">2006******55</td><td style="padding:12px 8px">078***6672</td><td style="padding:12px 8px">Today, 9:57 AM</td><td style="padding:12px 8px;font-weight:700;color:#15803D">41 / 50</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{isAdminAdd}}" hint-placeholder-val="{{false}}">
+          <div data-screen-label="Add Exam">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+              <h2 style="font-family:'Sora',sans-serif;font-weight:700;font-size:24px;margin:0">Add Exam</h2>
+              <sc-if value="{{adminToast}}" hint-placeholder-val="{{false}}"><span style="background:rgba(34,197,94,0.12);color:#15803D;border:1px solid rgba(34,197,94,0.35);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600;animation:pcaPop 0.25s ease">{{adminToast}}</span></sc-if>
+            </div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:20px;padding:24px;box-shadow:0 10px 26px rgba(15,23,42,0.05);margin-bottom:20px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Exam Name</label><input placeholder="2026 Batch Physics Exam 02" style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Batch</label><select style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"><option>2026 A/L</option><option>2027 A/L</option><option>2028 A/L</option><option>Repeat Batch</option></select></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Exam Year</label><select style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"><option>2026</option><option>2027</option></select></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Exam Month</label><select style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"><option>July</option><option>August</option><option>September</option></select></div>
+                <div style="grid-column:1 / -1"><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Google Drive PDF Link</label><input placeholder="https://drive.google.com/file/d/FILE_ID/view?usp=sharing" style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"><div style="font-size:12px;color:#64748B;margin-top:5px">Make sure the file is shared as "Anyone with the link can view". A preview and download link are generated automatically.</div></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Open Exam At</label><input type="datetime-local" style="width:100%;padding:10px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Close Exam At</label><input type="datetime-local" style="width:100%;padding:10px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"></div>
+                <div><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Release Result At</label><input type="datetime-local" style="width:100%;padding:10px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9)"></div>
+                <div style="grid-column:1 / -1"><label style="display:block;font-weight:600;font-size:13px;margin-bottom:6px">Instructions</label><textarea rows="2" placeholder="Answer all 50 questions. Only one option per question." style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid rgba(100,116,139,0.3);font-size:14px;outline:none;background:rgba(255,255,255,0.9);resize:vertical" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"></textarea></div>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.65);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.85);border-radius:20px;padding:24px;box-shadow:0 10px 26px rgba(15,23,42,0.05);margin-bottom:20px">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+                <h3 style="font-family:'Sora',sans-serif;font-weight:700;font-size:16px;margin:0">Answer Key</h3>
+                <span style="{{keyCountStyle}}">{{keyCount}} / 50 set</span>
+                <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+                  <button onClick="{{fillKey}}" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:12.5px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Fill Sample Key</button>
+                  <button onClick="{{clearKey}}" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(239,68,68,0.35);background:rgba(255,255,255,0.7);color:#B91C1C;font-weight:600;font-size:12.5px;cursor:pointer" style-hover="background:rgba(239,68,68,0.06)">Clear All</button>
+                  <button onClick="{{validateKey}}" style="padding:9px 14px;border-radius:10px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:12.5px;cursor:pointer" style-hover="background:#1D4ED8">Validate Answers</button>
+                </div>
+              </div>
+              <sc-if value="{{keyMsg}}" hint-placeholder-val="{{false}}"><div style="{{keyMsgStyle}}">{{keyMsg}}</div></sc-if>
+              <p style="color:#64748B;font-size:13px;margin:6px 0 16px">Click the correct option for each question — the same sheet students use.</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:2px 16px;background:#FFFFFF;border:1px solid #CBD5E1;border-radius:12px;padding:16px">
+                <sc-for list="{{adminGroups}}" as="g" hint-placeholder-count="5">
+                  <div>
+                    <sc-for list="{{g.items}}" as="q">
+                      <div style="{{q.rowStyle}}">
+                        <span style="width:24px;font-weight:600;font-size:12.5px;color:#0F172A;flex:none;text-align:right">{{q.label}}</span>
+                        <div style="display:flex;gap:4px">
+                          <sc-for list="{{q.opts}}" as="o">
+                            <button onClick="{{o.pick}}" aria-label="{{o.aria}}" style="{{o.style}}" style-hover="{{o.hoverStyle}}">
+                              <span style="position:relative;z-index:1">{{o.v}}</span>
+                              <svg width="32" height="32" style="{{o.markStyle}}">
+                                <path d="M8 8 L24 24 M24 8 L8 24" style="{{o.pathStyle}}"></path>
+                              </svg>
+                            </button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;padding-bottom:30px">
+              <button onClick="{{toastDraft}}" style="padding:13px 22px;border-radius:12px;border:1px solid rgba(37,99,235,0.35);background:rgba(255,255,255,0.7);color:#2563EB;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:rgba(37,99,235,0.08)">Save Without Answers</button>
+              <button onClick="{{toastSave}}" style="padding:13px 26px;border-radius:12px;border:none;background:#2563EB;color:#FFFFFF;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 8px 20px rgba(37,99,235,0.35)" style-hover="background:#1D4ED8">Save Exam</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;resultsReleased&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo behavior&quot;}, &quot;allowResubmission&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo behavior&quot;}, &quot;prefillStudent&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Demo behavior&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.KEY = {};
+    for (let n = 1; n <= 50; n++) this.KEY[n] = ((n * 7 + 3) % 5) + 1;
+    this.OPEN2_AT = new Date('2026-07-18T08:00:00').getTime();
+    this.RELEASE_AT = new Date('2026-07-20T18:00:00').getTime();
+    this.state = {
+      view: 'student', screen: 'landing', adminScreen: 'login',
+      form: { fullName: '', batch: '2026 A/L', reg: '', phone: '', nic: '' },
+      touched: {},
+      filterYear: '2026', filterMonth: 'July', filterBatch: '2026 A/L',
+      answers: {},
+      showModal: false, submitting: false, submitted: false, submittedTime: '', refNo: '',
+      lookupReg: '', lookupNic: '', lookupErr: '',
+      adminKey: {}, adminEmail: '', adminPass: '',
+      adminToast: '', keyMsg: '', keyMsgOk: false,
+      now: Date.now(), isDesktop: true, savedVisible: false
+    };
+  }
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ isDesktop: window.innerWidth >= 1024 });
+    this._onResize();
+    window.addEventListener('resize', this._onResize);
+    this._tick = setInterval(() => this.setState({ now: Date.now() }), 1000);
+    if (this.props.prefillStudent) this.prefill();
+  }
+  componentDidUpdate(prev) {
+    if (this.props.prefillStudent && !prev.prefillStudent) this.prefill();
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    clearInterval(this._tick);
+    clearTimeout(this._saveT); clearTimeout(this._toastT); clearTimeout(this._subT);
+  }
+  prefill() {
+    this.setState({ form: { fullName: 'K. Jayasinghe', batch: '2026 A/L', reg: 'pca2026-041', phone: '0772214410', nic: '200712345641' } });
+  }
+
+  // ---------- validation ----------
+  vName(v) { const t = v.trim(); if (!t) return 'Full name is required'; if (t.length < 3) return 'Minimum 3 characters'; if (!/^[A-Za-z. ]+$/.test(t)) return 'Letters and spaces only'; return ''; }
+  vReg(v) { return v.trim() ? '' : 'Registration number is required'; }
+  vPhone(v) { const c = v.replace(/[\s-]/g, ''); return /^(0|94|\+94)7\d{8}$/.test(c) ? '' : 'Enter a valid Sri Lankan number, e.g. 0771234567'; }
+  vNic(v) { const c = v.replace(/\s/g, '').toUpperCase(); return (/^\d{9}[VX]$/.test(c) || /^\d{12}$/.test(c)) ? '' : 'Enter a valid NIC, e.g. 991234567V or 200012345678'; }
+  normNic(v) { return v.replace(/\s/g, '').toUpperCase(); }
+  formValid() {
+    const f = this.state.form;
+    return !this.vName(f.fullName) && !this.vReg(f.reg) && !this.vPhone(f.phone) && !this.vNic(f.nic);
+  }
+  setForm(k, v) { this.setState(s => ({ form: { ...s.form, [k]: v } })); }
+  touch(k) { this.setState(s => ({ touched: { ...s.touched, [k]: true } })); }
+  inputStyle(err, ok) {
+    let border = '1.5px solid rgba(100,116,139,0.3)';
+    if (err) border = '1.5px solid rgba(239,68,68,0.6)';
+    else if (ok) border = '1.5px solid rgba(34,197,94,0.55)';
+    return { width: '100%', padding: '12px 40px 12px 14px', borderRadius: '12px', border, fontSize: '15px', outline: 'none', background: 'rgba(255,255,255,0.9)', transition: 'border 0.15s ease' };
+  }
+
+  // ---------- answer sheet ----------
+  pick(mode, n, v) {
+    if (mode === 'admin') {
+      this.setState(s => ({ adminKey: { ...s.adminKey, [n]: s.adminKey[n] === v ? undefined : v }, keyMsg: '' }));
+    } else {
+      this.setState(s => ({ answers: { ...s.answers, [n]: v }, savedVisible: true }));
+      clearTimeout(this._saveT);
+      this._saveT = setTimeout(() => this.setState({ savedVisible: false }), 1600);
+    }
+  }
+  buildGroups(mode) {
+    const answers = mode === 'admin' ? this.state.adminKey : this.state.answers;
+    const groups = [];
+    for (let g = 0; g < 5; g++) {
+      const items = [];
+      for (let i = 1; i <= 10; i++) {
+        const n = g * 10 + i;
+        const sel = answers[n];
+        const correct = this.KEY[n];
+        let rowBg = 'transparent', rowBorder = '1px solid transparent', note = '', noteColor = '#64748B', noteBg = 'transparent';
+        if (mode === 'result') {
+          if (sel === correct) { rowBg = 'rgba(34,197,94,0.09)'; rowBorder = '1px solid rgba(34,197,94,0.3)'; }
+          else if (sel) { rowBg = 'rgba(239,68,68,0.06)'; rowBorder = '1px solid rgba(239,68,68,0.3)'; note = 'Correct answer: ' + correct; noteColor = '#B91C1C'; noteBg = 'rgba(239,68,68,0.08)'; }
+          else { rowBg = 'rgba(245,158,11,0.07)'; rowBorder = '1px solid rgba(245,158,11,0.3)'; note = 'Not answered'; noteColor = '#92400E'; noteBg = 'rgba(245,158,11,0.1)'; }
+        }
+        const opts = [];
+        for (let v = 1; v <= 5; v++) {
+          const isSel = sel === v, isCorrect = correct === v;
+          let border = '1px solid #64748B', bg = '#FFFFFF', color = '#475569', shadow = 'none', showMark = false, stroke = '#1D4ED8', anim = '';
+          let hover = mode === 'result' ? {} : { borderColor: '#2563EB', background: 'rgba(37,99,235,0.08)' };
+          if (mode === 'result') {
+            if (isSel && isCorrect) { bg = '#22C55E'; border = '1.5px solid #16A34A'; color = '#FFFFFF'; showMark = true; stroke = '#FFFFFF'; }
+            else if (isSel) { bg = '#EF4444'; border = '1.5px solid #DC2626'; color = '#FFFFFF'; showMark = true; stroke = '#FFFFFF'; }
+            else if (isCorrect) { border = '2.5px solid #22C55E'; color = '#15803D'; bg = 'rgba(34,197,94,0.08)'; }
+          } else if (isSel) {
+            bg = 'rgba(37,99,235,0.1)'; border = '1.5px solid #2563EB'; color = '#1D4ED8';
+            shadow = '0 0 0 3px rgba(37,99,235,0.14)'; showMark = true; anim = 'pcaPulse 0.5s ease';
+          }
+          opts.push({
+            v: String(v),
+            aria: 'Question ' + n + ' option ' + v + (isSel ? ' selected' : ''),
+            pick: mode === 'result' ? undefined : () => this.pick(mode, n, v),
+            style: { position: 'relative', width: '32px', height: '32px', borderRadius: '50%', border, background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '12px', cursor: mode === 'result' ? 'default' : 'pointer', transition: 'all 0.15s ease', boxShadow: shadow, padding: 0, flex: 'none', animation: anim },
+            hoverStyle: hover,
+            markStyle: showMark ? { position: 'absolute', inset: 0, pointerEvents: 'none' } : { display: 'none' },
+            pathStyle: { fill: 'none', stroke, strokeWidth: '3.5', strokeLinecap: 'round', strokeDasharray: 60, strokeDashoffset: 60, animation: 'pcaDraw 0.3s ease forwards' }
+          });
+        }
+        items.push({
+          n, label: n + '.',
+          rowId: 'pca-q-' + n,
+          rowStyle: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '3px 5px', borderRadius: '10px', marginBottom: '2px', background: rowBg, border: rowBorder },
+          opts,
+          hasNote: !!note, note,
+          noteStyle: { fontSize: '11px', fontWeight: 600, color: noteColor, background: noteBg, borderRadius: '7px', padding: '2px 7px', marginLeft: '32px' }
+        });
+      }
+      groups.push({ range: (g * 10 + 1) + ' – ' + (g * 10 + 10), items });
+    }
+    return groups;
+  }
+
+  scoreData() {
+    let correct = 0, incorrect = 0, answered = 0;
+    for (let n = 1; n <= 50; n++) {
+      const sel = this.state.answers[n];
+      if (sel) { answered++; if (sel === this.KEY[n]) correct++; else incorrect++; }
+    }
+    return { correct, incorrect, unanswered: 50 - answered, answered };
+  }
+
+  fmtCountdown(target) {
+    let d = Math.max(0, target - this.state.now);
+    const days = Math.floor(d / 86400000); d -= days * 86400000;
+    const h = Math.floor(d / 3600000); d -= h * 3600000;
+    const m = Math.floor(d / 60000); d -= m * 60000;
+    const s = Math.floor(d / 1000);
+    if (days > 0) return days + 'd ' + h + 'h ' + m + 'm';
+    return h + 'h ' + m + 'm ' + s + 's';
+  }
+
+  toast(msg) {
+    this.setState({ adminToast: msg });
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => this.setState({ adminToast: '' }), 2400);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const f = st.form;
+    const resultsReleased = this.props.resultsReleased ?? true;
+    const allowResub = this.props.allowResubmission ?? false;
+
+    const errIf = (k, fn, v) => (st.touched[k] ? fn.call(this, v) : '');
+    const okIf = (fn, v) => v.length > 0 && !fn.call(this, v);
+
+    const errName = errIf('name', this.vName, f.fullName);
+    const errReg = errIf('reg', this.vReg, f.reg);
+    const errPhone = errIf('phone', this.vPhone, f.phone);
+    const errNic = errIf('nic', this.vNic, f.nic);
+
+    const sd = this.scoreData();
+    const pctNum = Math.round((sd.answered / 50) * 100);
+
+    // exam cards per filters
+    const cards = [];
+    const badge = (bg, color, bd) => ({ background: bg, color, border: '1px solid ' + bd, borderRadius: '999px', padding: '4px 12px', fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.04em' });
+    const btnPrimary = { padding: '13px', borderRadius: '13px', border: 'none', background: '#2563EB', color: '#FFFFFF', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '6px', boxShadow: '0 8px 20px rgba(37,99,235,0.3)', transition: 'transform 0.15s ease' };
+    const btnGhost = { padding: '13px', borderRadius: '13px', border: '1px solid rgba(37,99,235,0.35)', background: 'rgba(255,255,255,0.6)', color: '#2563EB', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginTop: '6px', transition: 'transform 0.15s ease' };
+    const btnDisabled = { ...btnGhost, color: '#64748B', border: '1px solid rgba(100,116,139,0.3)', cursor: 'default' };
+    if (st.filterBatch === '2026 A/L' && st.filterYear === '2026' && st.filterMonth === 'July') {
+      cards.push({
+        name: '2026 Batch Physics Exam 01', status: 'OPEN', badgeStyle: badge('rgba(34,197,94,0.14)', '#15803D', 'rgba(34,197,94,0.35)'),
+        meta: '2026 A/L · July 2026 · Saturday, July 11',
+        timing: 'Open now · Closes July 15, 8:00 PM',
+        btnLabel: st.submitted ? 'Submitted ✓' : 'Start Exam →', disabled: st.submitted,
+        btnStyle: st.submitted ? btnDisabled : btnPrimary,
+        action: () => this.setState({ screen: 'exam' })
+      });
+      cards.push({
+        name: '2026 Batch Physics Exam 02', status: 'UPCOMING', badgeStyle: badge('rgba(96,165,250,0.16)', '#1D4ED8', 'rgba(96,165,250,0.45)'),
+        meta: '2026 A/L · July 2026 · Saturday, July 18',
+        timing: 'Opens in ' + this.fmtCountdown(this.OPEN2_AT),
+        btnLabel: 'Coming Soon', disabled: true, btnStyle: btnDisabled, action: () => {}
+      });
+    }
+    if (st.filterBatch === '2026 A/L' && st.filterYear === '2026' && st.filterMonth === 'June') {
+      cards.push({
+        name: '2026 Batch Physics Exam June', status: 'RESULT RELEASED', badgeStyle: badge('rgba(34,211,238,0.16)', '#0E7490', 'rgba(34,211,238,0.45)'),
+        meta: '2026 A/L · June 2026 · Saturday, June 13',
+        timing: 'Closed · Results available now',
+        btnLabel: 'View Result', disabled: false, btnStyle: btnGhost,
+        action: () => this.setState({ screen: 'lookup' })
+      });
+    }
+
+    // navigator
+    const navItems = [];
+    for (let n = 1; n <= 50; n++) {
+      const answered = !!st.answers[n];
+      navItems.push({
+        n: String(n),
+        style: { width: '30px', height: '30px', borderRadius: '9px', border: answered ? 'none' : '1px solid rgba(100,116,139,0.3)', background: answered ? '#2563EB' : 'rgba(255,255,255,0.7)', color: answered ? '#FFFFFF' : '#64748B', fontSize: '11px', fontWeight: 700, cursor: 'pointer', padding: 0, transition: 'all 0.15s ease' },
+        go: () => {
+          const el = document.getElementById('pca-q-' + n);
+          if (el) { const r = el.getBoundingClientRect(); window.scrollBy({ top: r.top - 190, behavior: 'smooth' }); }
+        }
+      });
+    }
+
+    const keyCount = Object.keys(st.adminKey).filter(k => st.adminKey[k]).length;
+    const navBtn = (active) => ({ padding: '11px 12px', borderRadius: '11px', border: 'none', background: active ? 'rgba(37,99,235,0.35)' : 'transparent', color: active ? '#FFFFFF' : 'rgba(219,234,254,0.85)', fontWeight: 600, fontSize: '13.5px', cursor: 'pointer', textAlign: 'left', marginBottom: '2px' });
+
+    const circ = 2 * Math.PI * 60;
+    const resultPct = sd.correct / 50 * 100;
+
+    let perfLabel = 'Needs Improvement', perfBg = 'rgba(245,158,11,0.12)', perfColor = '#B45309', perfBd = 'rgba(245,158,11,0.4)';
+    if (resultPct >= 75) { perfLabel = 'Excellent'; perfBg = 'rgba(34,197,94,0.12)'; perfColor = '#15803D'; perfBd = 'rgba(34,197,94,0.4)'; }
+    else if (resultPct >= 60) { perfLabel = 'Very Good'; perfBg = 'rgba(34,211,238,0.14)'; perfColor = '#0E7490'; perfBd = 'rgba(34,211,238,0.4)'; }
+    else if (resultPct >= 45) { perfLabel = 'Good'; perfBg = 'rgba(96,165,250,0.14)'; perfColor = '#1D4ED8'; perfBd = 'rgba(96,165,250,0.4)'; }
+
+    return {
+      // view routing
+      isStudent: st.view === 'student',
+      isAdmin: st.view === 'admin',
+      isLanding: st.screen === 'landing',
+      isRegister: st.screen === 'register',
+      isExams: st.screen === 'exams',
+      isExamOpen: st.screen === 'exam',
+      isSubmitted: st.screen === 'submitted',
+      isLookup: st.screen === 'lookup',
+      isPending: st.screen === 'pending',
+      isResult: st.screen === 'result',
+      isDesktop: st.isDesktop,
+      adminGate: !st.isDesktop,
+      isAdminLogin: st.isDesktop && st.adminScreen === 'login',
+      isAdminApp: st.isDesktop && st.adminScreen !== 'login',
+      isAdminDash: st.adminScreen === 'dashboard',
+      isAdminAdd: st.adminScreen === 'addExam',
+      isAdminManage: st.adminScreen === 'manage',
+      isAdminSubs: st.adminScreen === 'subs',
+
+      // nav
+      goHome: () => this.setState({ screen: 'landing' }),
+      goExamsNav: () => this.setState({ screen: this.formValid() ? 'exams' : 'register' }),
+      goLookup: () => this.setState({ screen: 'lookup', lookupErr: '' }),
+      goRegister: () => this.setState({ screen: 'register' }),
+      startFlow: () => this.setState({ screen: this.formValid() ? 'exams' : 'register' }),
+      goAdmin: () => this.setState({ view: 'admin' }),
+      exitAdmin: () => this.setState({ view: 'student', adminScreen: 'login' }),
+
+      // registration form
+      fName: f.fullName, onName: e => this.setForm('fullName', e.target.value), blurName: () => this.touch('name'),
+      errName, okName: okIf(this.vName, f.fullName), nameInputStyle: this.inputStyle(errName, okIf(this.vName, f.fullName)),
+      batchVal: f.batch, onBatch: e => this.setForm('batch', e.target.value),
+      fReg: f.reg, onReg: e => this.setForm('reg', e.target.value), blurReg: () => this.touch('reg'),
+      errReg, okReg: okIf(this.vReg, f.reg), regInputStyle: this.inputStyle(errReg, okIf(this.vReg, f.reg)),
+      fPhone: f.phone, onPhone: e => this.setForm('phone', e.target.value), blurPhone: () => this.touch('phone'),
+      errPhone, okPhone: okIf(this.vPhone, f.phone), phoneInputStyle: this.inputStyle(errPhone, okIf(this.vPhone, f.phone)),
+      fNic: f.nic, onNic: e => this.setForm('nic', e.target.value), blurNic: () => this.touch('nic'),
+      errNic, okNic: okIf(this.vNic, f.nic), nicInputStyle: this.inputStyle(errNic, okIf(this.vNic, f.nic)),
+      submitRegister: () => {
+        this.setState({ touched: { name: true, reg: true, phone: true, nic: true } });
+        if (this.formValid()) this.setState({ screen: 'exams' });
+      },
+
+      // filters + cards
+      yearVal: st.filterYear, onYear: e => this.setState({ filterYear: e.target.value }),
+      monthVal: st.filterMonth, onMonth: e => this.setState({ filterMonth: e.target.value }),
+      filterBatchVal: st.filterBatch, onFilterBatch: e => this.setState({ filterBatch: e.target.value }),
+      examCards: cards, hasExams: cards.length > 0, noExams: cards.length === 0,
+
+      // exam screen
+      backToExams: () => this.setState({ screen: 'exams', showModal: false }),
+      studentChip: f.fullName ? f.fullName + ' · ' + f.reg.trim().toLowerCase() : 'Guest',
+      examLayoutStyle: st.isDesktop
+        ? { display: 'grid', gridTemplateColumns: '330px 1fr', gap: '18px', alignItems: 'start' }
+        : { display: 'flex', flexDirection: 'column', gap: '16px' },
+      answeredCount: String(sd.answered),
+      unansweredCount: String(sd.unanswered),
+      pctText: pctNum + '% complete',
+      progressFillStyle: { height: '100%', width: pctNum + '%', borderRadius: '999px', background: 'linear-gradient(90deg,#2563EB,#22D3EE)', transition: 'width 0.35s ease' },
+      savedVisible: st.savedVisible,
+      navItems,
+      examGroups: this.buildGroups('exam'),
+      reviewUnanswered: () => {
+        for (let n = 1; n <= 50; n++) if (!st.answers[n]) {
+          const el = document.getElementById('pca-q-' + n);
+          if (el) { const r = el.getBoundingClientRect(); window.scrollBy({ top: r.top - 190, behavior: 'smooth' }); }
+          break;
+        }
+      },
+
+      // submit
+      showModal: st.showModal,
+      openModal: () => this.setState({ showModal: true }),
+      closeModal: () => this.setState({ showModal: false }),
+      submitLabel: st.submitting ? 'Submitting…' : 'Submit Final Answers',
+      confirmSubmit: () => {
+        if (st.submitting) return;
+        this.setState({ submitting: true });
+        this._subT = setTimeout(() => {
+          const t = new Date();
+          this.setState({
+            submitting: false, submitted: true, showModal: false, screen: 'submitted',
+            submittedTime: t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' + t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            refNo: 'PCA-' + Date.now().toString(36).toUpperCase().slice(-6)
+          });
+        }, 900);
+      },
+      refNo: st.refNo, submittedTime: st.submittedTime,
+      resName: f.fullName || 'Student', resReg: f.reg.trim().toLowerCase() || '—',
+      viewMyResult: () => this.setState({ screen: 'lookup', lookupReg: f.reg, lookupNic: f.nic, lookupErr: '' }),
+      resubAllowed: allowResub,
+      reopenAnswers: () => this.setState({ submitted: false, screen: 'exam' }),
+
+      // lookup
+      lookupRegVal: st.lookupReg, onLookupReg: e => this.setState({ lookupReg: e.target.value, lookupErr: '' }),
+      lookupNicVal: st.lookupNic, onLookupNic: e => this.setState({ lookupNic: e.target.value, lookupErr: '' }),
+      lookupErr: st.lookupErr,
+      doLookup: () => {
+        const regMatch = st.submitted && st.lookupReg.trim().toLowerCase() === f.reg.trim().toLowerCase();
+        const nicMatch = st.submitted && this.normNic(st.lookupNic) === this.normNic(f.nic);
+        if (regMatch && nicMatch) {
+          this.setState({ screen: resultsReleased ? 'result' : 'pending', lookupErr: '' });
+        } else {
+          this.setState({ lookupErr: 'We could not find a matching submission. Please check your Registration Number and NIC and try again.' });
+        }
+      },
+      releaseCountdown: this.fmtCountdown(this.RELEASE_AT) + ' (Jul 20, 6:00 PM)',
+
+      // result
+      score: String(sd.correct),
+      pctRound: String(Math.round(resultPct)),
+      correctCount: String(sd.correct),
+      incorrectCount: String(sd.incorrect),
+      unansweredFinal: String(sd.unanswered),
+      ringStyle: { fill: 'none', stroke: '#2563EB', strokeWidth: 11, strokeLinecap: 'round', strokeDasharray: circ, strokeDashoffset: circ * (1 - resultPct / 100), transition: 'stroke-dashoffset 1s ease 0.3s' },
+      perfLabel,
+      perfChipStyle: { background: perfBg, color: perfColor, border: '1px solid ' + perfBd, borderRadius: '999px', padding: '5px 14px', fontSize: '12.5px', fontWeight: 700 },
+      resultGroups: this.buildGroups('result'),
+
+      // admin
+      adminEmailVal: st.adminEmail, onAdminEmail: e => this.setState({ adminEmail: e.target.value }),
+      adminPassVal: st.adminPass, onAdminPass: e => this.setState({ adminPass: e.target.value }),
+      adminLoginGo: () => this.setState({ adminScreen: 'dashboard' }),
+      goAdminDash: () => this.setState({ adminScreen: 'dashboard' }),
+      goAdminAdd: () => this.setState({ adminScreen: 'addExam' }),
+      goAdminManage: () => this.setState({ adminScreen: 'manage' }),
+      goAdminSubs: () => this.setState({ adminScreen: 'subs' }),
+      dashNavStyle: navBtn(st.adminScreen === 'dashboard'),
+      addNavStyle: navBtn(st.adminScreen === 'addExam'),
+      manageNavStyle: navBtn(st.adminScreen === 'manage'),
+      subsNavStyle: navBtn(st.adminScreen === 'subs'),
+      distBars: [['0–10', 9], ['11–20', 26], ['21–30', 58], ['31–40', 64], ['41–50', 27]].map(d => ({ label: d[0], v: String(d[1]), style: { width: '100%', maxWidth: '44px', height: Math.round(d[1] / 64 * 100) + '%', minHeight: '4px', background: 'linear-gradient(180deg,#60A5FA,#2563EB)', borderRadius: '7px 7px 3px 3px' } })),
+      hourBars: [['8a', 6], ['9a', 14], ['10a', 22], ['11a', 31], ['12p', 18], ['1p', 9], ['2p', 12], ['3p', 17], ['4p', 24], ['5p', 15], ['6p', 8], ['7p', 5]].map(d => ({ label: d[0], v: String(d[1]), style: { width: '100%', maxWidth: '26px', height: Math.round(d[1] / 31 * 100) + '%', minHeight: '4px', background: 'linear-gradient(180deg,#67E8F9,#22D3EE)', borderRadius: '6px 6px 3px 3px' } })),
+      batchBars: [['2026 A/L', 33.6], ['2027 A/L', 29.1], ['2028 A/L', 24.4], ['Repeat Batch', 36.2]].map(d => ({ label: d[0], v: d[1] + ' / 50', style: { width: Math.round(d[1] / 50 * 100) + '%', height: '100%', borderRadius: '999px', background: 'linear-gradient(90deg,#60A5FA,#2563EB)' } })),
+      adminStats: [
+        { label: 'Total Exams', value: '14' },
+        { label: 'Open Exams', value: '1' },
+        { label: 'Upcoming Exams', value: '2' },
+        { label: 'Total Submissions', value: '1,908' },
+        { label: 'Results Pending', value: '1' },
+        { label: 'Results Released', value: '11' },
+        { label: 'Active Batches', value: '4' },
+        { label: 'Average Score', value: '33.6' }
+      ],
+      adminToast: st.adminToast,
+      toastRelease: () => this.toast('Result release scheduled'),
+      toastExport: () => this.toast('Results exported as CSV'),
+      toastSave: () => this.toast('Exam saved successfully'),
+      toastDraft: () => this.toast('Exam saved without answers'),
+
+      // answer key
+      adminGroups: this.buildGroups('admin'),
+      keyCount: String(keyCount),
+      keyCountStyle: { background: keyCount === 50 ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: keyCount === 50 ? '#15803D' : '#B45309', borderRadius: '999px', padding: '4px 12px', fontSize: '12px', fontWeight: 700 },
+      fillKey: () => this.setState({ adminKey: { ...this.KEY }, keyMsg: '' }),
+      clearKey: () => this.setState({ adminKey: {}, keyMsg: '' }),
+      keyMsg: st.keyMsg,
+      keyMsgStyle: { background: st.keyMsgOk ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.07)', border: '1px solid ' + (st.keyMsgOk ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.3)'), color: st.keyMsgOk ? '#15803D' : '#B91C1C', borderRadius: '11px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, margin: '8px 0' },
+      validateKey: () => {
+        const missing = [];
+        for (let n = 1; n <= 50; n++) if (!st.adminKey[n]) missing.push(n);
+        if (missing.length === 0) this.setState({ keyMsg: 'Answer key complete — all 50 answers set. Ready to publish results.', keyMsgOk: true });
+        else this.setState({ keyMsg: missing.length + ' answers missing: Q' + missing.slice(0, 8).join(', Q') + (missing.length > 8 ? '…' : ''), keyMsgOk: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
