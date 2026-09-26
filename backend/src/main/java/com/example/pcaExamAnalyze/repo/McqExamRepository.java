@@ -19,7 +19,7 @@ public interface McqExamRepository extends JpaRepository<McqExam, Long> {
 
     boolean existsBySlugAndIdNot(String slug, Long id);
 
-    @EntityGraph(attributePaths = {"eligibleBatches", "eligibleStreams", "answerKey", "acceptedAnswerKeys"})
+    /** Collections load lazily in batches (default_batch_fetch_size); a 4-collection join multiplied rows. */
     List<McqExam> findAllByOrderByCreatedAtDesc();
 
     @EntityGraph(attributePaths = {"eligibleBatches", "eligibleStreams", "answerKey", "acceptedAnswerKeys"})

@@ -13,6 +13,12 @@ public interface McqSubmissionRepository extends JpaRepository<McqSubmission, Lo
 
     long countByExamId(Long examId);
 
+    interface ExamCount { Long getExamId(); long getTotal(); }
+
+    /** Submission count of every exam in one query (the exam list used one query per exam). */
+    @Query("select s.exam.id as examId, count(s) as total from McqSubmission s group by s.exam.id")
+    List<ExamCount> countAllByExam();
+
     @EntityGraph(attributePaths = {"exam", "answers"})
     List<McqSubmission> findAllByOrderByCreatedAtDesc();
 

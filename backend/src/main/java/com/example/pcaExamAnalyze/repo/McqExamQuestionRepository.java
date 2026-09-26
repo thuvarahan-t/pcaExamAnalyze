@@ -15,7 +15,7 @@ public interface McqExamQuestionRepository extends JpaRepository<McqExamQuestion
 
     /** Everything except the image bytes, so listing a 50-question paper stays cheap. */
     @Query("select new com.example.pcaExamAnalyze.repo.McqQuestionMeta("
-            + "q.questionNumber, q.imageUpdatedAt, q.weight, q.timeSeconds, q.units, q.competencyLevels, q.contents, q.learningOutcomes) "
+            + "q.questionNumber, q.imageUpdatedAt, q.weight, q.timeSeconds, q.units, q.competencyLevels, q.contents, q.learningOutcomes, q.storageKey) "
             + "from McqExamQuestion q where q.exam.id = :examId order by q.questionNumber")
     List<McqQuestionMeta> findMetaByExamId(@Param("examId") Long examId);
 
@@ -25,6 +25,12 @@ public interface McqExamQuestionRepository extends JpaRepository<McqExamQuestion
     /** Rows whose image is still in the database, for the one-time move to R2. */
     @Query("select q.id from McqExamQuestion q where q.data is not null and q.storageKey is null")
     List<Long> findIdsWithDatabaseImages();
+
+    interface KeyRef { Integer getQuestionNumber(); String getStorageKey(); }
+
+    @Query("select q.questionNumber as questionNumber, q.storageKey as storageKey from McqExamQuestion q "
+            + "where q.exam.id = :examId and q.storageKey is not null")
+    List<KeyRef> findKeyRefsByExamId(@Param("examId") Long examId);
 
     @Modifying
     @Query("delete from McqExamQuestion q where q.exam.id = :examId")

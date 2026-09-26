@@ -232,7 +232,10 @@ public class McqExam {
                 }
             });
         }
-        this.acceptedAnswerKeys = encoded;
-        this.answerKey = legacyPrimary;
+        // Update in place: replacing the maps made Hibernate delete and re-insert every key row.
+        acceptedAnswerKeys.keySet().retainAll(encoded.keySet());
+        encoded.forEach((question, value) -> { if (!value.equals(acceptedAnswerKeys.get(question))) acceptedAnswerKeys.put(question, value); });
+        answerKey.keySet().retainAll(legacyPrimary.keySet());
+        legacyPrimary.forEach((question, value) -> { if (!value.equals(answerKey.get(question))) answerKey.put(question, value); });
     }
 }
