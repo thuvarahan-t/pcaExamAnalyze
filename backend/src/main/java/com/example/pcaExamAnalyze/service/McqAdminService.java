@@ -90,7 +90,7 @@ public class McqAdminService {
                 .sorted(Comparator.comparingLong(ExamSubmissionCount::count).reversed())
                 .toList();
         Dashboard loaded = new Dashboard(allExams.size(), recentSubmissions.size(), activeBatchRows().size(),
-                submissionCounts, allExams.stream().limit(5).map(this::examRow).toList());
+                submissionCounts, allExams.stream().limit(5).map(exam -> examRow(exam, submissionCounts())).toList());
         dashboardSnapshot = new DashboardSnapshot(now + 5_000_000_000L, loaded);
         return loaded;
     }
@@ -165,7 +165,8 @@ public class McqAdminService {
         long now = System.nanoTime();
         ExamSnapshot snapshot = examSnapshot;
         if (now < snapshot.expiresAtNanos()) return snapshot.exams();
-        List<ExamRow> loaded = exams.findAllByOrderByCreatedAtDesc().stream().map(this::examRow).toList();
+        Map<Long, Long> counts = submissionCounts();
+        List<ExamRow> loaded = exams.findAllByOrderByCreatedAtDesc().stream().map(exam -> examRow(exam, counts)).toList();
         examSnapshot = new ExamSnapshot(now + 30_000_000_000L, loaded);
         return loaded;
     }
@@ -191,14 +192,16 @@ public class McqAdminService {
     @Transactional(readOnly = true)
     public PageResult<ExamRow> examPage(int requestedPage, String search, String batch, String month, Integer year) {
         String needle = clean(search).toLowerCase(Locale.ROOT);
-        List<ExamRow> filtered = exams.findAllByOrderByCreatedAtDesc().stream()
+        List<McqExam> filtered = exams.findAllByOrderByCreatedAtDesc().stream()
                 .filter(exam -> needle.isBlank() || exam.getName().toLowerCase(Locale.ROOT).contains(needle))
                 .filter(exam -> batch == null || batch.isBlank() || exam.getEligibleBatches().contains(batch))
                 .filter(exam -> month == null || month.isBlank() || month.equals(exam.getExamMonth()))
                 .filter(exam -> year == null || year.equals(exam.getExamYear()))
-                .map(this::examRow)
                 .toList();
-        return page(filtered, requestedPage, 10);
+        PageResult<McqExam> examPage = page(filtered, requestedPage, 10);
+        Map<Long, Long> counts = submissionCounts();
+        return new PageResult<>(examPage.items().stream().map(exam -> examRow(exam, counts)).toList(), examPage.page(),
+                examPage.totalPages(), examPage.totalItems(), examPage.hasPrevious(), examPage.hasNext());
     }
 
     @Transactional(readOnly = true)
@@ -365,7 +368,7 @@ public class McqAdminService {
 
     @Transactional(readOnly = true)
     public McqExam requireExam(Long id) {
-        return exams.findById(id).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+        return exams.findPlainById(id).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
     }
 
     @Transactional(readOnly = true)
@@ -380,7 +383,7 @@ public class McqAdminService {
         form.setPaperDriveUrl(exam.getPaperDriveUrl());
         form.setOpenAt(LocalDateTime.ofInstant(exam.getOpenAt(), PCA_ZONE));
         form.setCloseAt(LocalDateTime.ofInstant(exam.getCloseAt(), PCA_ZONE));
-        form.setResultReleaseAt(LocalDateTime.ofInstant(exam.getResultReleaseAt(), PCA_ZONE));
+        if (exam.getResultReleaseAt() != null) form.setResultReleaseAt(LocalDateTime.ofInstant(exam.getResultReleaseAt(), PCA_ZONE));
         form.setInstructions(exam.getInstructions());
         form.setDurationMinutes(exam.getDurationMinutes());
         form.setAllowResubmission(exam.isAllowResubmission());
@@ -482,10 +485,12 @@ public class McqAdminService {
         if (exam.getSlug() == null || exam.getSlug().isBlank()) {
             exam.setSlug(uniqueSlug(exam.getName(), exam.getId()));
         }
-        exam.setEligibleBatches(new LinkedHashSet<>(List.of(form.getBatch())));
+        exam.getEligibleBatches().retainAll(Set.of(form.getBatch()));
+        exam.getEligibleBatches().add(form.getBatch());
         // Stream is not an eligibility restriction. Every supported stream can access
         // an exam when the student's batch matches.
-        exam.setEligibleStreams(new LinkedHashSet<>(STREAMS));
+        exam.getEligibleStreams().retainAll(STREAMS);
+        exam.getEligibleStreams().addAll(STREAMS);
         exam.setExamYear(form.getExamYear());
         exam.setExamMonth(form.getExamMonth());
         exam.setPaperDriveUrl(clean(form.getPaperDriveUrl()));
@@ -493,7 +498,8 @@ public class McqAdminService {
         // Student papers stay open permanently after openAt. Keep a far-future
         // internal value for compatibility with existing databases/rows.
         exam.setCloseAt(NO_CLOSE_AT);
-        exam.setResultReleaseAt(form.getResultReleaseAt().atZone(PCA_ZONE).toInstant());
+        // Results are released only by the Release button; this column just records when.
+        if (exam.getResultReleaseAt() == null) exam.setResultReleaseAt(NO_CLOSE_AT);
         exam.setInstructions(clean(form.getInstructions()));
         exam.setDurationMinutes(form.getDurationMinutes());
         exam.setPassMark(null);
@@ -551,8 +557,12 @@ public class McqAdminService {
     public void releaseResults(Long id) {
         McqExam exam = requireExam(id);
         if (!exam.hasCompleteAnswerKey()) {
-            throw new IllegalStateException("Complete all " + exam.getTotalQuestions()
-                    + " answer-key entries before releasing results");
+            // Answers may be filled in after scheduling, but every question needs one before release.
+            String missing = IntStream.rangeClosed(1, exam.getTotalQuestions())
+                    .filter(q -> !exam.isFreeMark(q) && exam.correctOptions(q).isEmpty())
+                    .mapToObj(q -> "Q" + q).collect(Collectors.joining(", "));
+            throw new IllegalStateException("Set the correct answer before releasing results for: " + missing
+                    + (exam.usesQuestionImages() ? " (Question Editor)" : " (Edit exam → Answer Key)"));
         }
         exam.setResultsPublished(true);
         if (exam.getResultReleaseAt().isAfter(Instant.now())) exam.setResultReleaseAt(Instant.now());
@@ -644,10 +654,20 @@ public class McqAdminService {
         return IntStream.rangeClosed(1, 5).boxed().toList();
     }
 
+    private Map<Long, Long> submissionCounts() {
+        Map<Long, Long> counts = new java.util.HashMap<>();
+        submissions.countAllByExam().forEach(row -> counts.put(row.getExamId(), row.getTotal()));
+        return counts;
+    }
+
     private ExamRow examRow(McqExam exam) {
+        return examRow(exam, Map.of(exam.getId(), submissions.countByExamId(exam.getId())));
+    }
+
+    private ExamRow examRow(McqExam exam, Map<Long, Long> counts) {
         return new ExamRow(exam.getId(), exam.getSlug(), exam.getName(), String.join(", ", exam.getEligibleBatches()),
                 format(exam.getOpenAt()), format(exam.getCloseAt()),
-                format(exam.getResultReleaseAt()), submissions.countByExamId(exam.getId()), exam.answerKeyCount(),
+                format(exam.getResultReleaseAt()), counts.getOrDefault(exam.getId(), 0L), exam.answerKeyCount(),
                 exam.getTotalQuestions(), status(exam), exam.isResultsPublished(), exam.getPaperDriveUrl(),
                 exam.usesQuestionImages());
     }
@@ -665,7 +685,7 @@ public class McqAdminService {
         if (exam.getPublicationState() == McqExamPublicationState.ARCHIVED) return "ARCHIVED";
         if (exam.getPublicationState() == McqExamPublicationState.DRAFT) return "DRAFT";
         Instant now = Instant.now();
-        if (exam.isResultsPublished() && !now.isBefore(exam.getResultReleaseAt())) return "RESULT RELEASED";
+        if (exam.isResultsPublished()) return "RESULT RELEASED";
         if (now.isBefore(exam.getOpenAt())) return "SCHEDULED";
         return "OPEN";
     }

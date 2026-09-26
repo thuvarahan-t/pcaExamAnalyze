@@ -202,10 +202,10 @@ public class ExamPortalController {
     public String examWorkspace(@PathVariable Long submissionId, Model model, HttpSession session,
                                 RedirectAttributes redirect) {
         try {
-            if (studentExamService.autoSubmitIfOverdue(submissionId, savedDetails(session))) {
+            var workspace = studentExamService.workspace(submissionId, savedDetails(session));
+            if (workspace.autoSubmitted()) {
                 redirect.addFlashAttribute("examError", "Your time was up, so your paper was submitted automatically.");
             }
-            var workspace = studentExamService.workspace(submissionId, savedDetails(session));
             if ("SUBMITTED".equals(workspace.status())) return "redirect:/exam/p/" + workspace.slug() + "/result";
             model.addAttribute("workspace", workspace);
             model.addAttribute("questionNumbers", IntStream.rangeClosed(1, workspace.totalQuestions()).boxed().toList());
@@ -305,10 +305,23 @@ public class ExamPortalController {
     }
 
     @PostMapping("/exam/session/{submissionId}/submit")
-    public String submitExam(@PathVariable Long submissionId, HttpSession session, RedirectAttributes redirect) {
+    public String submitExam(@PathVariable Long submissionId, @RequestParam Map<String, String> parameters,
+                             HttpSession session, RedirectAttributes redirect) {
         try {
-            var result = studentExamService.submit(submissionId, savedDetails(session));
-            return "redirect:/exam/p/" + result.slug() + "/result";
+            // The page sends its final answers with the submit (answersSent=1), saving a request.
+            Map<Integer, Integer> answers = null;
+            Map<Integer, Integer> times = new java.util.LinkedHashMap<>();
+            if (parameters.containsKey("answersSent")) {
+                answers = new java.util.LinkedHashMap<>();
+                for (var entry : parameters.entrySet()) {
+                    String key = entry.getKey();
+                    String value = entry.getValue();
+                    if (key.matches("q\\d+") && value.matches("\\d{1,2}")) answers.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+                    else if (key.matches("t\\d+") && value.matches("\\d{1,6}")) times.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+                }
+            }
+            String slug = studentExamService.submit(submissionId, savedDetails(session), answers, times);
+            return "redirect:/exam/p/" + slug + "/result";
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirect.addFlashAttribute("examError", ex.getMessage());
             return "redirect:/exam/session/" + submissionId;

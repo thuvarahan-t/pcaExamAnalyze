@@ -53,7 +53,7 @@ public class McqExamForm {
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime closeAt;
 
-    @NotNull(message = "Result release date and time are required")
+    /** No longer on the form: results are released only with Manage Exams → Release. */
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime resultReleaseAt;
 

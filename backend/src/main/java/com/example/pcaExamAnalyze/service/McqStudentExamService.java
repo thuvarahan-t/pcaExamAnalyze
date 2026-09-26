@@ -94,26 +94,42 @@ public class McqStudentExamService {
         return submissions.save(submission);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Workspace workspace(Long submissionId, ExamStudentDetailsForm details) {
         McqSubmission submission = requireOwned(submissionId, details);
         McqExam exam = submission.getExam();
+        boolean autoSubmitted = submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && overdue(submission);
+        if (autoSubmitted) finalizeSubmission(submission);
+        if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) {
+            return new Workspace(submission.getId(), exam.getSlug(), exam.getName(), null, exam.getTotalQuestions(),
+                    exam.getOptionsPerQuestion(), exam.getDurationMinutes(), 0, null, null, submission.getReceiptNumber(),
+                    McqSubmissionStatus.SUBMITTED.name(), new LinkedHashMap<>(), exam.effectiveSheetType().name(), Map.of(), autoSubmitted);
+        }
         long remaining = remainingSeconds(submission);
         return new Workspace(submission.getId(), exam.getSlug(), exam.getName(), exam.getInstructions(),
                 exam.getTotalQuestions(), exam.getOptionsPerQuestion(), exam.getDurationMinutes(), remaining,
                 previewUrl(exam.getPaperDriveUrl()), exam.getPaperDriveUrl(), submission.getReceiptNumber(),
                 submission.getStatus().name(), new LinkedHashMap<>(submission.getAnswers()),
-                exam.effectiveSheetType().name(), stepQuestions(exam));
+                exam.effectiveSheetType().name(), stepQuestions(exam), false);
     }
 
     private Map<Integer, StepQuestion> stepQuestions(McqExam exam) {
         if (!exam.usesQuestionImages()) return Map.of();
         Map<Integer, StepQuestion> result = new LinkedHashMap<>();
         Map<Integer, McqQuestionMeta> meta = questionImages.meta(exam.getId());
-        Map<Integer, List<Long>> supporting = questionImages.subImageIds(exam.getId());
+        var refs = questionImages.subImageRefs(exam.getId());
+        Map<Integer, List<Long>> supporting = McqExamQuestionService.subImageIds(refs);
+        // Links must outlive the paper: its duration plus a margin (2 h when there is no limit).
+        Integer minutes = exam.getDurationMinutes();
+        java.time.Duration validity = java.time.Duration.ofMinutes(minutes == null || minutes <= 0 ? 120 : Math.min(minutes + 60, 360));
+        var links = questionImages.links(meta, refs, validity);
         for (int q = 1; q <= exam.getTotalQuestions(); q++) {
             McqQuestionMeta m = meta.get(q);
-            result.put(q, new StepQuestion(q, m == null ? null : m.imageVersion(), m == null ? null : m.weight(), supporting.getOrDefault(q, List.of())));
+            List<Long> subs = supporting.getOrDefault(q, List.of());
+            Map<Long, String> subLinks = new LinkedHashMap<>();
+            subs.forEach(id -> subLinks.put(id, links.sub().get(id)));
+            result.put(q, new StepQuestion(q, m == null ? null : m.imageVersion(), m == null ? null : m.weight(), subs,
+                    m == null || m.imageVersion() == null ? null : links.main().get(q), subLinks));
         }
         return result;
     }
@@ -165,6 +181,15 @@ public class McqStudentExamService {
         if (!isAvailable(exam) || !acceptsAnswers(submission)) {
             throw new IllegalStateException("The answering time has ended");
         }
+        int answered = applyAnswers(submission, answers, questionTimes);
+        submission.setUpdatedAt(Instant.now());
+        submissions.save(submission);
+        return new SaveStatus(answered, exam.getTotalQuestions(), remainingSeconds(submission));
+    }
+
+    /** Validates and stores the full answer set (+ time per question); changes only differing rows. */
+    private int applyAnswers(McqSubmission submission, Map<Integer, Integer> answers, Map<Integer, Integer> questionTimes) {
+        McqExam exam = submission.getExam();
         Map<Integer, Integer> validated = new LinkedHashMap<>();
         for (Map.Entry<Integer, Integer> answer : answers.entrySet()) {
             int question = answer.getKey();
@@ -187,21 +212,28 @@ public class McqStudentExamService {
             int bounded = Math.max(0, Math.min(seconds, 6 * 60 * 60));
             submission.getQuestionTimes().merge(question, bounded, Math::max);
         });
-        submission.setUpdatedAt(Instant.now());
-        submissions.save(submission);
-        return new SaveStatus(validated.size(), exam.getTotalQuestions(), remainingSeconds(submission));
+        return validated.size();
     }
 
+    /**
+     * Submits the paper in one request. When the page sends its final answers with the submit
+     * (finalAnswers != null) they are stored first, as long as the answering time allows it.
+     * Returns the exam slug for the result page.
+     */
     @Transactional
-    public Result submit(Long submissionId, ExamStudentDetailsForm details) {
+    public String submit(Long submissionId, ExamStudentDetailsForm details,
+                         Map<Integer, Integer> finalAnswers, Map<Integer, Integer> questionTimes) {
         McqSubmission submission = requireOwned(submissionId, details);
-        if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) return resultOf(submission);
         McqExam exam = submission.getExam();
+        if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) return exam.getSlug();
         if (exam.getPublicationState() != McqExamPublicationState.PUBLISHED) {
             throw new IllegalStateException("This examination is no longer available");
         }
+        if (finalAnswers != null && isAvailable(exam) && acceptsAnswers(submission)) {
+            applyAnswers(submission, finalAnswers, questionTimes == null ? Map.of() : questionTimes);
+        }
         finalizeSubmission(submission);
-        return resultOf(submission);
+        return exam.getSlug();
     }
 
     /** Submits the paper if its time (plus the grace period) is over. Returns true when it did. */
@@ -317,6 +349,7 @@ public class McqStudentExamService {
 
     private Result resultOf(McqSubmission submission) {
         McqExam exam = submission.getExam();
+        ReviewImages images = reviewImages(exam);
         boolean released = resultReleased(exam);
         List<ResultAnswer> answers = new ArrayList<>();
         for (int q = 1; q <= exam.getTotalQuestions(); q++) {
@@ -332,15 +365,22 @@ public class McqStudentExamService {
                 McqAdminService.formatPublic(submission.getStartedAt()), McqAdminService.formatPublic(submission.getSubmittedAt()),
                 exam.getTotalQuestions(), submission.getAnswers().size(), released, released ? submission.getScore() : null,
                 released ? submission.getPercentage() : null, exam.getPaperDriveUrl(), previewUrl(exam.getPaperDriveUrl()),
-                thumbnailUrl(exam.getPaperDriveUrl()), answers, exam.usesQuestionImages(), imageVersions(exam),
-                exam.usesQuestionImages() ? questionImages.subImageIds(exam.getId()) : Map.of());
+                thumbnailUrl(exam.getPaperDriveUrl()), answers, exam.usesQuestionImages(), images.versions(),
+                images.subIds(), images.links());
     }
 
-    private Map<Integer, Long> imageVersions(McqExam exam) {
-        if (!exam.usesQuestionImages()) return Map.of();
+    private record ReviewImages(Map<Integer, Long> versions, Map<Integer, List<Long>> subIds,
+                                McqExamQuestionService.ImageLinks links) {}
+
+    /** Image data for the result review: one metadata query + one sub-image query. */
+    private ReviewImages reviewImages(McqExam exam) {
+        if (!exam.usesQuestionImages()) return new ReviewImages(Map.of(), Map.of(), new McqExamQuestionService.ImageLinks(Map.of(), Map.of()));
+        Map<Integer, McqQuestionMeta> meta = questionImages.meta(exam.getId());
+        var refs = questionImages.subImageRefs(exam.getId());
         Map<Integer, Long> versions = new LinkedHashMap<>();
-        questionImages.meta(exam.getId()).forEach((q, meta) -> { if (meta.imageVersion() != null) versions.put(q, meta.imageVersion()); });
-        return versions;
+        meta.forEach((q, m) -> { if (m.imageVersion() != null) versions.put(q, m.imageVersion()); });
+        return new ReviewImages(versions, McqExamQuestionService.subImageIds(refs),
+                questionImages.links(meta, refs, java.time.Duration.ofHours(2)));
     }
 
     /**
@@ -394,7 +434,7 @@ public class McqStudentExamService {
 
     private static String status(McqExam exam) {
         Instant now = Instant.now();
-        if (exam.isResultsPublished() && !now.isBefore(exam.getResultReleaseAt())) return "RESULT RELEASED";
+        if (exam.isResultsPublished()) return "RESULT RELEASED";
         if (now.isBefore(exam.getOpenAt())) return "SCHEDULED";
         return "OPEN";
     }
@@ -440,7 +480,8 @@ public class McqStudentExamService {
     }
 
     private static boolean resultReleased(McqExam exam) {
-        return exam.isResultsPublished() && !Instant.now().isBefore(exam.getResultReleaseAt());
+        // Released = the teacher pressed Release in Manage Exams (no scheduled release time).
+        return exam.isResultsPublished();
     }
 
     private static LookupIdentity normalizeLookup(String registrationId, String nic) {
@@ -462,11 +503,13 @@ public class McqStudentExamService {
                             Integer optionsPerQuestion, Integer durationMinutes, long remainingSeconds,
                             String previewUrl, String paperUrl, String receipt, String status,
                             LinkedHashMap<Integer, Integer> answers, String sheetType,
-                            Map<Integer, StepQuestion> questions) {
+                            Map<Integer, StepQuestion> questions, boolean autoSubmitted) {
         public boolean questionImages() { return "QUESTION_IMAGES".equals(sheetType); }
     }
     /** What the student sees per question: image version (null = no image) and weight 1-5 in 0.5 steps. */
-    public record StepQuestion(int number, Long imageVersion, Double weight, List<Long> subImageIds) {}
+    /** imageUrl / subImageUrls values are direct R2 links (null → load through the app endpoint). */
+    public record StepQuestion(int number, Long imageVersion, Double weight, List<Long> subImageIds,
+                               String imageUrl, Map<Long, String> subImageUrls) {}
     public record SaveStatus(int answered, int total, long remainingSeconds) {}
     public record ResultAnswer(int question, Integer selected, List<Integer> correct, String state) {}
     public record Result(Long submissionId, String slug, String examName, String receipt, String studentName,
@@ -474,7 +517,11 @@ public class McqStudentExamService {
                          String district, String startedAt, String submittedAt, Integer totalQuestions, Integer answered,
                          boolean released, Integer score, Double percentage, String paperUrl, String previewUrl,
                          String thumbnailUrl, List<ResultAnswer> answers, boolean questionImages,
-                         Map<Integer, Long> imageVersions, Map<Integer, List<Long>> subImageIds) {}
+                         Map<Integer, Long> imageVersions, Map<Integer, List<Long>> subImageIds,
+                         McqExamQuestionService.ImageLinks links) {
+        public String imageUrl(int question) { return links.main().get(question); }
+        public String subImageUrl(Long id) { return links.sub().get(id); }
+    }
     public record ResultCard(Long submissionId, String slug, String examName, String shortName, String period,
                              String month, Integer year, String batch, String submittedAt,
                              Integer totalQuestions, boolean released, Integer score, Double percentage,

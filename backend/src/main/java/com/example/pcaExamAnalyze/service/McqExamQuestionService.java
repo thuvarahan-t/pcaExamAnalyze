@@ -232,6 +232,42 @@ public class McqExamQuestionService {
         return storage.enabled() ? questions.findIdsWithDatabaseImages() : List.of();
     }
 
+    /**
+     * Direct R2 links for every image of an exam, signed once when the page is built, so the
+     * browser loads images straight from Cloudflare without a server round-trip per image.
+     * Empty maps when R2 is off (images then come from the app's own endpoints).
+     */
+    @Transactional(readOnly = true)
+    public ImageLinks directLinks(Long examId, java.time.Duration validity) {
+        if (!storage.enabled() || examId == null) return new ImageLinks(Map.of(), Map.of());
+        return links(meta(examId), subImageRefs(examId), validity);
+    }
+
+    /** Same as {@link #directLinks} from data the caller already loaded (no extra queries). */
+    public ImageLinks links(Map<Integer, McqQuestionMeta> meta,
+                            List<com.example.pcaExamAnalyze.repo.McqSubImageRepository.Reference> refs,
+                            java.time.Duration validity) {
+        if (!storage.enabled()) return new ImageLinks(Map.of(), Map.of());
+        Map<Integer, String> main = new TreeMap<>();
+        meta.forEach((q, m) -> { if (m.storageKey() != null) main.put(q, storage.presignedUrl(m.storageKey(), validity)); });
+        Map<Long, String> sub = new java.util.HashMap<>();
+        refs.forEach(ref -> { if (ref.getStorageKey() != null) sub.put(ref.getId(), storage.presignedUrl(ref.getStorageKey(), validity)); });
+        return new ImageLinks(main, sub);
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.example.pcaExamAnalyze.repo.McqSubImageRepository.Reference> subImageRefs(Long examId) {
+        return examId == null ? List.of() : subImages.references(examId);
+    }
+
+    public static Map<Integer, List<Long>> subImageIds(List<com.example.pcaExamAnalyze.repo.McqSubImageRepository.Reference> refs) {
+        Map<Integer, List<Long>> result = new TreeMap<>();
+        refs.forEach(ref -> result.computeIfAbsent(ref.getQuestionNumber(), q -> new java.util.ArrayList<>()).add(ref.getId()));
+        return result;
+    }
+
+    public record ImageLinks(Map<Integer, String> main, Map<Long, String> sub) {}
+
     /** Presigned image links stay valid this long; the 302 to them is cached for less. */
     public static final java.time.Duration IMAGE_LINK_VALIDITY = java.time.Duration.ofMinutes(30);
 
