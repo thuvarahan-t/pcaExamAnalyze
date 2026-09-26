@@ -25,12 +25,12 @@
       state.y = Math.max(-maxY, Math.min(maxY, state.y));
     }
 
-    function render(animate) {
+    function render(animate, showLevel) {
       clamp();
       img.style.transition = animate ? "transform .18s ease" : "none";
       img.style.transform = "translate(" + state.x + "px," + state.y + "px) scale(" + state.scale + ")";
       box.classList.toggle("zoomed", state.scale > 1.001);
-      if (level) {
+      if (level && showLevel) {
         level.textContent = Math.round(state.scale * 100) + "%";
         level.classList.add("show");
         window.clearTimeout(levelTimer);
@@ -46,7 +46,7 @@
       state.y = py - (py - state.y) * ratio;
       state.scale = next;
       if (next === 1) { state.x = 0; state.y = 0; }
-      render(animate);
+      render(animate, true);
     }
 
     function localPoint(clientX, clientY) {

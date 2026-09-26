@@ -1,6 +1,13 @@
-<!DOCTYPE html><html xmlns:th="http://www.thymeleaf.org" lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title th:text="|${workspace.examName} · Questions|">MCQ Paper</title><link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" th:href="@{/css/exam-student.css(v=11)}"><link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=2)}"></head><body class="workspace-body step-body" th:attr="data-submission=${workspace.submissionId},data-total=${workspace.totalQuestions},data-options=${workspace.optionsPerQuestion},data-remaining=${workspace.remainingSeconds}">
-<header class="workspace-nav"><div class="student-shell workspace-bar"><div class="workspace-title"><strong th:text="${workspace.examName}"></strong><a th:href="@{/exam/p/{slug}(slug=${workspace.slug})}"><i class="bi bi-arrow-left"></i> Paper details</a></div><div class="progress-block"><div class="progress-copy"><span id="progressCopy" th:text="|${workspace.answers.size()} of ${workspace.totalQuestions} answered|"></span><span id="progressPercent" th:text="|${workspace.answers.size() * 100 / workspace.totalQuestions}%|"></span></div><div class="progress-track"><div class="progress-fill" id="progressFill" th:style="|width:${workspace.answers.size() * 100 / workspace.totalQuestions}%|"></div></div></div><div class="workspace-tools"><div class="timer" id="examTimer"><i class="bi bi-clock-fill"></i><span id="timerText" th:text="${workspace.remainingSeconds < 0 ? 'No limit' : '--:--'}"></span></div></div></div></header>
-<div class="alert student-shell" style="margin-top:10px" th:if="${examError}" th:text="${examError}"></div>
+<!DOCTYPE html><html xmlns:th="http://www.thymeleaf.org" lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title th:text="|${workspace.examName} · Questions|">MCQ Paper</title><link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" th:if="${!#maps.isEmpty(workspace.questions) and workspace.questions.get(1) != null and workspace.questions.get(1).imageUrl != null}" th:href="${#strings.substringBefore(workspace.questions.get(1).imageUrl, '.com/') + '.com'}" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" th:href="@{/css/exam-student.css(v=14)}"><link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=2)}"></head><body class="workspace-body step-body" th:attr="data-submission=${workspace.submissionId},data-total=${workspace.totalQuestions},data-options=${workspace.optionsPerQuestion},data-remaining=${workspace.remainingSeconds}">
+<header class="step-top">
+  <div class="step-top-bar">
+    <div class="step-title"><strong th:text="${workspace.examName}"></strong><a th:href="@{/exam/p/{slug}(slug=${workspace.slug})}"><i class="bi bi-arrow-left"></i> Paper details</a></div>
+    <div class="progress-block"><div class="progress-copy"><span id="progressCopy" th:text="|${workspace.answers.size()} of ${workspace.totalQuestions} answered|"></span><span id="progressPercent" th:text="|${workspace.answers.size() * 100 / workspace.totalQuestions}%|"></span></div><div class="progress-track"><div class="progress-fill" id="progressFill" th:style="|width:${workspace.answers.size() * 100 / workspace.totalQuestions}%|"></div></div></div>
+    <div class="timer" id="examTimer"><i class="bi bi-clock-fill"></i><span id="timerText" th:text="${workspace.remainingSeconds < 0 ? 'No limit' : '--:--'}"></span></div>
+    <form class="step-submit" id="submitForm" th:action="@{/exam/session/{id}/submit(id=${workspace.submissionId})}" method="post"><button class="submit-button" type="submit"><span>Submit</span> <i class="bi bi-send-check-fill"></i></button></form>
+  </div>
+</header>
+<div class="alert step-alert" th:if="${examError}" th:text="${examError}"></div>
 <main class="step-main">
   <section class="step-card" id="answerSheet">
     <div class="step-head">
@@ -10,22 +17,33 @@
       <div class="save-state" id="saveState"><i class="bi bi-cloud-check"></i> Saved</div>
     </div>
     <article class="step-question" th:each="q : ${questionNumbers}" th:with="sq=${workspace.questions.get(q)}" th:attr="data-question=${q},data-weight=${sq == null ? null : sq.weight}" th:hidden="${q != 1}">
-      <div class="step-viewer" th:if="${sq != null and sq.imageVersion != null}">
-        <img th:attr="data-src=@{/exam/session/{id}/questions/{q}/image(id=${workspace.submissionId},q=${q},v=${sq.imageVersion})}" th:alt="|Question ${q}|" decoding="async" draggable="false">
-        <div class="zoom-tools" role="group" aria-label="Image zoom"><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div>
-        <span class="zoom-level" aria-live="polite"></span>
+      <div class="step-stage">
+        <div class="step-viewer" th:if="${sq != null and sq.imageVersion != null}">
+          <img th:attr="data-src=${sq.imageUrl},data-fallback=@{/exam/session/{id}/questions/{q}/image(id=${workspace.submissionId},q=${q},v=${sq.imageVersion})}" th:alt="|Question ${q}|" decoding="async" draggable="false" class="step-main-img">
+          <div class="zoom-tools" role="group" aria-label="Image zoom"><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div>
+          <span class="zoom-level" aria-live="polite"></span>
+        </div>
+        <div class="step-missing" th:if="${sq == null or sq.imageVersion == null}"><i class="bi bi-image"></i><span>Image for this question is not available.</span></div>
+        <div class="step-subs" th:if="${sq != null and !#lists.isEmpty(sq.subImageIds)}" aria-label="Supporting images">
+          <button type="button" class="step-sub" th:each="sid, st : ${sq.subImageIds}" th:attr="data-sub-index=${st.index},aria-label=|Open supporting image ${st.count}|">
+            <img th:attr="data-src=${sq.subImageUrls.get(sid)},data-fallback=@{/exam/session/{id}/questions/{q}/sub-images/{sid}(id=${workspace.submissionId},q=${q},sid=${sid})}" th:alt="|Supporting image ${st.count}|" decoding="async" draggable="false">
+            <span th:text="${st.count}"></span>
+          </button>
+        </div>
       </div>
-      <div class="step-missing" th:if="${sq == null or sq.imageVersion == null}"><i class="bi bi-image"></i><span>Image for this question is not available.</span></div>
       <div class="step-options" role="radiogroup" th:attr="aria-label=|Question ${q} answer|">
-        <span class="step-choice" th:each="option : ${optionNumbers}"><input type="radio" th:id="|q${q}o${option}|" th:name="|q${q}|" th:value="${option}" th:checked="${workspace.answers.get(q) == option}"><label th:for="|q${q}o${option}|" th:text="${option}"></label></span>
+        <span class="step-choice" th:each="option : ${optionNumbers}"><input type="radio" th:id="|q${q}o${option}|" th:name="|q${q}|" th:value="${option}" th:checked="${workspace.answers.get(q) == option}"><label th:for="|q${q}o${option}|"><span th:text="${option}"></span></label></span>
       </div>
     </article>
-    <div class="step-nav"><button class="step-btn" id="stepPrev" type="button"><i class="bi bi-chevron-left"></i> Previous</button><button class="step-btn ghost" id="stepClear" type="button"><i class="bi bi-eraser"></i> Clear</button><button class="step-btn primary" id="stepNext" type="button">Next <i class="bi bi-chevron-right"></i></button></div>
+    <div class="step-nav"><button class="step-btn" id="stepPrev" type="button"><i class="bi bi-chevron-left"></i> <span>Previous</span></button><button class="step-btn ghost" id="stepClear" type="button"><i class="bi bi-eraser"></i> <span>Clear</span></button><button class="step-btn primary" id="stepNext" type="button"><span>Next</span> <i class="bi bi-chevron-right"></i></button></div>
   </section>
   <aside class="step-palette" aria-label="Question navigator">
-    <div class="step-palette-head"><strong>Questions</strong><span><i class="dot answered"></i> Answered <i class="dot flagged"></i> Flagged <i class="dot"></i> Not yet</span></div>
+    <div class="step-palette-head"><strong>Questions</strong><span class="step-counts"><b id="dockAnswered" th:text="${workspace.answers.size()}"></b> answered · <b id="dockUnanswered" th:text="${workspace.totalQuestions - workspace.answers.size()}"></b> left</span><span class="step-legend"><i class="dot answered"></i> Answered <i class="dot flagged"></i> Flagged <i class="dot"></i> Not yet</span></div>
     <div class="step-palette-grid"><button type="button" th:each="q : ${questionNumbers}" th:attr="data-go=${q}" th:text="${q}" th:classappend="${workspace.answers.containsKey(q)} ? ' answered'"></button></div>
   </aside>
 </main>
-<form class="submit-dock" id="submitForm" th:action="@{/exam/session/{id}/submit(id=${workspace.submissionId})}" method="post"><div class="submit-summary"><strong id="dockAnswered" th:text="${workspace.answers.size()}"></strong> answered · <span><strong id="dockUnanswered" th:text="${workspace.totalQuestions - workspace.answers.size()}"></strong> unanswered</span></div><button class="submit-button" type="submit">Submit Paper <i class="bi bi-send-check-fill"></i></button></form>
-<script th:src="@{/js/exam-dialog.js(v=2)}"></script><script th:src="@{/js/exam-session.js(v=10)}"></script><script th:src="@{/js/exam-zoom.js(v=1)}"></script><script th:src="@{/js/exam-step.js(v=5)}"></script></body></html>
+<dialog class="sub-lightbox" id="subLightbox" aria-label="Supporting image">
+  <div class="sub-lightbox-head"><strong id="subLightboxTitle">Supporting image</strong><div><button type="button" id="subPrev" aria-label="Previous image"><i class="bi bi-chevron-left"></i></button><button type="button" id="subNext" aria-label="Next image"><i class="bi bi-chevron-right"></i></button><button type="button" id="subClose" aria-label="Close"><i class="bi bi-x-lg"></i></button></div></div>
+  <div class="step-viewer sub-lightbox-viewer"><img alt="Supporting image" draggable="false"><div class="zoom-tools" role="group" aria-label="Image zoom"><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div><span class="zoom-level" aria-live="polite"></span></div>
+</dialog>
+<script th:src="@{/js/exam-dialog.js(v=2)}"></script><script th:src="@{/js/exam-session.js(v=12)}"></script><script th:src="@{/js/exam-zoom.js(v=3)}"></script><script th:src="@{/js/exam-step.js(v=7)}"></script></body></html>

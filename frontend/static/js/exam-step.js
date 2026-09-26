@@ -41,11 +41,54 @@
   });
 
   // ---------------------------------------------------------------- navigation
-  function loadImage(i) {
+  // ---------------------------------------------------------------- image loading
+  // Every question is already in the page; images use direct Cloudflare links signed by the
+  // server (data-src) and fall back to the app endpoint (data-fallback) if a link fails.
+  function startImage(img) {
+    if (!img || img.getAttribute("src")) return null;
+    return new Promise(function (resolve) {
+      img.addEventListener("load", function () { resolve(); }, { once: true });
+      img.addEventListener("error", function () {
+        if (img.dataset.fallback && img.getAttribute("src") !== img.dataset.fallback) {
+          img.src = img.dataset.fallback;
+          img.addEventListener("load", function () { resolve(); }, { once: true });
+          img.addEventListener("error", function () { resolve(); }, { once: true });
+        } else {
+          resolve();
+        }
+      }, { once: true });
+      img.src = img.dataset.src || img.dataset.fallback;
+    });
+  }
+
+  function questionImages(i) {
     var question = questions[i];
-    if (!question) return;
-    var img = question.querySelector("img[data-src]");
-    if (img && !img.getAttribute("src")) img.src = img.dataset.src;
+    return question ? Array.from(question.querySelectorAll("img[data-src], img[data-fallback]")) : [];
+  }
+
+  function loadImage(i) {
+    questionImages(i).forEach(startImage);
+  }
+
+  /** Warms every question's images in the background (4 at a time), nearest questions first. */
+  function preloadAll(from) {
+    var order = [];
+    for (var d = 0; d < total; d++) {
+      if (from + d < total) order.push(from + d);
+      if (d && from - d >= 0) order.push(from - d);
+    }
+    var queue = [];
+    order.forEach(function (i) { questionImages(i).forEach(function (img) { queue.push(img); }); });
+    var running = 0;
+    function pump() {
+      while (running < 4 && queue.length) {
+        var job = startImage(queue.shift());
+        if (!job) continue;
+        running++;
+        job.then(function () { running--; pump(); });
+      }
+    }
+    pump();
   }
 
   function answered(question) {
@@ -103,7 +146,12 @@
     numberLabel.textContent = index + 1;
     showWeight(Math.round((Number(questions[index].dataset.weight) || 0) * 2) / 2);
     prev.disabled = index === 0;
-    next.disabled = index === total - 1;
+    // On the last question "Next" becomes "Submit Paper" (it asks for confirmation first).
+    var last = index === total - 1;
+    next.disabled = false;
+    next.classList.toggle("submit", last);
+    next.innerHTML = last ? '<span>Submit Paper</span> <i class="bi bi-send-check-fill"></i>'
+      : '<span>Next</span> <i class="bi bi-chevron-right"></i>';
     syncPalette();
     try { sessionStorage.setItem(positionKey, String(index)); } catch (error) { /* Optional. */ }
     if (focus) {
@@ -116,7 +164,13 @@
   }
 
   prev.addEventListener("click", function () { show(index - 1); });
-  next.addEventListener("click", function () { show(index + 1); });
+  next.addEventListener("click", function () {
+    if (index < total - 1) { show(index + 1); return; }
+    var paper = document.getElementById("submitForm");
+    if (!paper) return;
+    if (typeof paper.requestSubmit === "function") paper.requestSubmit();
+    else paper.dispatchEvent(new Event("submit", { cancelable: true }));
+  });
   paletteButtons.forEach(function (button, i) {
     button.addEventListener("click", function () { show(i); });
   });
@@ -175,6 +229,43 @@
     if (ticks % 45 === 0 && window.PcaExamSession) window.PcaExamSession.save();
   }, 1000);
 
+  // ---------------------------------------------------------------- supporting images
+  var lightbox = document.getElementById("subLightbox");
+  if (lightbox) {
+    var lightImg = lightbox.querySelector("img");
+    var lightTitle = document.getElementById("subLightboxTitle");
+    var lightViewer = window.PcaZoom.create(lightbox.querySelector(".step-viewer"));
+    var lightList = [];
+    var lightIndex = 0;
+
+    var showSub = function (k) {
+      lightIndex = (k + lightList.length) % lightList.length;
+      var source = lightList[lightIndex];
+      lightViewer.reset();
+      lightImg.src = source.currentSrc || source.src || source.dataset.src || source.dataset.fallback;
+      lightTitle.textContent = "Supporting image " + (lightIndex + 1) + " of " + lightList.length;
+      document.getElementById("subPrev").hidden = lightList.length < 2;
+      document.getElementById("subNext").hidden = lightList.length < 2;
+    };
+
+    sheet.addEventListener("click", function (event) {
+      var button = event.target.closest(".step-sub");
+      if (!button) return;
+      lightList = Array.from(button.closest(".step-subs").querySelectorAll("img"));
+      lightList.forEach(startImage);
+      lightbox.showModal();
+      showSub(Number(button.dataset.subIndex) || 0);
+    });
+    document.getElementById("subPrev").addEventListener("click", function () { showSub(lightIndex - 1); });
+    document.getElementById("subNext").addEventListener("click", function () { showSub(lightIndex + 1); });
+    document.getElementById("subClose").addEventListener("click", function () { lightbox.close(); });
+    lightbox.addEventListener("click", function (event) { if (event.target === lightbox) lightbox.close(); });
+    lightbox.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowRight") showSub(lightIndex + 1);
+      if (event.key === "ArrowLeft") showSub(lightIndex - 1);
+    });
+  }
+
   var start = 0;
   var hash = /^#q(\d+)$/.exec(window.location.hash);
   if (hash) start = Number(hash[1]) - 1;
@@ -183,4 +274,8 @@
   }
   index = -1;
   show(Number.isFinite(start) ? start : 0);
+  // Once the first question is on screen, fetch the rest so every "Next" is instant.
+  var warm = function () { preloadAll(Math.max(0, index)); };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(warm, { timeout: 800 });
+  else window.setTimeout(warm, 300);
 })();

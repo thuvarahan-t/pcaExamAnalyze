@@ -97,20 +97,6 @@
     }, delay == null ? 180 : delay);
   }
 
-  function flushAnswers(onProgress) {
-    window.clearTimeout(autosaveTimer);
-    autosaveTimer = null;
-    answerRevision++;
-    var answers = current();
-    var questions = Object.keys(answers);
-    return autosaveChain.then(function () {
-      return bulkAnswerRequest(answers).then(function (result) {
-        if (onProgress) onProgress(questions.length, questions.length);
-        return result;
-      });
-    });
-  }
-
   function showSubmissionLoader(answerCount, timeUp) {
     var tips = [
       "Stay calm - your marked answers are being secured.",
@@ -198,27 +184,36 @@
     submitButton.innerHTML = 'Saving &amp; submitting... <i class="bi bi-cloud-arrow-up-fill"></i>';
     saveState.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Saving final answers...';
 
-    function send() {
-      try { localStorage.removeItem(storageKey); } catch (error) { /* Storage is optional. */ }
-      loader.finishing();
-      HTMLFormElement.prototype.submit.call(form);
+    // One request: the final answers (and time per question) travel with the submit itself,
+    // so there is no separate "save answers" round-trip before the result page.
+    window.clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+    form.querySelectorAll("input[data-final]").forEach(function (input) { input.remove(); });
+    function addField(name, value) {
+      var input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = String(value);
+      input.setAttribute("data-final", "");
+      form.appendChild(input);
     }
-
-    flushAnswers(loader.update).then(function () {
-      saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Answers saved';
-      send();
-    }).catch(function (error) {
-      if (auto) { send(); return; }
+    addField("answersSent", "1");
+    var answers = current();
+    Object.keys(answers).forEach(function (question) { addField("q" + question, answers[question]); });
+    var extras = typeof window.PcaExamExtras === "function" ? window.PcaExamExtras() : null;
+    if (extras) Object.keys(extras).forEach(function (key) { addField(key, extras[key]); });
+    try { localStorage.removeItem(storageKey); } catch (error) { /* Storage is optional. */ }
+    loader.finishing();
+    HTMLFormElement.prototype.submit.call(form);
+    // If the browser cannot reach the server it stays on this page: let the student retry.
+    window.setTimeout(function () {
+      if (document.visibilityState === "hidden") return;
       loader.close();
       submitting = false;
       submitButton.disabled = false;
       submitButton.innerHTML = originalButton;
-      saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Could not submit - check your connection';
-      window.PcaDialog.alert(error && error.message
-        ? error.message
-        : "Your answers could not be saved. Please try Submit Paper again.",
-        { title: "Submission not sent", type: "error" });
-    });
+      saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Still sending - check your connection and press Submit again';
+    }, 45000);
   }
 
   form.addEventListener("submit", function (event) {

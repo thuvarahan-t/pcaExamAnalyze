@@ -30,6 +30,17 @@
     var scheduleForm = document.getElementById("qeScheduleForm");
 
     var published = root.dataset.published === "true";
+    var subList = document.getElementById("qeSubList");
+    var subFile = document.getElementById("qeSubFile");
+    var subAdd = document.getElementById("qeSubAdd");
+    var freeButton = document.getElementById("qeFreeMark");
+    var freeValue = document.getElementById("qeFreeMarkValue");
+    var freeNote = document.getElementById("qeFreeNote");
+    var MAX_SUBS = 4;
+    var subExisting = [];   // saved supporting image ids of the question on screen
+    var subRemoved = [];    // saved ids marked for removal
+    var subPending = [];    // {file, url} picked but not yet saved
+    var subPreviews = {};   // question -> object URLs still uploading in the background
     var MAX_BYTES = 5 * 1024 * 1024;
     var SHRINK_ABOVE = 900 * 1024;
     var MAX_EDGE = 1800;
@@ -115,11 +126,45 @@
             panel.hidden = false;
             wrap.classList.add("open");
             trigger.setAttribute("aria-expanded", "true");
+            placePanel(panel, trigger);
         });
         wrap.appendChild(trigger);
         wrap.appendChild(panel);
         return wrap;
     }
+
+    /**
+     * Keeps a dropdown panel fully on screen: never wider than the viewport, shifted left when it
+     * would overflow the right edge, and opened upwards when there is more room above.
+     * (Positioned inside its own dropdown box, so the glass cards' blur does not affect it.)
+     */
+    function placePanel(panel, trigger) {
+        var margin = 8;
+        var rect = trigger.getBoundingClientRect();
+        panel.style.left = "0px";
+        panel.style.right = "auto";
+        panel.style.top = "calc(100% + 6px)";
+        panel.style.bottom = "auto";
+        panel.style.maxHeight = "none";
+        panel.style.maxWidth = Math.max(220, window.innerWidth - margin * 2) + "px";
+        var box = panel.getBoundingClientRect();
+        var below = window.innerHeight - rect.bottom - margin - 6;
+        var above = rect.top - margin - 6;
+        if (box.height > below && above > below) {
+            panel.style.top = "auto";
+            panel.style.bottom = "calc(100% + 6px)";
+            panel.style.maxHeight = Math.max(160, above) + "px";
+        } else {
+            panel.style.maxHeight = Math.max(160, below) + "px";
+        }
+        box = panel.getBoundingClientRect();
+        var shift = 0;
+        if (box.right > window.innerWidth - margin) shift = window.innerWidth - margin - box.right;
+        if (box.left + shift < margin) shift = margin - box.left;
+        panel.style.left = shift + "px";
+    }
+
+    window.addEventListener("resize", function () { closeAllDropdowns(null); });
 
     function option(text, small, active, onPick) {
         var button = el("button", "qe-dd-option" + (active ? " active" : ""));
@@ -510,7 +555,9 @@
         var ready = 0;
         palette.forEach(function (button, i) {
             var hasImage = !!button.dataset.version;
-            var hasKey = !!button.dataset.correct;
+            var free = button.dataset.freemark === "true";
+            var hasKey = !!button.dataset.correct || free;
+            button.classList.toggle("free", free);
             if (hasImage) ready++;
             button.classList.toggle("done", hasImage && hasKey);
             button.classList.toggle("part", (hasImage || hasKey || !!button.dataset.weight || !!button.dataset.time) && !(hasImage && hasKey));
@@ -590,6 +637,12 @@
         form.querySelectorAll('input[name="timeSeconds"]').forEach(function (radio) { radio.checked = radio.value === (data.time || ""); });
         syncTimeSelect();
         loadTags(data.q, data);
+        subExisting = (data.subimages || "").split(",").filter(Boolean);
+        subRemoved = [];
+        subPending.forEach(function (item) { URL.revokeObjectURL(item.url); });
+        subPending = [];
+        renderSubs();
+        setFree(data.freemark === "true");
         prev.disabled = index === 0;
         next.innerHTML = index === palette.length - 1
             ? '<i class="bi bi-check2-circle"></i> Save &amp; Finish'
@@ -615,6 +668,8 @@
         put(data, "levels", (saved.competencyLevels || []).join("\n"));
         put(data, "contents", (saved.contents || []).join("\n"));
         put(data, "outcomes", (saved.learningOutcomes || []).join("\n"));
+        put(data, "subimages", (saved.subImageIds || []).join(","));
+        put(data, "freemark", saved.freeMark ? "true" : "");
     }
 
     /**
@@ -628,8 +683,18 @@
         if (pendingFile) body.append("image", pendingFile);
         if (removeImage) body.append("removeImage", "true");
         appendTags(body);
+        subPending.forEach(function (item) { body.append("subImages", item.file); });
+        subRemoved.forEach(function (id) { body.append("removeSubImages", id); });
 
         var data = button.dataset;
+        put(data, "subimages", subExisting.filter(function (id) { return subRemoved.indexOf(id) < 0; }).join(","));
+        put(data, "freemark", freeValue.value === "true" ? "true" : "");
+        if (subPending.length) {
+            (subPreviews[q] || []).forEach(function (url) { URL.revokeObjectURL(url); });
+            subPreviews[q] = subPending.map(function (item) { return item.url; });
+        }
+        subPending = [];
+        subRemoved = [];
         put(data, "correct", Array.from(form.querySelectorAll('input[name="correct"]:checked'))
             .map(function (box) { return box.value; }).join(","));
         put(data, "weight", weightInput.value);
@@ -671,6 +736,12 @@
                     URL.revokeObjectURL(previews[job.q]);
                 }
                 delete previews[job.q];
+                (subPreviews[job.q] || []).forEach(function (url) { URL.revokeObjectURL(url); });
+                delete subPreviews[job.q];
+                if (current() === job.button && !dirty) {
+                    subExisting = (job.button.dataset.subimages || "").split(",").filter(Boolean);
+                    renderSubs();
+                }
                 if (current() === job.button && !dirty) {
                     tagState = cloneTags(tagMap[job.q]);
                     if (!tagState.length) tagState.push(blankTag());
@@ -719,6 +790,107 @@
         if (dirty) enqueue(capture());
         load(i);
     }
+
+    // ------------------------------------------------ supporting images
+    function subCount() {
+        return subExisting.filter(function (id) { return subRemoved.indexOf(id) < 0; }).length + subPending.length
+            + (subPreviews[current().dataset.q] || []).length;
+    }
+
+    function subThumb(src, label, pending, onRemove) {
+        var box = el("div", "qe-sub" + (pending ? " pending" : ""));
+        var img = el("img");
+        img.src = src;
+        img.alt = label;
+        box.appendChild(img);
+        box.appendChild(el("span", null, label));
+        if (onRemove) {
+            var x = el("button");
+            x.type = "button";
+            x.setAttribute("aria-label", "Remove " + label);
+            x.innerHTML = '<i class="bi bi-x-lg"></i>';
+            x.addEventListener("click", onRemove);
+            box.appendChild(x);
+        }
+        return box;
+    }
+
+    function renderSubs() {
+        var q = current().dataset.q;
+        subList.innerHTML = "";
+        var n = 0;
+        subExisting.forEach(function (id) {
+            if (subRemoved.indexOf(id) >= 0) return;
+            n++;
+            subList.appendChild(subThumb("/exam/admin/exams/" + examId + "/questions/" + q + "/sub-images/" + id,
+                "Image " + n, false, function () {
+                    var ask = window.PcaDialog ? window.PcaDialog.confirm("This supporting image will be removed from question " + q + ".",
+                        { title: "Remove supporting image?", acceptText: "Remove", type: "danger" }) : Promise.resolve(true);
+                    ask.then(function (ok) {
+                        if (!ok) return;
+                        subRemoved.push(id);
+                        markDirty();
+                        renderSubs();
+                    });
+                }));
+        });
+        (subPreviews[q] || []).forEach(function (url) {
+            n++;
+            subList.appendChild(subThumb(url, "Image " + n + " · saving", true, null));
+        });
+        subPending.forEach(function (item, i) {
+            n++;
+            subList.appendChild(subThumb(item.url, "Image " + n + " · new", true, function () {
+                URL.revokeObjectURL(item.url);
+                subPending.splice(i, 1);
+                renderSubs();
+            }));
+        });
+        if (!n) subList.appendChild(el("div", "qe-sub-empty", "No supporting images. Add a graph or chart only if the question needs one."));
+        subAdd.classList.toggle("disabled", subCount() >= MAX_SUBS);
+    }
+
+    subFile.addEventListener("change", function () {
+        var files = Array.from(subFile.files || []);
+        subFile.value = "";
+        var room = MAX_SUBS - subCount();
+        if (files.length > room) warn("A question can have up to " + MAX_SUBS + " supporting images.", "Too many images");
+        files.slice(0, Math.max(0, room)).forEach(function (file) {
+            if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { warn("Use a PNG, JPG, WEBP or GIF image.", "Unsupported file"); return; }
+            shrink(file).then(function (ready) {
+                if (ready.size > MAX_BYTES) { warn("This image is larger than 5 MB.", "Image too large"); return; }
+                if (subCount() >= MAX_SUBS) return;
+                subPending.push({ file: ready, url: URL.createObjectURL(ready) });
+                markDirty();
+                renderSubs();
+            });
+        });
+    });
+
+    // ------------------------------------------------ wrong question → free mark
+    function setFree(on) {
+        freeValue.value = on ? "true" : "false";
+        freeButton.classList.toggle("on", on);
+        freeButton.setAttribute("aria-pressed", on ? "true" : "false");
+        freeButton.querySelector("span").textContent = on ? "Free mark ON: undo" : "Wrong question? Give everyone the mark";
+        freeNote.hidden = !on;
+    }
+
+    freeButton.addEventListener("click", function () {
+        var q = current().dataset.q;
+        var turningOn = freeValue.value !== "true";
+        var message = turningOn
+            ? "Question " + q + " will be treated as a wrong question: every student gets its mark, whatever they answered. Scores update when you save."
+            : "Question " + q + " will be marked normally again using its correct answer.";
+        var ask = window.PcaDialog ? window.PcaDialog.confirm(message,
+            { title: turningOn ? "Give everyone the mark?" : "Remove the free mark?", acceptText: turningOn ? "Give free mark" : "Remove free mark" })
+            : Promise.resolve(true);
+        ask.then(function (ok) {
+            if (!ok) return;
+            setFree(turningOn);
+            markDirty();
+        });
+    });
 
     /** Large photos are re-encoded as JPEG (max 1800px edge) so uploads stay quick. */
     function shrink(file) {
@@ -824,11 +996,20 @@
     prev.addEventListener("click", function () { go(index - 1); });
     saveButton.addEventListener("click", function () { save().catch(function () {}); });
     next.addEventListener("click", function () {
-        if (index === palette.length - 1) save().then(finish, function () {});
+        if (index === palette.length - 1) {
+            // Instant feedback while the last saves finish, then Manage Exams opens.
+            var idle = next.innerHTML;
+            var restore = function () { next.disabled = false; next.innerHTML = idle; };
+            next.disabled = true;
+            next.innerHTML = '<i class="bi bi-arrow-repeat busy-spin"></i> Saving…';
+            save().then(function () { finish(restore); }, restore);
+        }
         else go(index + 1);
     });
 
     function postFinish(schedule) {
+        next.disabled = true;
+        next.innerHTML = '<i class="bi bi-arrow-repeat busy-spin"></i> Opening Manage Exams…';
         var out = document.createElement("form");
         out.method = "post";
         out.action = "/exam/admin/exams/" + examId + "/questions/finish";
@@ -846,22 +1027,25 @@
     }
 
     /** All questions need an image and a correct answer before leaving for Manage Exams. */
-    function finish() {
+    function finish(onStay) {
         var missingImage = [];
         var missingKey = [];
         palette.forEach(function (button) {
             if (!button.dataset.version) missingImage.push("Q" + button.dataset.q);
-            if (!button.dataset.correct) missingKey.push("Q" + button.dataset.q);
+            if (!button.dataset.correct && button.dataset.freemark !== "true") missingKey.push("Q" + button.dataset.q);
         });
-        if (missingImage.length || missingKey.length) {
-            var lines = [];
-            if (missingImage.length) lines.push("Upload an image for: " + missingImage.join(", "));
-            if (missingKey.length) lines.push("Set the correct answer for: " + missingKey.join(", "));
-            warn(lines.join(". ") + ". Everything else is saved.", "Some questions are not finished");
+        // Images are needed before students can sit the paper; correct answers only before
+        // results are released, so they do not block scheduling.
+        if (missingImage.length) {
+            warn("Upload an image for: " + missingImage.join(", ") + ". Everything else is saved.", "Some questions have no image");
+            if (onStay) onStay();
             return;
         }
         if (published || !window.PcaDialog) { postFinish(false); return; }
-        window.PcaDialog.confirm("All " + palette.length + " questions have an image and an answer. Schedule this exam for students now?",
+        var answersNote = missingKey.length
+            ? " Correct answers are still missing for " + missingKey.join(", ") + ". You can add them any time before releasing results."
+            : "";
+        window.PcaDialog.confirm("All " + palette.length + " questions have their images." + answersNote + " Schedule this exam for students now?",
             { title: "All questions saved", acceptText: "Schedule Exam", cancelText: "Keep as Draft" })
             .then(function (approved) { postFinish(approved); });
     }
