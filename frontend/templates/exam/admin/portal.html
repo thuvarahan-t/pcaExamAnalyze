@@ -10,8 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/exam-admin.css(v=2)}">
+    <link rel="stylesheet" th:href="@{/css/exam-admin.css(v=17)}">
     <link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=1)}">
+    <script type="speculationrules">
+        {"prefetch":[{"where":{"selector_matches":".admin-nav-link"},"eagerness":"moderate"}]}
+    </script>
 </head>
 <body>
 <div class="mobile-admin-gate">
@@ -35,6 +38,7 @@
         <a class="admin-nav-link" th:classappend="${adminPage == 'exam-form'} ? ' active'" th:href="@{/exam/admin/exams/new}"><i class="bi bi-plus-square-fill"></i> Add Exam</a>
         <a class="admin-nav-link" th:classappend="${adminPage == 'exams'} ? ' active'" th:href="@{/exam/admin/exams}"><i class="bi bi-journal-text"></i> Manage Exams</a>
         <a class="admin-nav-link" th:classappend="${adminPage == 'submissions'} ? ' active'" th:href="@{/exam/admin/submissions}"><i class="bi bi-people-fill"></i> Submissions</a>
+        <a class="admin-nav-link" th:classappend="${adminPage == 'syllabus'} ? ' active'" th:href="@{/exam/admin/syllabus}"><i class="bi bi-book-half"></i> Syllabus</a>
 
         <div class="admin-sidebar-foot">
             <div class="admin-user"><strong th:text="${currentUserName}">PCA Teacher</strong><small>Environment teacher account</small></div>
@@ -45,6 +49,7 @@
 
     <main class="admin-main">
         <div class="pca-dialog-flash" th:if="${success}" th:attr="data-dialog-flash=${success},data-dialog-type='success',data-dialog-title='Completed'"></div>
+        <div class="pca-dialog-flash" th:if="${warning}" th:attr="data-dialog-flash=${warning},data-dialog-type='error',data-dialog-title='Saved as draft'"></div>
         <div class="pca-dialog-flash" th:if="${error}" th:attr="data-dialog-flash=${error},data-dialog-type='danger',data-dialog-title='Unable to complete'"></div>
 
         <th:block th:switch="${adminPage}">
@@ -74,7 +79,7 @@
                     <tr class="clickable-row" th:each="row : ${examRows}" th:attr="data-row-href=@{/exam/admin/exams/{id}/analytics(id=${row.id})}">
                         <td class="cell-title"><span th:text="${row.name}"></span><span class="cell-sub">Click row to open exam analysis</span></td>
                         <td><span th:text="${row.batches}"></span></td>
-                        <td><a class="btn small" th:href="@{/exam/admin/exams/{id}/edit(id=${row.id})}">Edit</a></td>
+                        <td><div class="row-actions"><a class="btn small" th:href="@{/exam/admin/exams/{id}/edit(id=${row.id})}">Edit</a><a class="btn small" th:if="${row.imageSheet}" th:href="@{/exam/admin/exams/{id}/questions(id=${row.id})}"><i class="bi bi-images"></i> Questions</a></div></td>
                         <td><div class="row-actions">
                             <form th:if="${!row.resultsPublished}" th:action="@{/exam/admin/exams/{id}/release-results(id=${row.id})}" method="post" data-confirm="Release results for this examination?"><button class="btn link small" type="submit">Release</button></form>
                             <span class="status status-result-released" th:if="${row.resultsPublished}">RELEASED</span>
@@ -97,7 +102,8 @@
                             <div class="form-group"><label for="totalQuestions">Number of Questions</label><input class="form-input" id="totalQuestions" type="number" th:field="*{totalQuestions}" min="0" max="50" inputmode="numeric" required><div class="field-hint">Enter any number from 0 to 50.</div><div class="field-error" th:errors="*{totalQuestions}"></div></div>
                             <div class="form-group"><label for="examYear">Exam Year</label><select class="form-input" id="examYear" th:field="*{examYear}" required><option value="">Select year</option><option th:each="year : ${adminYears}" th:value="${year}" th:text="${year}"></option></select><div class="field-error" th:errors="*{examYear}"></div></div>
                             <div class="form-group"><label for="examMonth">Exam Month</label><select class="form-input" id="examMonth" th:field="*{examMonth}" required><option value="">Select month</option><option th:each="month : ${adminMonths}" th:value="${month}" th:text="${month}"></option></select><div class="field-error" th:errors="*{examMonth}"></div></div>
-                            <div class="form-group full"><label for="paperDriveUrl">Google Drive PDF Link</label><input class="form-input" id="paperDriveUrl" type="url" th:field="*{paperDriveUrl}" placeholder="https://drive.google.com/file/d/FILE_ID/view" required><div class="field-hint">Share the file as “Anyone with the link can view”. Only Google Drive/Docs links are accepted.</div><div class="field-error" th:errors="*{paperDriveUrl}"></div></div>
+                            <div class="form-group full"><span class="group-label">Sheet Type</span><div class="sheet-type-picker"><label class="sheet-type-option"><input type="radio" th:field="*{sheetType}" value="ANSWER_SHEET"><span><i class="bi bi-grid-3x3-gap-fill"></i><strong>PDF + Answer Sheet</strong><small>Students read the Drive PDF and mark a 50-row OMR sheet.</small></span></label><label class="sheet-type-option"><input type="radio" th:field="*{sheetType}" value="QUESTION_IMAGES"><span><i class="bi bi-images"></i><strong>Question by Question</strong><small>One image per question with options 1–5 below, Next / Previous navigation.</small></span></label></div><div class="field-error" th:errors="*{sheetType}"></div></div>
+                            <div class="form-group full" id="paperDriveGroup"><label for="paperDriveUrl">Google Drive PDF Link</label><input class="form-input" id="paperDriveUrl" type="url" th:field="*{paperDriveUrl}" placeholder="https://drive.google.com/file/d/FILE_ID/view" th:required="${examForm.sheetType == null or examForm.sheetType.name() != 'QUESTION_IMAGES'}"><div class="field-hint">Share the file as “Anyone with the link can view”. Only Google Drive/Docs links are accepted.</div><div class="field-error" th:errors="*{paperDriveUrl}"></div></div>
                             <div class="form-group"><label for="openAt">Open Exam At</label><input class="form-input" id="openAt" type="datetime-local" th:field="*{openAt}" required><div class="field-error" th:errors="*{openAt}"></div></div>
                             <div class="form-group"><label for="resultReleaseAt">Release Result At</label><input class="form-input" id="resultReleaseAt" type="datetime-local" th:field="*{resultReleaseAt}" required><div class="field-error" th:errors="*{resultReleaseAt}"></div></div>
                             <div class="form-group"><label for="durationMinutes">Duration (minutes)</label><input class="form-input" id="durationMinutes" type="number" th:field="*{durationMinutes}" min="1" max="600"><div class="field-error" th:errors="*{durationMinutes}"></div></div>
@@ -106,7 +112,16 @@
                         </div>
                     </section>
 
-                    <section class="glass-card form-card" id="answer-key">
+                    <section class="glass-card form-card qe-callout" id="question-images" th:hidden="${examForm.sheetType == null or examForm.sheetType.name() != 'QUESTION_IMAGES'}">
+                        <div class="qe-callout-icon"><i class="bi bi-images"></i></div>
+                        <div><h2 class="section-title">Question Editor</h2>
+                            <p class="panel-subtitle" th:if="${editingExamId == null}">Save this exam first. You will then go to the Question Editor to add each question's image, correct answer, weight, time, unit, content and learning outcome one by one.</p>
+                            <p class="panel-subtitle" th:if="${editingExamId != null and #lists.isEmpty(missingQuestionImages)}">Every question has an image. Open the editor to change images, weights, times or learning details.</p>
+                            <p class="panel-subtitle qe-missing" th:if="${editingExamId != null and !#lists.isEmpty(missingQuestionImages)}" th:text="|${#lists.size(missingQuestionImages)} question(s) still need an image. The exam stays a draft until they are uploaded.|"></p></div>
+                        <a class="btn primary" th:if="${editingExamId != null}" th:href="@{/exam/admin/exams/{id}/questions(id=${editingExamId})}"><i class="bi bi-pencil-square"></i> Open Question Editor</a>
+                    </section>
+
+                    <section class="glass-card form-card" id="answer-key" th:hidden="${examForm.sheetType != null and examForm.sheetType.name() == 'QUESTION_IMAGES'}">
                         <div class="answer-head"><h2 class="section-title"><i class="bi bi-ui-checks-grid"></i> Answer Key</h2><span class="key-count" id="key-count">0 / 50 set</span><div class="answer-actions"><button class="btn small danger" id="clear-key" type="button">Clear All</button><button class="btn small" id="validate-key" type="button">Validate Answers</button></div></div>
                         <p class="panel-subtitle">Choose one or more accepted options for each question. Students can still select only one answer. Partial keys may be saved as draft; every question needs at least one accepted option before releasing results.</p>
                         <div class="key-message" id="key-message"></div>
@@ -117,6 +132,78 @@
 
                     <div class="form-actions"><button class="btn" type="submit" name="action" value="draft"><i class="bi bi-save"></i> Save Draft</button><button class="btn primary" type="submit" name="action" value="publish"><i class="bi bi-calendar-check"></i> Save &amp; Schedule</button></div>
                 </form>
+            </th:block>
+
+            <th:block th:case="'syllabus'">
+                <header class="admin-page-head"><div><h1>Syllabus</h1><p>Build the syllabus unit by unit: one competency per unit, its competency levels with periods, the content tree and learning outcomes.</p></div></header>
+                <div class="sy-app" id="syllabusApp">
+                    <form id="syToken" th:action="@{/exam/admin/syllabus}" method="post" hidden></form>
+                    <section class="glass-card syllabus-units" aria-label="Units"><span class="group-label">Units</span><div class="syllabus-unit-list" id="syUnitTabs" role="tablist"></div></section>
+
+                    <section class="glass-card sy-card" id="syEditor" hidden>
+                        <div class="sy-top">
+                            <label class="sy-unit-name-wrap"><span>Unit</span><input class="sy-unit-name" id="syUnitName" maxlength="200" placeholder="Unit name, e.g. Mechanics"></label>
+                            <label class="sy-assigned-total" for="syTotalPeriods"><span>Assigned periods</span><input id="syTotalPeriods" type="number" min="0" max="999" inputmode="numeric" placeholder="0" aria-label="Total periods assigned to this competency"></label><div class="sy-actions"><span class="qe-status" id="syStatus"><i class="bi bi-cloud-check"></i> Saved</span><button class="btn small danger" id="syDeleteUnit" type="button"><i class="bi bi-trash3"></i> Delete unit</button><button class="btn small primary" id="sySave" type="button"><i class="bi bi-save"></i> Save unit</button></div>
+                        </div>
+                        <div class="sy-row">
+                            <div class="form-group"><label for="syCompetency">Competency <small>(one per unit)</small></label><input class="form-input" id="syCompetency" maxlength="1000" placeholder="Competency for this unit"></div>
+                            <div class="form-group"><span class="group-label">Competency Level</span>
+                                <div class="sy-level" id="syLevel"><input class="form-input sy-level-name" id="syLevelName" maxlength="300" placeholder="No competency level yet" aria-label="Competency level name (edit to rename)"><button class="sy-level-toggle" id="syLevelToggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Choose competency level"><i class="bi bi-chevron-down"></i></button>
+                                    <div class="sy-level-panel" id="syLevelPanel" hidden><div class="sy-alloc" id="syAlloc"></div><div class="sy-level-options" id="syLevelOptions" role="listbox"></div><button class="sy-level-add" id="syAddLevel" type="button"><i class="bi bi-plus-lg"></i> Add competency level</button><button class="sy-level-delete" id="syDeleteLevel" type="button"><i class="bi bi-trash3"></i> Delete this level</button></div>
+                                </div>
+                            </div>
+                            <div class="form-group sy-period-summary"><span class="group-label">Period allocation</span><div class="sy-period-summary-box" id="syAllocLine">Set each competency level's periods inside the dropdown.</div></div>
+                        </div>
+                        <div class="sy-no-level" id="syNoLevel" hidden><i class="bi bi-diagram-3"></i><span>Add a competency level to start adding its content and learning outcomes.</span><button class="btn small primary" id="syFirstLevel" type="button"><i class="bi bi-plus-lg"></i> Add competency level</button></div>
+                        <div class="sy-panels" id="syPanels">
+                            <div class="sy-panel"><div class="sy-panel-head"><h3><i class="bi bi-diagram-3"></i> Content</h3><div><button class="sy-mini" id="syExpandAll" type="button">Expand all</button><button class="sy-mini" id="syCollapseAll" type="button">Collapse all</button></div></div><ul class="sy-tree" id="syTree"></ul><button class="qe-add" id="syAddTopic" type="button"><i class="bi bi-plus-lg"></i> Add content</button></div>
+                            <div class="sy-panel"><div class="sy-panel-head"><h3><i class="bi bi-bullseye"></i> Learning Outcomes</h3></div><div class="qe-list-rows" id="syOutcomes"></div><button class="qe-add" id="syAddOutcome" type="button"><i class="bi bi-plus-lg"></i> Add learning outcome</button></div>
+                        </div>
+                    </section>
+
+                    <section class="glass-card empty-state" id="syEmpty" hidden><i class="bi bi-book-half"></i><h3>No units yet</h3><p>Add the first unit of the syllabus.</p></section>
+                    <div class="sy-add-unit-row"><button class="btn primary" id="syAddUnit" type="button"><i class="bi bi-plus-lg"></i> Add unit</button></div>
+                </div>
+            </th:block>
+
+            <th:block th:case="'exam-questions'">
+                <header class="admin-page-head">
+                    <div><h1 th:text="${editor.exam.name}">Question Editor</h1><p>Question Editor: each question saves on its own, so nothing you add is lost.</p></div>
+                    <div class="head-actions"><a class="btn" th:href="@{/exam/admin/exams/{id}/edit(id=${editor.exam.id})}"><i class="bi bi-sliders"></i> Exam Settings</a><form id="qeScheduleForm" th:if="${!editor.published}" th:action="@{/exam/admin/exams/{id}/schedule(id=${editor.exam.id})}" method="post"><button class="btn primary" type="submit"><i class="bi bi-calendar-check"></i> Save &amp; Schedule</button></form><span class="status status-open" th:if="${editor.published}">SCHEDULED</span></div>
+                </header>
+                <section class="glass-card empty-state" th:if="${!editor.imageSheet}"><i class="bi bi-grid-3x3-gap"></i><h3>This exam uses the PDF + Answer Sheet</h3><p>Switch the sheet type to “Question by Question” in Exam Settings to add question images.</p></section>
+                <section class="glass-card empty-state" th:if="${editor.imageSheet and #lists.isEmpty(editor.questions)}"><i class="bi bi-123"></i><h3>No questions yet</h3><p>Set the number of questions in Exam Settings first.</p></section>
+                <section class="qe-layout" id="questionEditor" th:if="${editor.imageSheet and !#lists.isEmpty(editor.questions)}" th:attr="data-exam=${editor.exam.id},data-published=${editor.published}">
+                    <aside class="glass-card qe-palette">
+                        <div class="qe-palette-head"><strong>Questions</strong><span id="qeReady"></span></div>
+                        <div class="qe-palette-grid"><button type="button" class="qe-num" th:each="q : ${editor.questions}" th:text="${q.number}" th:attr="data-q=${q.number},data-version=${q.imageVersion},data-correct=${q.correct},data-weight=${q.weight},data-time=${q.timeSeconds},data-units=${q.unitsText},data-levels=${q.competencyLevelsText},data-contents=${q.contentsText},data-outcomes=${q.outcomesText}"></button></div>
+                        <ul class="qe-legend"><li><i class="qe-dot done"></i> Image + answer</li><li><i class="qe-dot part"></i> Partly done</li><li><i class="qe-dot"></i> Empty</li></ul>
+                    </aside>
+                    <form class="glass-card qe-card" id="qeForm" th:action="@{/exam/admin/exams/{id}/questions(id=${editor.exam.id})}" method="post" enctype="multipart/form-data" novalidate>
+                        <div class="qe-head"><h2>Question <b id="qeNumber">1</b> <span th:text="|of ${#lists.size(editor.questions)}|"></span></h2><span class="qe-status" id="qeStatus"><i class="bi bi-cloud-check"></i> Saved</span></div>
+                        <div class="qe-body">
+                            <div class="qe-image-col">
+                                <div class="qe-drop" id="qeDrop" tabindex="0" aria-label="Question image. Drop or paste an image here."><img id="qeImage" alt="Question image" hidden><div class="qe-drop-empty" id="qeDropEmpty"><i class="bi bi-cloud-arrow-up"></i><b>Drop, paste (Ctrl+V) or choose an image</b><small>PNG, JPG, WEBP or GIF · up to 5 MB</small></div></div>
+                                <div class="qe-image-actions"><label class="btn small" for="qeFile"><i class="bi bi-image"></i> Choose image</label><input type="file" id="qeFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button class="btn small danger" type="button" id="qeRemoveImage"><i class="bi bi-trash3"></i> Remove image</button></div>
+                            </div>
+                            <div class="qe-fields">
+                                <div class="form-group"><span class="group-label">Correct Answer <small>(one or more)</small></span><div class="qe-options"><label class="qe-opt" th:each="option : ${optionNumbers}"><input type="checkbox" name="correct" th:value="${option}"><span th:text="${option}"></span></label></div></div>
+                                <div class="form-group qe-weight-group"><span class="group-label">Question Weight <small id="qeWeightLabel">Not set</small></span><input type="hidden" name="weight" id="qeWeight">
+                                    <div class="qe-weight"><div class="qe-stars" id="qeStars"><button type="button" th:each="w : ${#numbers.sequence(1,5)}" th:attr="data-weight=${w},aria-label=|Weight ${w}|" title="Click the left half for a half star"><i class="bi bi-star-fill"></i></button></div><label class="qe-weight-value" for="qeWeightInput"><input id="qeWeightInput" type="number" min="1" max="5" step="0.5" inputmode="decimal" placeholder="–" aria-label="Weight value"><span>/ 5</span></label><button class="qe-weight-clear" id="qeWeightClear" type="button" aria-label="Clear weight" title="Clear weight"><i class="bi bi-x-lg"></i></button></div>
+                                    <input class="qe-range" id="qeWeightRange" type="range" min="1" max="5" step="0.5" value="1" aria-label="Weight slider">
+                                    <div class="qe-range-scale" aria-hidden="true"><span>1</span><span>1.5</span><span>2</span><span>2.5</span><span>3</span><span>3.5</span><span>4</span><span>4.5</span><span>5</span></div></div>
+                                <div class="form-group"><span class="group-label">Time for this Question <small>(teacher analysis only, separate from paper duration)</small></span><div class="qe-select" id="qeTime"><button class="form-input qe-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><i class="bi bi-stopwatch"></i><span class="qe-select-text">Not set</span><i class="bi bi-chevron-down qe-select-caret"></i></button><div class="qe-select-panel" role="listbox" aria-label="Time for this question" hidden><label class="qe-select-option"><input type="radio" name="timeSeconds" value=""><span>Not set</span></label><label class="qe-select-option" th:each="t : ${timeOptions}"><input type="radio" name="timeSeconds" th:value="${t}"><span th:text="${t % 60 == 0} ? |${t / 60} min| : (${t < 60} ? |${t} sec| : |${t / 60}.30 min|)"></span></label></div></div></div>
+                            </div>
+                        </div>
+                        <section class="qe-syllabus" aria-labelledby="qeSyllabusTitle">
+                            <div class="qe-syllabus-head"><h3 id="qeSyllabusTitle"><i class="bi bi-book-half"></i> Syllabus</h3><span>Pick the unit, competency level, content and learning outcomes this question covers. A question can cover more than one unit.</span></div>
+                            <div class="qe-tags" id="qeTags"><div class="qe-tags-loading"><i class="bi bi-hourglass-split"></i> Loading syllabus…</div></div>
+                            <button class="qe-add" id="qeAddTag" type="button"><i class="bi bi-plus-lg"></i> Add another unit</button>
+                            <p class="qe-legacy" id="qeLegacy" hidden></p>
+                        </section>
+                        <div class="qe-nav"><button class="btn" type="button" id="qePrev"><i class="bi bi-chevron-left"></i> Previous</button><button class="btn" type="button" id="qeSave"><i class="bi bi-save"></i> Save</button><button class="btn primary" type="button" id="qeNext">Save &amp; Next <i class="bi bi-chevron-right"></i></button></div>
+                    </form>
+                </section>
             </th:block>
 
             <th:block th:case="'exam-analytics'">
@@ -149,7 +236,7 @@
 
                 <section class="glass-card admin-panel question-analysis">
                     <h2 class="panel-title">Question Correctness</h2><p class="panel-subtitle">Correct answers as a percentage of students who answered each question.</p>
-                    <div class="question-bars"><div class="question-bar-row" th:each="item : ${analytics.questions}"><strong th:text="|Q${item.question}|">Q1</strong><div class="question-bar-track"><span th:style="|width:${item.percentage}%;|"></span></div><span th:text="|${item.correct} / ${item.answered} (${item.percentage}%)|">0 / 0</span></div></div>
+                    <div class="question-bars"><div class="question-bar-row" th:each="item : ${analytics.questions}"><strong th:text="|Q${item.question}|">Q1</strong><div class="question-bar-track"><span th:style="|width:${item.percentage}%;|"></span></div><span class="qbar-stats"><span th:text="|${item.correct} / ${item.answered} (${item.percentage}%)|">0 / 0</span><span class="qbar-meta" th:if="${analytics.exam.imageSheet}"><span class="wstars" th:if="${item.weight != null}" th:style="|--w:${item.weightColor}|" th:title="|Weight ${item.weightText} / 5|"><i class="bi bi-star-fill" th:each="s : ${#numbers.sequence(1, item.fullStars)}"></i><i class="bi bi-star-half" th:if="${item.halfStar}"></i><b th:text="${item.weightText}"></b></span><span th:if="${!#strings.isEmpty(item.unit)}" th:text="|Competency: ${item.unit}|"></span><span class="tverdict" th:classappend="| ${#strings.toLowerCase(item.timeVerdict)}|" th:text="|avg ${item.averageLabel} · expected ${item.expectedLabel}|"></span></span></span></div></div>
                 </section>
 
                 <section class="glass-card table-card analytics-submissions" th:if="${!#lists.isEmpty(analytics.submissions)}">
@@ -175,7 +262,7 @@
                     <div class="answer-sheet review-answer-sheet">
                         <div class="answer-row review-answer-row" th:each="answer : ${submissionDetail.answers}" th:classappend="${answer.question > submissionDetail.totalQuestions} ? ' unavailable'">
                             <span class="question-number" th:text="${answer.question}"></span>
-                            <div class="answer-options"><span th:each="option : ${optionNumbers}" th:class="${'review-option' + (answer.selectedOption == option ? ' selected' : '') + (submissionDetail.resultsPublished and answer.correctOptions.contains(option) ? ' correct' : '') + (submissionDetail.resultsPublished and answer.selectedOption == option and !answer.correctOptions.contains(option) ? ' wrong' : '')}" th:text="${option}"></span></div>
+                            <div class="answer-options"><span th:each="option : ${optionNumbers}" th:class="${'review-option' + (answer.selectedOption == option ? ' selected' : '') + (submissionDetail.resultsPublished and answer.correctOptions.contains(option) ? ' correct' : '') + (submissionDetail.resultsPublished and answer.selectedOption == option and !answer.correctOptions.contains(option) ? ' wrong' : '')}" th:text="${option}"></span></div><span class="review-time tverdict" th:if="${submissionDetail.imageSheet}" th:classappend="| ${#strings.toLowerCase(answer.timeVerdict)}|" th:title="|Spent ${answer.spentLabel} · expected ${answer.expectedLabel}|" th:text="${answer.spentShort}"></span>
                         </div>
                     </div>
                 </section>
@@ -216,5 +303,9 @@
 </div>
 <script th:src="@{/js/exam-dialog.js(v=1)}"></script>
 <script th:src="@{/js/exam-admin.js(v=3)}"></script>
+<script th:if="${adminPage == 'exam-form'}" th:src="@{/js/exam-admin-images.js(v=3)}"></script>
+<script th:if="${adminPage == 'exam-questions'}" th:src="@{/js/exam-question-editor.js(v=8)}"></script>
+<script th:if="${adminPage == 'syllabus'}" th:inline="javascript">window.PCA_INITIAL_SYLLABUS = /*[[${syllabusUnits}]]*/ [];</script>
+<script th:if="${adminPage == 'syllabus'}" th:src="@{/js/exam-syllabus.js(v=5)}"></script>
 </body>
 </html>

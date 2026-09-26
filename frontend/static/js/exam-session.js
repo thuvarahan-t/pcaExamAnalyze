@@ -58,6 +58,9 @@
     Object.keys(answers).forEach(function (question) {
       data.append("q" + question, String(answers[question]));
     });
+    // Optional extra fields (e.g. per-question time from exam-step.js).
+    var extras = typeof window.PcaExamExtras === "function" ? window.PcaExamExtras() : null;
+    if (extras) Object.keys(extras).forEach(function (key) { data.append(key, String(extras[key])); });
     if (csrf) data.append(csrf.name, csrf.value);
     return fetch("/exam/session/" + submission + "/answers", {
       method: "POST",
@@ -108,7 +111,7 @@
     });
   }
 
-  function showSubmissionLoader(answerCount) {
+  function showSubmissionLoader(answerCount, timeUp) {
     var tips = [
       "Stay calm - your marked answers are being secured.",
       "A careful final review is more valuable than a rushed change.",
@@ -123,7 +126,7 @@
     overlay.setAttribute("aria-live", "polite");
     overlay.innerHTML = '<section class="exam-submit-loader-card">' +
       '<div class="submit-loader-orbit" aria-hidden="true"><span></span><i class="bi bi-check2-square"></i></div>' +
-      '<h2>Submitting your paper</h2>' +
+      '<h2>' + (timeUp ? "Time is up - submitting your paper" : "Submitting your paper") + '</h2>' +
       '<p class="submit-loader-progress">Preparing your answers...</p>' +
       '<div class="submit-loader-track"><span></span></div>' +
       '<div class="submit-loader-tip"><i class="bi bi-lightbulb-fill"></i><div><strong>Quick exam tip</strong><span></span></div></div>' +
@@ -180,41 +183,55 @@
     scheduleAutosave();
   });
 
+  /**
+   * Saves the final answers and submits the form. When `auto` is true (time is up) the paper
+   * is submitted even if the last save fails - the server keeps every answer autosaved so far.
+   */
+  function submitNow(auto) {
+    if (submitting) return;
+    var answered = Object.keys(current()).length;
+    var submitButton = form.querySelector(".submit-button");
+    var originalButton = submitButton.innerHTML;
+    submitting = true;
+    var loader = showSubmissionLoader(answered, auto);
+    submitButton.disabled = true;
+    submitButton.innerHTML = 'Saving &amp; submitting... <i class="bi bi-cloud-arrow-up-fill"></i>';
+    saveState.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Saving final answers...';
+
+    function send() {
+      try { localStorage.removeItem(storageKey); } catch (error) { /* Storage is optional. */ }
+      loader.finishing();
+      HTMLFormElement.prototype.submit.call(form);
+    }
+
+    flushAnswers(loader.update).then(function () {
+      saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Answers saved';
+      send();
+    }).catch(function (error) {
+      if (auto) { send(); return; }
+      loader.close();
+      submitting = false;
+      submitButton.disabled = false;
+      submitButton.innerHTML = originalButton;
+      saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Could not submit - check your connection';
+      window.PcaDialog.alert(error && error.message
+        ? error.message
+        : "Your answers could not be saved. Please try Submit Paper again.",
+        { title: "Submission not sent", type: "error" });
+    });
+  }
+
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     if (submitting) return;
 
     var answered = Object.keys(current()).length;
-    var submitButton = form.querySelector(".submit-button");
-    var originalButton = submitButton.innerHTML;
     window.PcaDialog.confirm(
       "You answered " + answered + " of " + total + " questions. " + (total - answered) +
       " questions are unanswered. Your saved answers will be submitted as final.",
       { title: "Submit your paper?", acceptText: "Submit Paper" }
     ).then(function (approved) {
-      if (!approved) return;
-      submitting = true;
-      var loader = showSubmissionLoader(answered);
-      submitButton.disabled = true;
-      submitButton.innerHTML = 'Saving &amp; submitting... <i class="bi bi-cloud-arrow-up-fill"></i>';
-      saveState.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Saving final answers...';
-
-      flushAnswers(loader.update).then(function () {
-        try { localStorage.removeItem(storageKey); } catch (error) { /* Storage is optional. */ }
-        saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Answers saved';
-        loader.finishing();
-        HTMLFormElement.prototype.submit.call(form);
-      }).catch(function (error) {
-        loader.close();
-        submitting = false;
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalButton;
-        saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Could not submit - check your connection';
-        window.PcaDialog.alert(error && error.message
-          ? error.message
-          : "Your answers could not be saved. Please try Submit Paper again.",
-          { title: "Submission not sent", type: "error" });
-      });
+      if (approved) submitNow(false);
     });
   });
 
@@ -230,12 +247,20 @@
     timer.classList.toggle("danger", remaining <= 120);
     if (remaining <= 0) {
       sheet.querySelectorAll("input").forEach(function (input) { input.disabled = true; });
-      saveState.textContent = "Time ended - submit your saved answers";
+      saveState.textContent = "Time is up - submitting your paper";
+      // Close any open dialog (e.g. the submit confirmation) and submit automatically.
+      document.querySelectorAll(".pca-dialog-overlay").forEach(function (overlay) { overlay.remove(); });
+      submitNow(true);
       return;
     }
     remaining--;
     window.setTimeout(tick, 1000);
   }
+
+  window.PcaExamSession = {
+    save: function () { if (!submitting) scheduleAutosave(300); },
+    isSubmitting: function () { return submitting; }
+  };
 
   update();
   tick();

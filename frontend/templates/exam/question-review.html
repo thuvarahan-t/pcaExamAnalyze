@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+<!-- Question-by-question review for image-sheet exams: image + your answer + correct answer.
+     Include with th:replace="~{exam/question-review :: review(${result})}" and load exam-zoom.js + exam-review.js. -->
+<section class="surface q-review" th:fragment="review(result)" th:if="${result.questionImages}" id="questionReview"
+         th:attr="data-released=${result.released}" aria-labelledby="qReviewTitle">
+    <div class="q-review-head">
+        <div><span class="q-review-kicker">QUESTION REVIEW</span><h2 id="qReviewTitle">Your answers, question by question</h2></div>
+        <ul class="q-review-legend">
+            <li><i class="dot mine"></i> Your answer</li>
+            <li th:if="${result.released}"><i class="dot right"></i> Correct answer</li>
+            <li th:if="${result.released}"><i class="dot wrong"></i> Your wrong answer</li>
+        </ul>
+    </div>
+    <p class="q-review-note" th:unless="${result.released}"><i class="bi bi-hourglass-split"></i> Correct answers appear here once the teacher releases the result.</p>
+    <div class="q-review-layout">
+        <div class="q-review-main">
+            <article class="q-review-item" th:each="answer : ${result.answers}" th:attr="data-question=${answer.question},data-state=${answer.state}" th:hidden="${answer.question != 1}">
+                <div class="q-review-top">
+                    <span class="step-badge">Question <b th:text="${answer.question}">1</b> <span th:text="|of ${result.totalQuestions}|"></span></span>
+                    <span class="q-review-state" th:classappend="${' ' + #strings.toLowerCase(answer.state)}"
+                          th:text="${answer.state == 'CORRECT'} ? 'Correct' : (${answer.state == 'INCORRECT'} ? 'Incorrect' : (${answer.state == 'UNANSWERED'} ? 'Not answered' : 'Answered'))"></span>
+                </div>
+                <div class="step-viewer" th:if="${result.imageVersions.get(answer.question) != null}">
+                    <img th:attr="data-src=@{/exam/results/{id}/questions/{q}/image(id=${result.submissionId},q=${answer.question},v=${result.imageVersions.get(answer.question)})}" th:alt="|Question ${answer.question}|" decoding="async" draggable="false">
+                    <div class="zoom-tools" role="group" aria-label="Image zoom"><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div>
+                    <span class="zoom-level" aria-live="polite"></span>
+                </div>
+                <div class="step-missing" th:if="${result.imageVersions.get(answer.question) == null}"><i class="bi bi-image"></i><span>Image for this question is not available.</span></div>
+                <div class="q-review-options" role="list" th:attr="aria-label=|Question ${answer.question} options|">
+                    <span class="q-review-option" role="listitem" th:each="option : ${#numbers.sequence(1,5)}"
+                          th:classappend="${(answer.selected == option ? ' mine' : '') + (#lists.contains(answer.correct, option) ? ' right' : '') + (answer.selected == option and answer.state == 'INCORRECT' ? ' wrong' : '')}">
+                        <b th:text="${option}"></b>
+                        <small th:if="${answer.selected == option and #lists.contains(answer.correct, option)}">Your answer · Correct</small>
+                        <small th:if="${answer.selected == option and !#lists.contains(answer.correct, option)}">Your answer</small>
+                        <small th:if="${answer.selected != option and #lists.contains(answer.correct, option)}">Correct</small>
+                    </span>
+                </div>
+                <p class="q-review-summary">
+                    <span th:text="${answer.selected == null} ? 'You did not answer this question.' : |Your answer: ${answer.selected}|"></span>
+                    <span th:if="${result.released and !#lists.isEmpty(answer.correct)}" th:text="|Correct answer: ${#strings.listJoin(answer.correct, ' or ')}|"></span>
+                </p>
+            </article>
+            <div class="step-nav"><button class="step-btn" id="reviewPrev" type="button"><i class="bi bi-chevron-left"></i> Previous</button><button class="step-btn primary" id="reviewNext" type="button">Next <i class="bi bi-chevron-right"></i></button></div>
+        </div>
+        <aside class="q-review-palette" aria-label="Questions">
+            <div class="q-review-palette-grid"><button type="button" th:each="answer : ${result.answers}" th:attr="data-go=${answer.question}" th:text="${answer.question}" th:classappend="${' ' + #strings.toLowerCase(answer.state)}"></button></div>
+            <div class="q-review-counts" th:if="${result.released}">
+                <span class="correct" th:text="|${#lists.size(result.answers.?[state == 'CORRECT'])} correct|"></span>
+                <span class="incorrect" th:text="|${#lists.size(result.answers.?[state == 'INCORRECT'])} incorrect|"></span>
+                <span class="unanswered" th:text="|${#lists.size(result.answers.?[state == 'UNANSWERED'])} not answered|"></span>
+            </div>
+        </aside>
+    </div>
+</section>
+</body>
+</html>
