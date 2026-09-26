@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,8 +32,11 @@ public class ExamPortalController {
 
     private final McqAdminService mcqAdminService;
     private final McqStudentExamService studentExamService;
+    private final com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages;
 
-    public ExamPortalController(McqAdminService mcqAdminService, McqStudentExamService studentExamService) {
+    public ExamPortalController(McqAdminService mcqAdminService, McqStudentExamService studentExamService,
+                                com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages) {
+        this.questionImages = questionImages;
         this.mcqAdminService = mcqAdminService;
         this.studentExamService = studentExamService;
     }
@@ -196,16 +202,73 @@ public class ExamPortalController {
     public String examWorkspace(@PathVariable Long submissionId, Model model, HttpSession session,
                                 RedirectAttributes redirect) {
         try {
+            if (studentExamService.autoSubmitIfOverdue(submissionId, savedDetails(session))) {
+                redirect.addFlashAttribute("examError", "Your time was up, so your paper was submitted automatically.");
+            }
             var workspace = studentExamService.workspace(submissionId, savedDetails(session));
             if ("SUBMITTED".equals(workspace.status())) return "redirect:/exam/p/" + workspace.slug() + "/result";
             model.addAttribute("workspace", workspace);
             model.addAttribute("questionNumbers", IntStream.rangeClosed(1, workspace.totalQuestions()).boxed().toList());
             model.addAttribute("optionNumbers", IntStream.rangeClosed(1, workspace.optionsPerQuestion()).boxed().toList());
-            return "exam/session";
+            return workspace.questionImages() ? "exam/session-step" : "exam/session";
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirect.addFlashAttribute("examError", ex.getMessage());
             return "redirect:/exam";
         }
+    }
+
+    @GetMapping("/exam/session/{submissionId}/questions/{question}/image")
+    public ResponseEntity<byte[]> questionImage(@PathVariable Long submissionId, @PathVariable int question,
+                                                HttpSession session) {
+        try {
+            return studentExamService.questionImage(submissionId, question, savedDetails(session))
+                    .map(image -> QuestionImageResponses.of(image, questionImages.imageRedirectUrl(image)))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /** Question images for the result review page (student who submitted the paper only). */
+    @GetMapping("/exam/results/{submissionId}/questions/{question}/image")
+    public ResponseEntity<byte[]> resultQuestionImage(@PathVariable Long submissionId, @PathVariable int question,
+                                                      HttpSession session) {
+        ExamStudentDetailsForm details = savedDetails(session);
+        ResultLookup lookup = savedResultLookup(session);
+        var image = details != null
+                ? studentExamService.resultQuestionImage(submissionId, question, details.getRegistrationId(), details.getNic())
+                : java.util.Optional.<com.example.pcaExamAnalyze.domain.McqExamQuestion>empty();
+        if (image.isEmpty() && lookup != null) {
+            image = studentExamService.resultQuestionImage(submissionId, question, lookup.registrationId(), lookup.nic());
+        }
+        return image.map(img -> QuestionImageResponses.of(img, questionImages.imageRedirectUrl(img)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Supporting images use the same ownership checks as the main question image.
+    @GetMapping("/exam/session/{submissionId}/questions/{question}/sub-images/{imageId}")
+    public ResponseEntity<byte[]> sessionSubImage(@PathVariable Long submissionId, @PathVariable int question,
+                                                  @PathVariable Long imageId, HttpSession session) {
+        try {
+            var parent = studentExamService.questionImage(submissionId, question, savedDetails(session));
+            return parent.flatMap(p -> questionImages.subImage(p.getExam().getId(), question, imageId))
+                    .map(img -> QuestionImageResponses.of(img, questionImages.subImageRedirectUrl(img)))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException | IllegalStateException ex) { return ResponseEntity.notFound().build(); }
+    }
+
+    @GetMapping("/exam/results/{submissionId}/questions/{question}/sub-images/{imageId}")
+    public ResponseEntity<byte[]> resultSubImage(@PathVariable Long submissionId, @PathVariable int question,
+                                                 @PathVariable Long imageId, HttpSession session) {
+        var details = savedDetails(session);
+        var lookup = savedResultLookup(session);
+        var parent = details == null ? java.util.Optional.<com.example.pcaExamAnalyze.domain.McqExamQuestion>empty()
+                : studentExamService.resultQuestionImage(submissionId, question, details.getRegistrationId(), details.getNic());
+        if (parent.isEmpty() && lookup != null)
+            parent = studentExamService.resultQuestionImage(submissionId, question, lookup.registrationId(), lookup.nic());
+        return parent.flatMap(p -> questionImages.subImage(p.getExam().getId(), question, imageId))
+                .map(img -> QuestionImageResponses.of(img, questionImages.subImageRedirectUrl(img)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/exam/session/{submissionId}/answer")
@@ -226,12 +289,16 @@ public class ExamPortalController {
                                          HttpSession session) {
         try {
             Map<Integer, Integer> answers = new java.util.LinkedHashMap<>();
+            Map<Integer, Integer> questionTimes = new java.util.LinkedHashMap<>();
             parameters.forEach((key, value) -> {
-                if (key.startsWith("q")) {
+                if (key.matches("q\\d+")) {
                     answers.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+                } else if (key.matches("t\\d+") && value.matches("\\d{1,6}")) {
+                    questionTimes.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
                 }
             });
-            return ResponseEntity.ok(studentExamService.saveAnswers(submissionId, answers, savedDetails(session)));
+            return ResponseEntity.ok(studentExamService.saveAnswers(
+                    submissionId, answers, questionTimes, savedDetails(session)));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
         }
@@ -270,9 +337,12 @@ public class ExamPortalController {
     public String findResult(@PathVariable String slug,
                              @RequestParam String registrationId,
                              @RequestParam String nic,
-                             Model model) {
+                             Model model, HttpSession session) {
         try {
-            model.addAttribute("result", studentExamService.result(slug, registrationId, nic));
+            var result = studentExamService.result(slug, registrationId, nic);
+            // Remember the verified lookup so the review's question images can be loaded.
+            session.setAttribute(RESULT_LOOKUP_SESSION_KEY, new ResultLookup(result.registrationId(), result.nic()));
+            model.addAttribute("result", result);
             return "exam/result";
         } catch (IllegalArgumentException | IllegalStateException ex) {
             model.addAttribute("exam", studentExamService.examDetails(slug));

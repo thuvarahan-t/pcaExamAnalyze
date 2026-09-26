@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
  * so it runs without a live Supabase connection.
  */
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles("test")
 class PcaExamAnalyzeApplicationTests {
 
 	@Test

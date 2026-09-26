@@ -1,6 +1,7 @@
 package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.McqAdminService;
+import com.example.pcaExamAnalyze.service.SyllabusService;
 import com.example.pcaExamAnalyze.web.dto.McqExamForm;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
@@ -20,7 +21,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.example.pcaExamAnalyze.domain.McqExamQuestion;
+import com.example.pcaExamAnalyze.service.McqExamQuestionService;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.http.CacheControl;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.List;
 import java.time.LocalDate;
 import java.util.stream.IntStream;
 
@@ -28,10 +38,18 @@ import java.util.stream.IntStream;
 @RequestMapping("/exam/admin")
 public class McqAdminController {
 
-    private final McqAdminService admin;
+    private static final List<Integer> QUESTION_NUMBERS = IntStream.rangeClosed(1, 50).boxed().toList();
+    private static final List<Integer> OPTION_NUMBERS = IntStream.rangeClosed(1, 5).boxed().toList();
 
-    public McqAdminController(McqAdminService admin) {
+    private final McqAdminService admin;
+    private final McqExamQuestionService questionImages;
+    private final SyllabusService syllabusService;
+
+    public McqAdminController(McqAdminService admin, McqExamQuestionService questionImages,
+                              SyllabusService syllabusService) {
+        this.questionImages = questionImages;
         this.admin = admin;
+        this.syllabusService = syllabusService;
     }
 
     @ModelAttribute
@@ -39,8 +57,8 @@ public class McqAdminController {
         model.addAttribute("adminBatches", admin.activeBatchNames());
         model.addAttribute("adminMonths", McqAdminService.MONTHS);
         model.addAttribute("adminYears", IntStream.rangeClosed(LocalDateTime.now().getYear(), LocalDateTime.now().getYear() + 5).boxed().toList());
-        model.addAttribute("questionNumbers", admin.questionNumbers());
-        model.addAttribute("optionNumbers", admin.optionNumbers());
+        model.addAttribute("questionNumbers", QUESTION_NUMBERS);
+        model.addAttribute("optionNumbers", OPTION_NUMBERS);
     }
 
     @GetMapping({"", "/"})
@@ -156,9 +174,13 @@ public class McqAdminController {
             showForm(model, null);
             return "exam/admin/portal";
         }
-        admin.save(null, form, "publish".equals(action), authentication.getName());
-        redirect.addFlashAttribute("success", "publish".equals(action)
-                ? "Exam scheduled successfully" : "Exam saved as draft");
+        var result = admin.save(null, form, "publish".equals(action), authentication.getName());
+        if (result.exam().usesQuestionImages()) {
+            // New image-sheet exams go straight to the question editor to add their questions.
+            redirect.addFlashAttribute("success", "Exam saved. Now add each question's image and details.");
+            return "redirect:/exam/admin/exams/" + result.exam().getId() + "/questions";
+        }
+        redirect.addFlashAttribute("success", result.published() ? "Exam scheduled successfully" : "Exam saved as draft");
         return "redirect:/exam/admin/exams";
     }
 
@@ -182,10 +204,152 @@ public class McqAdminController {
             showForm(model, id);
             return "exam/admin/portal";
         }
-        admin.save(id, form, "publish".equals(action), authentication.getName());
-        redirect.addFlashAttribute("success", "publish".equals(action)
-                ? "Exam updated and scheduled" : "Draft saved successfully");
+        boolean publish = "publish".equals(action);
+        var result = admin.save(id, form, publish, authentication.getName());
+        if (publish && !result.published()) {
+            redirect.addFlashAttribute("warning", missingImagesMessage(result.missingImages()));
+            return "redirect:/exam/admin/exams/" + id + "/questions";
+        }
+        redirect.addFlashAttribute("success", result.published() ? "Exam updated and scheduled" : "Draft saved successfully");
         return "redirect:/exam/admin/exams";
+    }
+
+    /** Syllabus reference: one table per unit (Competency, Level, Content, Learning outcomes, Periods). */
+    @GetMapping("/syllabus")
+    public String syllabus(Model model) {
+        model.addAttribute("adminPage", "syllabus");
+        model.addAttribute("syllabusUnits", syllabusService.list());
+        return "exam/admin/portal";
+    }
+
+    @GetMapping("/exams/{id}/questions")
+    public String questionEditor(@PathVariable Long id, Model model) {
+        model.addAttribute("adminPage", "exam-questions");
+        model.addAttribute("editor", admin.questionEditor(id));
+        model.addAttribute("timeOptions", McqExamQuestion.TIME_OPTIONS);
+        return "exam/admin/portal";
+    }
+
+    @PostMapping("/exams/{id}/questions/{question}")
+    @ResponseBody
+    public ResponseEntity<?> saveQuestion(@PathVariable Long id, @PathVariable int question,
+                                          @RequestParam(name = "correct", required = false) List<Integer> correct,
+                                          @RequestParam(required = false) Double weight,
+                                          @RequestParam(required = false) Integer timeSeconds,
+                                          @RequestParam(required = false) MultipartFile image,
+                                          @RequestParam(defaultValue = "false") boolean removeImage,
+                                          @RequestParam(defaultValue = "false") boolean freeMark,
+                                          @RequestParam(required = false) List<MultipartFile> subImages,
+                                          @RequestParam(required = false) List<Long> removeSubImages,
+                                          jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            List<Integer> options = correct == null ? List.of()
+                    : correct.stream().filter(o -> o != null && o >= 1 && o <= 5).distinct().sorted().toList();
+            var saved = admin.saveEditorQuestion(id, question, options,
+                    new McqExamQuestionService.QuestionEdit(weight, timeSeconds, valuesOrNull(request, "unit"),
+                            valuesOrNull(request, "competencyLevel"), valuesOrNull(request, "content"),
+                            valuesOrNull(request, "learningOutcome"),
+                            tagInputs(request)),
+                    image, removeImage, freeMark, subImages, removeSubImages);
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/exams/{id}/schedule")
+    public String schedule(@PathVariable Long id, RedirectAttributes redirect) {
+        List<Integer> missing = admin.schedule(id);
+        if (!missing.isEmpty()) {
+            redirect.addFlashAttribute("warning", missingImagesMessage(missing));
+            return "redirect:/exam/admin/exams/" + id + "/questions";
+        }
+        redirect.addFlashAttribute("success", "Exam scheduled successfully");
+        return "redirect:/exam/admin/exams";
+    }
+
+    /** Every question's syllabus tags, for the Question Editor. */
+    @GetMapping("/exams/{id}/questions/{question}/sub-images/{imageId}")
+    public ResponseEntity<byte[]> subImage(@PathVariable Long id, @PathVariable int question, @PathVariable Long imageId) {
+        return questionImages.subImage(id, question, imageId)
+                .map(img -> QuestionImageResponses.of(img, questionImages.subImageRedirectUrl(img)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/exams/{id}/questions/tags")
+    @ResponseBody
+    public Map<Integer, List<McqExamQuestionService.TagView>> questionTags(@PathVariable Long id) {
+        return admin.questionTagsByExam(id);
+    }
+
+    /**
+     * Syllabus blocks from the editor, sent as parallel repeated fields: tagUnit, tagLevel,
+     * tagContents (newline-separated tree paths) and tagOutcomes (newline-separated).
+     * Returns null when the form did not include tags at all (leave existing tags untouched).
+     */
+    private static List<McqExamQuestionService.TagInput> tagInputs(jakarta.servlet.http.HttpServletRequest request) {
+        if (request.getParameter("tagsSent") == null) return null;
+        List<String> units = values(request, "tagUnit");
+        List<String> levels = values(request, "tagLevel");
+        List<String> contents = values(request, "tagContents");
+        List<String> outcomes = values(request, "tagOutcomes");
+        List<McqExamQuestionService.TagInput> result = new java.util.ArrayList<>();
+        for (int i = 0; i < units.size(); i++) {
+            Long unit = parseId(units.get(i));
+            if (unit == null) continue;
+            result.add(new McqExamQuestionService.TagInput(unit, i < levels.size() ? parseId(levels.get(i)) : null,
+                    lines(i < contents.size() ? contents.get(i) : ""), lines(i < outcomes.size() ? outcomes.get(i) : "")));
+        }
+        return result;
+    }
+
+    /** Like {@link #values} but null when the field was not sent at all. */
+    private static List<String> valuesOrNull(jakarta.servlet.http.HttpServletRequest request, String name) {
+        String[] values = request.getParameterValues(name);
+        return values == null ? null : List.of(values);
+    }
+
+    private static Long parseId(String value) {
+        try {
+            return value == null || value.isBlank() ? null : Long.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static List<String> lines(String value) {
+        return value == null || value.isBlank() ? List.of() : List.of(value.split("\\r?\\n"));
+    }
+
+    /**
+     * Repeated form fields read raw: binding a single value to List<String> would split it on
+     * commas, which breaks entries such as "Force, mass and acceleration".
+     */
+    private static List<String> values(jakarta.servlet.http.HttpServletRequest request, String name) {
+        String[] values = request.getParameterValues(name);
+        return values == null ? List.of() : List.of(values);
+    }
+
+    /** Final "Save & Finish" in the Question Editor: optionally schedule, then back to Manage Exams. */
+    @PostMapping("/exams/{id}/questions/finish")
+    public String finishQuestions(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean schedule,
+                                  RedirectAttributes redirect) {
+        if (!schedule) {
+            redirect.addFlashAttribute("success", "All questions saved. The exam is kept as a draft.");
+            return "redirect:/exam/admin/exams";
+        }
+        List<Integer> missing = admin.schedule(id);
+        if (!missing.isEmpty()) {
+            redirect.addFlashAttribute("warning", missingImagesMessage(missing));
+            return "redirect:/exam/admin/exams/" + id + "/questions";
+        }
+        redirect.addFlashAttribute("success", "All questions saved and the exam is scheduled.");
+        return "redirect:/exam/admin/exams";
+    }
+
+    private static String missingImagesMessage(List<Integer> missing) {
+        return "Everything is saved, but the exam stays a draft until every question has an image. Upload: "
+                + missing.stream().map(q -> "Q" + q).collect(java.util.stream.Collectors.joining(", "));
     }
 
     @PostMapping("/exams/{id}/archive")
@@ -249,8 +413,16 @@ public class McqAdminController {
         return csv(admin.exportCsv(examId), "pca-mcq-submissions.csv");
     }
 
+    @GetMapping("/exams/{id}/questions/{question}/image")
+    public ResponseEntity<byte[]> questionImage(@PathVariable Long id, @PathVariable int question) {
+        return admin.questionImage(id, question)
+                .map(image -> QuestionImageResponses.of(image, questionImages.imageRedirectUrl(image)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     private void showForm(Model model, Long id) {
         model.addAttribute("adminPage", "exam-form");
+        model.addAttribute("missingQuestionImages", id == null ? List.of() : admin.missingQuestionImages(id));
         model.addAttribute("editingExamId", id);
         model.addAttribute("editingExamSlug", id == null ? null : admin.requireExam(id).getSlug());
         model.addAttribute("formTitle", id == null ? "Add Exam" : "Edit Exam");

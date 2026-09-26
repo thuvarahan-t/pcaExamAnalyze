@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import com.example.pcaExamAnalyze.domain.McqSheetType;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -39,8 +40,8 @@ public class McqExamForm {
     @NotBlank(message = "Exam month is required")
     private String examMonth;
 
-    @NotBlank(message = "Google Drive PDF link is required")
-    @Pattern(regexp = "^https://(?:drive\\.google\\.com|docs\\.google\\.com)/.+$",
+    /** Required only for the classic answer sheet; checked in McqAdminService.validateForm. */
+    @Pattern(regexp = "^$|^https://(?:drive\\.google\\.com|docs\\.google\\.com)/.+$",
             message = "Enter a valid Google Drive link")
     @Size(max = 1000, message = "PDF link is too long")
     private String paperDriveUrl;
@@ -64,6 +65,9 @@ public class McqExamForm {
     private Integer durationMinutes;
 
     private boolean allowResubmission;
+
+    @NotNull(message = "Select a sheet type")
+    private McqSheetType sheetType = McqSheetType.ANSWER_SHEET;
 
     private Map<Integer, List<Integer>> answers = new LinkedHashMap<>();
 }
