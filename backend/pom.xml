@@ -65,6 +65,29 @@
 			<version>1.18.3</version>
 		</dependency>
 
+		<!-- Cloudflare R2 (S3-compatible) storage for MCQ question images. Uses the small
+		     URLConnection HTTP client instead of the default Netty/Apache clients. -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.55.6</version>
+			<exclusions>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>netty-nio-client</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>apache-client</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>url-connection-client</artifactId>
+			<version>2.55.6</version>
+		</dependency>
+
 		<!-- .env secrets are loaded by config/DotenvLoader (called from main()).
 		     The spring-dotenv library was removed: it hooks in via META-INF/spring.factories,
 		     which Spring Boot 4 no longer honours, so it silently loaded nothing. -->

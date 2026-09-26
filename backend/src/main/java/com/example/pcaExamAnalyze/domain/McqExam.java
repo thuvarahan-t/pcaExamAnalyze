@@ -67,6 +67,11 @@ public class McqExam {
     @Column(nullable = false)
     private Integer optionsPerQuestion = 5;
 
+    /** Nullable so rows created before this column existed keep the classic answer sheet. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private McqSheetType sheetType = McqSheetType.ANSWER_SHEET;
+
     @Column(nullable = false)
     private Instant openAt;
 
@@ -92,6 +97,21 @@ public class McqExam {
     private Integer durationMinutes;
 
     private Integer passMark;
+
+    /** Invalid questions receive one mark, including when left unanswered. */
+    @Column(length = 2000)
+    private String freeMarkQuestions;
+
+    public boolean isFreeMark(int question) {
+        return freeMarkQuestions != null && java.util.Arrays.asList(freeMarkQuestions.split(",")).contains(String.valueOf(question));
+    }
+
+    public void setFreeMark(int question, boolean enabled) {
+        java.util.Set<Integer> numbers = new java.util.TreeSet<>();
+        for (int q = 1; q <= totalQuestions; q++) if (isFreeMark(q)) numbers.add(q);
+        if (enabled) numbers.add(question); else numbers.remove(question);
+        freeMarkQuestions = numbers.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+    }
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "mcq_exam_batches", joinColumns = @JoinColumn(name = "exam_id"))
@@ -134,9 +154,17 @@ public class McqExam {
     @Version
     private Long version;
 
+    public McqSheetType effectiveSheetType() {
+        return sheetType == null ? McqSheetType.ANSWER_SHEET : sheetType;
+    }
+
+    public boolean usesQuestionImages() {
+        return effectiveSheetType() == McqSheetType.QUESTION_IMAGES;
+    }
+
     public int answerKeyCount() {
         return (int) java.util.stream.IntStream.rangeClosed(1, totalQuestions)
-                .filter(question -> !correctOptions(question).isEmpty())
+                .filter(question -> isFreeMark(question) || !correctOptions(question).isEmpty())
                 .count();
     }
 
@@ -171,6 +199,23 @@ public class McqExam {
             if (!options.isEmpty()) result.put(question, new ArrayList<>(options));
         }
         return result;
+    }
+
+    /**
+     * Sets one question's accepted options, changing only that question's rows (the Question
+     * Editor saves one question at a time; rewriting both whole maps cost ~100 row writes).
+     */
+    public void setCorrectOptionsFor(int question, List<Integer> options) {
+        List<Integer> valid = options == null ? List.of() : options.stream().filter(java.util.Objects::nonNull)
+                .filter(option -> option >= 1 && option <= optionsPerQuestion).distinct().sorted().toList();
+        if (valid.isEmpty()) {
+            acceptedAnswerKeys.remove(question);
+            answerKey.remove(question);
+            return;
+        }
+        String encoded = valid.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+        if (!encoded.equals(acceptedAnswerKeys.get(question))) acceptedAnswerKeys.put(question, encoded);
+        if (!valid.getFirst().equals(answerKey.get(question))) answerKey.put(question, valid.getFirst());
     }
 
     public void setCorrectAnswerOptions(Map<Integer, List<Integer>> answers) {

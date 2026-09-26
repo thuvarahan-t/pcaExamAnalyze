@@ -89,6 +89,14 @@ public class McqSubmission {
     @Column(name = "selected_option", nullable = false)
     private Map<Integer, Integer> answers = new LinkedHashMap<>();
 
+    /** Seconds the student spent viewing each question (image-sheet exams); teacher analysis only. */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "mcq_submission_question_times", joinColumns = @JoinColumn(name = "submission_id"))
+    @MapKeyColumn(name = "question_number")
+    @Column(name = "seconds_spent", nullable = false)
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Map<Integer, Integer> questionTimes = new LinkedHashMap<>();
+
     @Column(length = 1000)
     private String adminNote;
 

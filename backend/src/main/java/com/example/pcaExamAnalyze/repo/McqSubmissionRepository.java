@@ -46,4 +46,10 @@ public interface McqSubmissionRepository extends JpaRepository<McqSubmission, Lo
     @Query("select s from McqSubmission s where s.id = :id")
     java.util.Optional<McqSubmission> findStudentSessionById(@Param("id") Long id);
 
+    /** In-progress papers of exams with a time limit; the caller checks which are past their deadline. */
+    @EntityGraph(attributePaths = {"exam"})
+    @Query("select s from McqSubmission s where s.status = com.example.pcaExamAnalyze.domain.McqSubmissionStatus.IN_PROGRESS "
+            + "and s.exam.durationMinutes is not null and s.exam.durationMinutes > 0 and s.startedAt is not null")
+    List<McqSubmission> findTimedInProgress();
+
 }

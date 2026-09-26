@@ -13,6 +13,10 @@ public interface McqExamRepository extends JpaRepository<McqExam, Long> {
 
     boolean existsBySlug(String slug);
 
+    /** No entity graph: collections load lazily in small batches instead of one huge cartesian join. */
+    @Query("select e from McqExam e where e.id = :id")
+    Optional<McqExam> findPlainById(@Param("id") Long id);
+
     boolean existsBySlugAndIdNot(String slug, Long id);
 
     @EntityGraph(attributePaths = {"eligibleBatches", "eligibleStreams", "answerKey", "acceptedAnswerKeys"})
