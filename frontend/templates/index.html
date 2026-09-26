@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
+    <script th:src="@{/js/i18n.js(v=1)}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#060814">
     <title>Physics Cube Academy | Learning Portals</title>
@@ -535,6 +536,7 @@
             </a>
 
             <nav class="nav-actions" aria-label="Primary navigation">
+                <span data-lang-slot></span>
                 <th:block th:if="${isAuthenticated}">
                     <a class="btn btn-ghost" th:if="${isTeacher}" th:href="@{/teacher/dashboard}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>

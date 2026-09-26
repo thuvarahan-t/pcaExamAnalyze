@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
+    <script th:src="@{/js/i18n.js(v=1)}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1f3a">
     <title>PCA MCQ Exam System</title>
@@ -211,7 +212,7 @@
         <a class="brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA logo"><span>PCA MCQ Exam System</span></a>
         <div class="nav-right">
             <div class="student-greeting" th:if="${savedStudentName != null}"><span>Hi,</span><strong th:text="${savedStudentName}">Student</strong></div>
-            <div class="nav-actions">
+            <div class="nav-actions"><span data-lang-slot></span>
                 <a class="back primary details-nav" th:href="@{/exam/details}"><span class="saved-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span><span>My Details</span></a>
                 <a class="back result-nav" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i><span>My Result</span></a>
                 <a class="back icon-nav" th:href="@{/}" aria-label="Home" title="Home"><i class="bi bi-house-door-fill" aria-hidden="true"></i></a>
@@ -384,7 +385,7 @@
         </form>
 
         <div class="modal-footer" th:if="${hasSavedStudentDetails}">
-            <form th:action="@{/exam/details/clear}" method="post" data-confirm="Your saved exam details will be cleared from this session." data-confirm-title="Clear saved details?" data-confirm-action="Clear Details" data-confirm-type="danger">
+            <form th:action="@{/exam/details/clear}" method="post" data-confirm="Your saved exam details will be removed from this browser." data-confirm-title="Clear saved details?" data-confirm-action="Clear Details" data-confirm-type="danger">
                 <button class="clear-details" type="submit">Clear saved details</button>
             </form>
         </div>

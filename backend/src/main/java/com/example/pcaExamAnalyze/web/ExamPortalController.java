@@ -3,6 +3,8 @@ package com.example.pcaExamAnalyze.web;
 import com.example.pcaExamAnalyze.service.McqAdminService;
 import com.example.pcaExamAnalyze.service.McqStudentExamService;
 import com.example.pcaExamAnalyze.web.dto.ExamStudentDetailsForm;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.Duration;
@@ -41,7 +44,7 @@ public class ExamPortalController {
         this.studentExamService = studentExamService;
     }
 
-    private static final String STUDENT_DETAILS_SESSION_KEY = "mcqStudentDetails";
+    private static final String STUDENT_DETAILS_SESSION_KEY = ExamDetailsCookie.SESSION_KEY;
     private static final String RESULT_LOOKUP_SESSION_KEY = "mcqResultLookup";
 
     private static final List<String> STREAMS = List.of(
@@ -167,7 +170,9 @@ public class ExamPortalController {
             BindingResult binding,
             @RequestParam(defaultValue = "") String returnTo,
             Model model,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         form.normalize();
         validateManagedChoice("batch", form.getBatch(), mcqAdminService.activeBatchNames(), binding);
         validateManagedChoice("stream", form.getStream(), STREAMS, binding);
@@ -179,6 +184,7 @@ public class ExamPortalController {
             return "exam/index";
         }
         session.setAttribute(STUDENT_DETAILS_SESSION_KEY, form);
+        ExamDetailsCookie.write(request, response, form);
         return "redirect:" + safeReturnTo(returnTo);
     }
 
@@ -280,6 +286,8 @@ public class ExamPortalController {
             return ResponseEntity.ok(studentExamService.saveAnswer(submissionId, question, option, savedDetails(session)));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (ObjectOptimisticLockingFailureException conflict) {
+            return ResponseEntity.status(409).body(Map.of("message", "Answers are being saved. Please wait."));
         }
     }
 
@@ -301,6 +309,9 @@ public class ExamPortalController {
                     submissionId, answers, questionTimes, savedDetails(session)));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (ObjectOptimisticLockingFailureException conflict) {
+            // Another save or the submit touched this paper at the same moment; the page retries.
+            return ResponseEntity.status(409).body(Map.of("message", "Answers are being saved. Please wait."));
         }
     }
 
@@ -320,7 +331,17 @@ public class ExamPortalController {
                     else if (key.matches("t\\d+") && value.matches("\\d{1,6}")) times.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
                 }
             }
-            String slug = studentExamService.submit(submissionId, savedDetails(session), answers, times);
+            // An autosave or a second submit click can update the same row at the same moment
+            // (optimistic lock conflict). Retrying in a fresh transaction either finishes the
+            // submit or finds the paper already submitted and just returns its slug.
+            String slug = null;
+            for (int attempt = 1; slug == null; attempt++) {
+                try {
+                    slug = studentExamService.submit(submissionId, savedDetails(session), answers, times);
+                } catch (ObjectOptimisticLockingFailureException conflict) {
+                    if (attempt >= 3) throw new IllegalStateException("Could not submit right now. Please press Submit again.");
+                }
+            }
             return "redirect:/exam/p/" + slug + "/result";
         } catch (IllegalArgumentException | IllegalStateException ex) {
             redirect.addFlashAttribute("examError", ex.getMessage());
@@ -366,8 +387,9 @@ public class ExamPortalController {
     }
 
     @PostMapping("/exam/details/clear")
-    public String clearStudentDetails(HttpSession session) {
+    public String clearStudentDetails(HttpSession session, HttpServletRequest request, HttpServletResponse response) {
         session.removeAttribute(STUDENT_DETAILS_SESSION_KEY);
+        ExamDetailsCookie.clear(request, response);
         session.removeAttribute(RESULT_LOOKUP_SESSION_KEY);
         return "redirect:/exam";
     }

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8">
+    <script th:src="@{/js/i18n.js(v=1)}"></script><meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="#0b1f3a"><title>My Results · PCA MCQ</title>
     <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png(v=2)}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,7 +11,7 @@
     <link rel="stylesheet" th:href="@{/css/exam-student.css(v=9)}">
 </head>
 <body class="my-results-body">
-<header class="student-nav results-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><a class="nav-link primary" th:href="@{/exam/result}"><i class="bi bi-person-badge-fill"></i> Change ID</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>
+<header class="student-nav results-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><span data-lang-slot></span><a class="nav-link primary" th:href="@{/exam/result}"><i class="bi bi-person-badge-fill"></i> Change ID</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>
 
 <main class="student-shell results-dashboard">
     <section class="results-welcome">

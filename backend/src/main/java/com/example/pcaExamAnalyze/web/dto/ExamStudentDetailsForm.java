@@ -10,7 +10,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 
-/** Passwordless student profile kept in the server session for MCQ form autofill. */
+/** Passwordless student profile kept in the session and a browser cookie (see ExamDetailsCookie). */
 @Getter
 @Setter
 @NoArgsConstructor
