@@ -11,7 +11,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.security.core.Authentication;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.beans.propertyeditors.StringTrimmerEditor;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,6 +59,12 @@ public class ExamPortalController {
             "Vavuniya", "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee",
             "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla",
             "Monaragala", "Ratnapura", "Kegalle");
+
+    /** Trim pasted/autofilled text before Bean Validation checks the form fields. */
+    @InitBinder("studentDetails")
+    void trimStudentDetails(WebDataBinder binder) {
+        binder.registerCustomEditor(String.class, new StringTrimmerEditor(false));
+    }
 
     @GetMapping({"/exam", "/exam/"})
     public String examPortal(@RequestParam(defaultValue = "0") int page,
