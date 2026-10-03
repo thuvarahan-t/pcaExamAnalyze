@@ -311,6 +311,10 @@ class McqAdminAnalyticsViewTests {
         entityManager.flush();
         entityManager.clear();
         assertTrue(exams.findById(exam.getId()).orElseThrow().isManualClose());
+        mockMvc.perform(get("/exam"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"exam-card  closed\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">CLOSED<")));
 
         ExamStudentDetailsForm secondStudent = new ExamStudentDetailsForm();
         secondStudent.setEmail("second@example.com");

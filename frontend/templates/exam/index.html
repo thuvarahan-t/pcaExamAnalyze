@@ -108,6 +108,11 @@
         .exam-status { flex:0 0 auto; padding:6px 9px; border-radius:999px; color:#075985; background:#e0f2fe; font-size:10px; font-weight:900; letter-spacing:.06em; }
         .exam-status.open { color:#047857; background:#d1fae5; }
         .exam-status.closed,.exam-status.result-released { color:#6b7280; background:#e5e7eb; }
+        .exam-card.closed { filter:grayscale(1); border-color:#d1d5db; background:rgba(243,244,246,.86); box-shadow:0 14px 34px rgba(31,41,55,.1); }
+        .exam-card.closed::before,.exam-card.closed::after { display:none; }
+        .exam-card.closed:hover { transform:translateY(-3px); border-color:#9ca3af; box-shadow:0 18px 38px rgba(31,41,55,.14); }
+        .exam-card.closed:hover h3 { color:#111827; }
+        .exam-card.closed .exam-card-action { background:linear-gradient(135deg,#4b5563,#6b7280); box-shadow:none; }
         .exam-period { margin:7px 0 17px; color:#64748b; font-size:13px; font-weight:800; }
         .exam-meta { display:grid; gap:9px; margin:0; }
         .exam-meta div { display:grid; grid-template-columns:22px 1fr; gap:8px; align-items:start; color:#475569; font-size:12px; line-height:1.45; }
@@ -258,7 +263,7 @@
 
     <section id="examResults" th:fragment="examResults" th:attr="data-total-items=${examPage.totalItems}">
     <div class="exam-grid" id="publicExamGrid" aria-live="polite">
-        <article class="exam-card" th:each="exam : ${exams}" th:attr="data-card-href=@{/exam/p/{slug}(slug=${exam.slug})}" tabindex="0">
+        <article class="exam-card" th:each="exam : ${exams}" th:classappend="${exam.status == 'CLOSED'} ? ' closed'" th:attr="data-card-href=@{/exam/p/{slug}(slug=${exam.slug})}" tabindex="0">
             <div class="exam-card-head"><span class="exam-status" th:classappend="${#strings.toLowerCase(#strings.replace(exam.status, ' ', '-'))}" th:text="${exam.status}">SCHEDULED</span><span class="exam-count" th:text="|${exam.totalQuestions} Questions · 5 Options|">50 Questions</span></div>
             <h3 th:text="${exam.name}">Exam name</h3>
             <p class="exam-period" th:text="${exam.period}">July 2026</p>
