@@ -39,16 +39,21 @@ public class ExamPortalController {
     private final McqAdminService mcqAdminService;
     private final McqStudentExamService studentExamService;
     private final com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages;
+    private final com.example.pcaExamAnalyze.service.McqAnswerWriter answerWriter;
 
     public ExamPortalController(McqAdminService mcqAdminService, McqStudentExamService studentExamService,
-                                com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages) {
+                                com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages,
+                                com.example.pcaExamAnalyze.service.McqAnswerWriter answerWriter) {
         this.questionImages = questionImages;
+        this.answerWriter = answerWriter;
         this.mcqAdminService = mcqAdminService;
         this.studentExamService = studentExamService;
     }
 
     private static final String STUDENT_DETAILS_SESSION_KEY = ExamDetailsCookie.SESSION_KEY;
     private static final String RESULT_LOOKUP_SESSION_KEY = "mcqResultLookup";
+    /** Submission ids this browser session already proved ownership of (saves one DB query per answer). */
+    private static final String OWNED_SUBMISSIONS_SESSION_KEY = "mcqOwnedSubmissions";
 
     private static final List<String> STREAMS = List.of(
             "Bio Science", "Physical Science");
@@ -193,6 +198,7 @@ public class ExamPortalController {
             return "exam/index";
         }
         session.setAttribute(STUDENT_DETAILS_SESSION_KEY, form);
+        session.removeAttribute(OWNED_SUBMISSIONS_SESSION_KEY);
         ExamDetailsCookie.write(request, response, form);
         return "redirect:" + safeReturnTo(returnTo);
     }
@@ -222,6 +228,7 @@ public class ExamPortalController {
                 redirect.addFlashAttribute("examError", "Your time was up, so your paper was submitted automatically.");
             }
             if ("SUBMITTED".equals(workspace.status())) return "redirect:/exam/p/" + workspace.slug() + "/result";
+            rememberOwnership(session, submissionId);
             model.addAttribute("workspace", workspace);
             model.addAttribute("questionNumbers", IntStream.rangeClosed(1, workspace.totalQuestions()).boxed().toList());
             model.addAttribute("optionNumbers", IntStream.rangeClosed(1, workspace.optionsPerQuestion()).boxed().toList());
@@ -286,18 +293,47 @@ public class ExamPortalController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** Autosave of one answer: a single SQL upsert, safe to retry (idempotent). */
     @PostMapping("/exam/session/{submissionId}/answer")
     public ResponseEntity<?> saveAnswer(@PathVariable Long submissionId,
                                         @RequestParam int question,
                                         @RequestParam(required = false) Integer option,
+                                        @RequestParam(defaultValue = "false") boolean clear,
                                         HttpSession session) {
-        try {
-            return ResponseEntity.ok(studentExamService.saveAnswer(submissionId, question, option, savedDetails(session)));
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
-        } catch (ObjectOptimisticLockingFailureException conflict) {
-            return ResponseEntity.status(409).body(Map.of("message", "Answers are being saved. Please wait."));
+        ExamStudentDetailsForm details = savedDetails(session);
+        if (details == null) {
+            return ResponseEntity.status(403).body(Map.of("message", "Your saved student details are required"));
         }
+        if (!ownsSubmission(session, submissionId, details)) {
+            return ResponseEntity.status(403).body(Map.of("message", "This exam session does not belong to the saved student details"));
+        }
+        if (clear) {
+            answerWriter.clear(submissionId, question);
+            return ResponseEntity.ok(Map.of("saved", true));
+        }
+        if (option == null || !answerWriter.save(submissionId, question, option)) {
+            // 422 = definitive: the paper is submitted, time is over, or the choice is invalid. Do not retry.
+            return ResponseEntity.unprocessableEntity().body(Map.of("saved", false,
+                    "message", "This answer could not be saved - the paper may be submitted or the time has ended"));
+        }
+        return ResponseEntity.ok(Map.of("saved", true));
+    }
+
+    /** Time spent per question (t1=12&t2=40...): one cheap batched upsert, best effort. */
+    @PostMapping("/exam/session/{submissionId}/times")
+    public ResponseEntity<?> saveTimes(@PathVariable Long submissionId,
+                                       @RequestParam Map<String, String> parameters,
+                                       HttpSession session) {
+        ExamStudentDetailsForm details = savedDetails(session);
+        if (details == null || !ownsSubmission(session, submissionId, details)) {
+            return ResponseEntity.status(403).body(Map.of("message", "This exam session does not belong to the saved student details"));
+        }
+        Map<Integer, Integer> times = new java.util.LinkedHashMap<>();
+        parameters.forEach((key, value) -> {
+            if (key.matches("t\\d{1,3}") && value.matches("\\d{1,6}")) times.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+        });
+        answerWriter.saveTimes(submissionId, times);
+        return ResponseEntity.ok(Map.of("saved", true));
     }
 
     @PostMapping("/exam/session/{submissionId}/answers")
@@ -321,6 +357,36 @@ public class ExamPortalController {
         } catch (ObjectOptimisticLockingFailureException conflict) {
             // Another save or the submit touched this paper at the same moment; the page retries.
             return ResponseEntity.status(409).body(Map.of("message", "Answers are being saved. Please wait."));
+        }
+    }
+
+    /**
+     * Fetch-based submit: the page sends every answer plus how many it expects, and gets back how many were
+     * stored. Repeating the call is safe; the page re-sends automatically when the stored count is short.
+     */
+    @PostMapping("/exam/session/{submissionId}/finish")
+    public ResponseEntity<?> finishExam(@PathVariable Long submissionId,
+                                        @RequestParam Map<String, String> parameters,
+                                        HttpSession session) {
+        try {
+            Map<Integer, Integer> answers = new java.util.LinkedHashMap<>();
+            Map<Integer, Integer> times = new java.util.LinkedHashMap<>();
+            for (var entry : parameters.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                if (key.matches("q\\d+") && value.matches("\\d{1,2}")) answers.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+                else if (key.matches("t\\d+") && value.matches("\\d{1,6}")) times.put(Integer.parseInt(key.substring(1)), Integer.parseInt(value));
+            }
+            int expected = parameters.getOrDefault("expected", "").matches("\\d{1,3}")
+                    ? Integer.parseInt(parameters.get("expected")) : -1;
+            var result = studentExamService.finish(submissionId, savedDetails(session), answers, times, expected);
+            return ResponseEntity.ok(Map.of("status", "SUBMITTED", "saved", result.savedAnswers(),
+                    "expected", expected, "redirect", "/exam/p/" + result.slug() + "/result"));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (ObjectOptimisticLockingFailureException | org.springframework.dao.DataIntegrityViolationException conflict) {
+            // An autosave touched the paper at the same moment; the page retries this call.
+            return ResponseEntity.status(409).body(Map.of("message", "Answers are being saved. Retrying..."));
         }
     }
 
@@ -398,6 +464,7 @@ public class ExamPortalController {
     @PostMapping("/exam/details/clear")
     public String clearStudentDetails(HttpSession session, HttpServletRequest request, HttpServletResponse response) {
         session.removeAttribute(STUDENT_DETAILS_SESSION_KEY);
+        session.removeAttribute(OWNED_SUBMISSIONS_SESSION_KEY);
         ExamDetailsCookie.clear(request, response);
         session.removeAttribute(RESULT_LOOKUP_SESSION_KEY);
         return "redirect:/exam";
@@ -440,6 +507,27 @@ public class ExamPortalController {
         if (value != null && !value.isBlank() && !allowed.contains(value)) {
             binding.rejectValue(field, "invalid", "Select a valid option");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean ownsSubmission(HttpSession session, Long submissionId, ExamStudentDetailsForm details) {
+        Object owned = session.getAttribute(OWNED_SUBMISSIONS_SESSION_KEY);
+        if (owned instanceof java.util.Set<?> set && set.contains(submissionId)) return true;
+        if (!answerWriter.owns(submissionId, details.getRegistrationId(), details.getNic())) return false;
+        rememberOwnership(session, submissionId);
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void rememberOwnership(HttpSession session, Long submissionId) {
+        Object owned = session.getAttribute(OWNED_SUBMISSIONS_SESSION_KEY);
+        java.util.Set<Long> set;
+        if (owned instanceof java.util.Set<?> existing) set = (java.util.Set<Long>) existing;
+        else {
+            set = java.util.concurrent.ConcurrentHashMap.newKeySet();
+            session.setAttribute(OWNED_SUBMISSIONS_SESSION_KEY, set);
+        }
+        set.add(submissionId);
     }
 
     private static ExamStudentDetailsForm savedDetails(HttpSession session) {

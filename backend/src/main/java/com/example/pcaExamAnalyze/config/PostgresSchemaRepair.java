@@ -33,6 +33,23 @@ public class PostgresSchemaRepair implements ApplicationRunner {
         repairLegacyQuestionColumns();
         repairLegacyAttemptColumns();
         repairReferenceTypeConstraint();
+        ensureAnswerUpsertIndex();
+    }
+
+    /** McqAnswerWriter upserts on (submission_id, question_number); make sure that key is unique. */
+    private void ensureAnswerUpsertIndex() {
+        try {
+            jdbc.execute("create unique index if not exists uq_mcq_answers_submission_question "
+                    + "on mcq_submission_answers (submission_id, question_number)");
+        } catch (RuntimeException ex) {
+            System.err.println("Could not create unique index on mcq_submission_answers: " + ex.getMessage());
+        }
+        try {
+            jdbc.execute("create unique index if not exists uq_mcq_times_submission_question "
+                    + "on mcq_submission_question_times (submission_id, question_number)");
+        } catch (RuntimeException ex) {
+            System.err.println("Could not create unique index on mcq_submission_question_times: " + ex.getMessage());
+        }
     }
 
     private boolean isPostgres() throws SQLException {

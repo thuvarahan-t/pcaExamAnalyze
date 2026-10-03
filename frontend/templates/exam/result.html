@@ -36,5 +36,6 @@
     </section>
 </main>
 <script th:if="${result.questionImages}" th:src="@{/js/exam-zoom.js(v=3)}"></script><script th:if="${result.questionImages}" th:src="@{/js/exam-review.js(v=2)}"></script>
+<script>try{Object.keys(localStorage).forEach(function(k){if(k.indexOf("pca-mcq-session-")===0||k.indexOf("pca-mcq-pending-")===0)localStorage.removeItem(k)})}catch(e){}</script>
 </body>
 </html>

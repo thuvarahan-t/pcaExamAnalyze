@@ -36,6 +36,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Transactional
 class McqAdminAnalyticsViewTests {
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     @Autowired private MockMvc mockMvc;
     @Autowired private McqExamRepository exams;
     @Autowired private McqSubmissionRepository submissions;
@@ -171,10 +174,40 @@ class McqAdminAnalyticsViewTests {
         mockMvc.perform(post("/exam/session/{id}/answer", submissionId).session(session).with(csrf())
                         .param("question", "1").param("option", "2"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"answered\":1")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"saved\":true")));
 
+        // A cleared answer is removed, and a question outside the paper is refused (422, not retried).
+        mockMvc.perform(post("/exam/session/{id}/answer", submissionId).session(session).with(csrf())
+                        .param("question", "1").param("clear", "true"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/exam/session/{id}/answer", submissionId).session(session).with(csrf())
+                        .param("question", "999").param("option", "2"))
+                .andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(post("/exam/session/{id}/answer", submissionId).session(session).with(csrf())
+                        .param("question", "1").param("option", "2"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/exam/session/{id}/times", submissionId).session(session).with(csrf())
+                        .param("t1", "12").param("t2", "30"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/exam/session/{id}/times", submissionId).session(session).with(csrf())
+                        .param("t1", "5"))
+                .andExpect(status().isOk());
+
+        // Single-answer saves are plain SQL; the test runs in one transaction, so drop the stale cache
+        // (in production every request has its own persistence context).
+        entityManager.flush();
+        entityManager.clear();
         mockMvc.perform(post("/exam/session/{id}/submit", submissionId).session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
+
+        // A repeated/late finish call is idempotent: it fills missing answers (q2) but never overwrites a
+        // stored one (q1 stays 2), and reports how many answers the server holds.
+        mockMvc.perform(post("/exam/session/{id}/finish", submissionId).session(session).with(csrf())
+                        .param("q1", "3").param("q2", "3").param("expected", "2"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"saved\":2")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/result")));
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper submitted")))

@@ -13,9 +13,6 @@
   var saveState = document.getElementById("saveState");
   var timer = document.getElementById("examTimer");
   var storageKey = "pca-mcq-session-" + submission;
-  var autosaveTimer = null;
-  var autosaveChain = Promise.resolve();
-  var answerRevision = 0;
   var submitting = false;
 
   var paperDialog = document.getElementById("paperPreviewDialog");
@@ -53,48 +50,130 @@
     try { localStorage.setItem(storageKey, JSON.stringify(current())); } catch (error) { /* Storage is optional. */ }
   }
 
-  function bulkAnswerRequest(answers) {
+  // ---- Pending queue: the browser is the source of truth until the server confirms each answer. ----
+  // Every click is written to localStorage first, then sent on its own. An entry is removed only
+  // when the server confirms that exact version, and failures are retried with backoff.
+  var pendingKey = "pca-mcq-pending-" + submission;
+  var BACKOFF = [1000, 2000, 4000, 8000, 10000];
+  var pending = loadPending();
+  var versionCounter = 0;
+  var flushing = false;
+  var retryTimer = null;
+  var retryStep = 0;
+  var rejectedCount = 0;
+
+  function loadPending() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(pendingKey) || "{}");
+      return raw && typeof raw === "object" ? raw : {};
+    } catch (error) { return {}; }
+  }
+
+  function savePending() {
+    try { localStorage.setItem(pendingKey, JSON.stringify(pending)); } catch (error) { /* Storage is optional. */ }
+  }
+
+  function pendingCount() { return Object.keys(pending).length; }
+
+  function showSaveState() {
+    if (submitting) return;
+    var count = pendingCount();
+    if (count > 0) {
+      saveState.className = saveState.className.replace(/save-warn/g, "").trim() + " save-warn";
+      saveState.innerHTML = '<i class="bi bi-cloud-slash"></i> ' + count + (count === 1 ? " answer" : " answers") +
+        ' not saved yet' + (retryTimer || flushing ? " - saving..." : " - check your connection");
+    } else if (rejectedCount > 0) {
+      saveState.className = saveState.className.replace(/save-warn/g, "").trim() + " save-warn";
+      saveState.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Some answers were not accepted (time may be over)';
+    } else {
+      saveState.className = saveState.className.replace(/save-warn/g, "").trim();
+      saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Saved';
+    }
+  }
+
+  function singleAnswerRequest(question, option) {
     var data = new URLSearchParams();
-    Object.keys(answers).forEach(function (question) {
-      data.append("q" + question, String(answers[question]));
-    });
-    // Optional extra fields (e.g. per-question time from exam-step.js).
-    var extras = typeof window.PcaExamExtras === "function" ? window.PcaExamExtras() : null;
-    if (extras) Object.keys(extras).forEach(function (key) { data.append(key, String(extras[key])); });
+    data.append("question", String(question));
+    if (option == null) data.append("clear", "true"); else data.append("option", String(option));
     if (csrf) data.append(csrf.name, csrf.value);
-    return fetch("/exam/session/" + submission + "/answers", {
+    return fetch("/exam/session/" + submission + "/answer", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: data.toString()
-    }).then(function (response) {
-      return response.text().then(function (bodyText) {
-        var bodyJson = {};
-        try { bodyJson = bodyText ? JSON.parse(bodyText) : {}; } catch (error) { /* Keep the fallback message. */ }
-        if (!response.ok) throw new Error(bodyJson.message || "The server could not save an answer");
-        return bodyJson;
-      });
     });
   }
 
-  function scheduleAutosave(delay) {
-    answerRevision++;
-    var revision = answerRevision;
-    window.clearTimeout(autosaveTimer);
-    saveState.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Saving...';
-    autosaveTimer = window.setTimeout(function () {
-      autosaveTimer = null;
-      autosaveChain = autosaveChain.then(function () {
-        return bulkAnswerRequest(current());
-      }).then(function () {
-        if (revision === answerRevision && !submitting) {
-          saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Saved';
-        }
-      }).catch(function () {
-        if (!submitting) {
-          saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Answer not synced - retrying on submit';
-        }
-      });
-    }, delay == null ? 180 : delay);
+  function scheduleRetry() {
+    window.clearTimeout(retryTimer);
+    var delay = BACKOFF[Math.min(retryStep, BACKOFF.length - 1)];
+    retryStep++;
+    retryTimer = window.setTimeout(function () { retryTimer = null; flush(); }, delay);
+    showSaveState();
+  }
+
+  function flush() {
+    if (flushing) return;
+    var keys = Object.keys(pending);
+    if (!keys.length) { showSaveState(); return; }
+    window.clearTimeout(retryTimer);
+    retryTimer = null;
+    flushing = true;
+    var question = keys[0];
+    var entry = pending[question];
+    showSaveState();
+    singleAnswerRequest(question, entry.o).then(function (response) {
+      // 200 = stored. 422 = definitive refusal (paper closed / invalid): retrying cannot help.
+      if (response.status !== 200 && response.status !== 422) throw new Error("status " + response.status);
+      if (response.status === 422) rejectedCount++;
+      // Remove only if the student has not changed this question while the request was in flight.
+      if (pending[question] && pending[question].v === entry.v) {
+        delete pending[question];
+        savePending();
+      }
+      retryStep = 0;
+      flushing = false;
+      flush();
+    }).catch(function () {
+      flushing = false;
+      scheduleRetry();
+    });
+  }
+
+  function enqueue(question, option) {
+    versionCounter++;
+    pending[question] = { o: option, v: versionCounter };
+    savePending();
+    showSaveState();
+    flush();
+  }
+
+  window.addEventListener("online", function () { retryStep = 0; flush(); });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && pendingCount()) { retryStep = 0; flush(); }
+  });
+
+  // Time per question (step-mode exams only, from exam-step.js) goes through its own cheap endpoint, at most
+  // once a minute and never while answers are waiting to be saved. It is analytics only and best effort:
+  // the final submit carries the full totals, so a missed sync loses nothing.
+  var TIMES_INTERVAL_MS = 60000;
+  var lastTimesSync = 0;
+  var timesInFlight = false;
+
+  function syncTimes(force) {
+    if (submitting || timesInFlight || typeof window.PcaExamExtras !== "function") return;
+    if (!force && (Date.now() - lastTimesSync < TIMES_INTERVAL_MS || pendingCount() > 0 || flushing)) return;
+    var extras = window.PcaExamExtras();
+    if (!extras || !Object.keys(extras).length) return;
+    var data = new URLSearchParams();
+    Object.keys(extras).forEach(function (key) { data.append(key, String(extras[key])); });
+    if (csrf) data.append(csrf.name, csrf.value);
+    timesInFlight = true;
+    lastTimesSync = Date.now();
+    fetch("/exam/session/" + submission + "/times", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: data.toString()
+    }).catch(function () { /* Best effort. */ }).then(function () { timesInFlight = false; });
   }
 
   function showSubmissionLoader(answerCount, timeUp) {
@@ -137,6 +216,9 @@
         progress.textContent = "Saving answer " + saved + " of " + (count || answerCount) + "...";
         fill.style.width = Math.min(96, Math.round(saved * 96 / safeCount)) + "%";
       },
+      message: function (text) {
+        progress.textContent = text;
+      },
       finishing: function () {
         progress.textContent = "Preparing your result page...";
         fill.style.width = "100%";
@@ -150,70 +232,114 @@
   }
 
   try {
+    // Re-apply answers that were never confirmed (page reload / lost connection), then send them.
     var local = JSON.parse(localStorage.getItem(storageKey) || "{}");
-    var restored = false;
     Object.keys(local).forEach(function (question) {
       var input = document.getElementById("q" + question + "o" + local[question]);
       if (input && !input.checked) {
         input.checked = true;
-        restored = true;
+        if (!pending[question]) {
+          versionCounter++;
+          pending[question] = { o: Number(local[question]), v: versionCounter };
+        }
       }
     });
-    if (restored) scheduleAutosave(40);
+    Object.keys(pending).forEach(function (question) {
+      if (pending[question].o == null) return;
+      var input = document.getElementById("q" + question + "o" + pending[question].o);
+      if (input && !input.checked) input.checked = true;
+    });
+    savePending();
   } catch (error) { /* Ignore invalid local cache. */ }
 
   sheet.addEventListener("change", function (event) {
     if (!event.target.matches('input[type="radio"]')) return;
     localSave();
     update();
-    scheduleAutosave();
+    enqueue(event.target.name.substring(1), event.target.checked ? Number(event.target.value) : null);
   });
 
+  function finishRequest(answers, expected) {
+    var data = new URLSearchParams();
+    Object.keys(answers).forEach(function (question) { data.append("q" + question, String(answers[question])); });
+    var extras = typeof window.PcaExamExtras === "function" ? window.PcaExamExtras() : null;
+    if (extras) Object.keys(extras).forEach(function (key) { data.append(key, String(extras[key])); });
+    data.append("expected", String(expected));
+    if (csrf) data.append(csrf.name, csrf.value);
+    return fetch("/exam/session/" + submission + "/finish", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+      body: data.toString()
+    }).then(function (response) {
+      return response.text().then(function (bodyText) {
+        var json = {};
+        try { json = bodyText ? JSON.parse(bodyText) : {}; } catch (error) { /* Not JSON (e.g. a proxy error page). */ }
+        return { status: response.status, json: json };
+      });
+    });
+  }
+
   /**
-   * Saves the final answers and submits the form. When `auto` is true (time is up) the paper
-   * is submitted even if the last save fails - the server keeps every answer autosaved so far.
+   * Submits through fetch so failures are visible and retried. The request carries every answer and the
+   * count the page expects; the server answers with how many it stored. A shortfall or a network error
+   * re-sends automatically (the call is idempotent). The local backup is kept until the result page loads.
    */
   function submitNow(auto) {
     if (submitting) return;
-    var answered = Object.keys(current()).length;
     var submitButton = form.querySelector(".submit-button");
     var originalButton = submitButton.innerHTML;
     submitting = true;
-    var loader = showSubmissionLoader(answered, auto);
+    var loader = showSubmissionLoader(Object.keys(current()).length, auto);
     submitButton.disabled = true;
     submitButton.innerHTML = 'Saving &amp; submitting... <i class="bi bi-cloud-arrow-up-fill"></i>';
     saveState.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Saving final answers...';
 
-    // One request: the final answers (and time per question) travel with the submit itself,
-    // so there is no separate "save answers" round-trip before the result page.
-    window.clearTimeout(autosaveTimer);
-    autosaveTimer = null;
-    form.querySelectorAll("input[data-final]").forEach(function (input) { input.remove(); });
-    function addField(name, value) {
-      var input = document.createElement("input");
-      input.type = "hidden";
-      input.name = name;
-      input.value = String(value);
-      input.setAttribute("data-final", "");
-      form.appendChild(input);
-    }
-    addField("answersSent", "1");
-    var answers = current();
-    Object.keys(answers).forEach(function (question) { addField("q" + question, answers[question]); });
-    var extras = typeof window.PcaExamExtras === "function" ? window.PcaExamExtras() : null;
-    if (extras) Object.keys(extras).forEach(function (key) { addField(key, extras[key]); });
-    try { localStorage.removeItem(storageKey); } catch (error) { /* Storage is optional. */ }
-    loader.finishing();
-    HTMLFormElement.prototype.submit.call(form);
-    // If the browser cannot reach the server it stays on this page: let the student retry.
-    window.setTimeout(function () {
-      if (document.visibilityState === "hidden") return;
+    var attempts = 0;
+    var MAX_ATTEMPTS = 12;
+
+    function giveUp() {
       loader.close();
       submitting = false;
       submitButton.disabled = false;
       submitButton.innerHTML = originalButton;
-      saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Still sending - check your connection and press Submit again';
-    }, 45000);
+      saveState.className = (saveState.className + " save-warn").trim();
+      saveState.innerHTML = '<i class="bi bi-wifi-off"></i> Could not confirm your answers were saved - check your connection and press Submit again';
+    }
+
+    function retry(message) {
+      attempts++;
+      if (attempts >= MAX_ATTEMPTS) { giveUp(); return; }
+      loader.message(message);
+      window.setTimeout(attempt, BACKOFF[Math.min(attempts - 1, BACKOFF.length - 1)]);
+    }
+
+    function attempt() {
+      var answers = current();
+      var expected = Object.keys(answers).length;
+      loader.message("Saving " + expected + " answers...");
+      finishRequest(answers, expected).then(function (result) {
+        if (result.status === 200 && result.json && typeof result.json.saved === "number") {
+          if (result.json.saved >= expected) {
+            loader.finishing();
+            window.location.href = result.json.redirect;
+            return;
+          }
+          retry("Only " + result.json.saved + " of " + expected + " answers confirmed - sending again...");
+          return;
+        }
+        if (result.status === 400 && result.json && result.json.message) {
+          // Definitive refusal (e.g. the saved student details are gone): retrying cannot help.
+          giveUp();
+          saveState.innerHTML = '<i class="bi bi-exclamation-triangle"></i> ' + result.json.message;
+          return;
+        }
+        retry("Connection problem - retrying...");
+      }).catch(function () {
+        retry("Connection problem - retrying...");
+      });
+    }
+
+    attempt();
   }
 
   form.addEventListener("submit", function (event) {
@@ -245,7 +371,8 @@
       saveState.textContent = "Time is up - submitting your paper";
       // Close any open dialog (e.g. the submit confirmation) and submit automatically.
       document.querySelectorAll(".pca-dialog-overlay").forEach(function (overlay) { overlay.remove(); });
-      submitNow(true);
+      // Spread the end-of-exam submit spike: each browser waits a random 0-3 s (answers are already locked).
+      window.setTimeout(function () { submitNow(true); }, Math.floor(Math.random() * 3000));
       return;
     }
     remaining--;
@@ -253,10 +380,11 @@
   }
 
   window.PcaExamSession = {
-    save: function () { if (!submitting) scheduleAutosave(300); },
+    save: function () { syncTimes(false); },
     isSubmitting: function () { return submitting; }
   };
 
   update();
+  flush();
   tick();
 })();

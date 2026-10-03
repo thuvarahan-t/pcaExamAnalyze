@@ -29,6 +29,8 @@ import java.util.regex.Pattern;
 @Service
 public class McqStudentExamService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(McqStudentExamService.class);
+
     private static final Pattern DRIVE_FILE = Pattern.compile("(?:/d/|[?&]id=)([A-Za-z0-9_-]{10,})");
 
     private final McqExamRepository exams;
@@ -202,8 +204,8 @@ public class McqStudentExamService {
             }
             validated.put(question, option);
         }
-        // Change only the rows that differ: clear() + putAll() rewrote every answer row on each autosave.
-        submission.getAnswers().keySet().retainAll(validated.keySet());
+        // Merge, never delete: a stale or partial request must not erase answers that were already saved
+        // (single-answer autosaves run in parallel with this bulk path). Only rows that differ are written.
         validated.forEach((question, option) -> {
             if (!option.equals(submission.getAnswers().get(question))) submission.getAnswers().put(question, option);
         });
@@ -215,25 +217,81 @@ public class McqStudentExamService {
         return validated.size();
     }
 
-    /**
-     * Submits the paper in one request. When the page sends its final answers with the submit
-     * (finalAnswers != null) they are stored first, as long as the answering time allows it.
-     * Returns the exam slug for the result page.
-     */
+    /** Outcome of a submit: the exam slug and how many answers the database holds for the paper. */
+    public record SubmitResult(String slug, int savedAnswers) {}
+
+    /** Form-post submit (no-script fallback). See {@link #finish}. */
     @Transactional
     public String submit(Long submissionId, ExamStudentDetailsForm details,
                          Map<Integer, Integer> finalAnswers, Map<Integer, Integer> questionTimes) {
+        return finish(submissionId, details, finalAnswers, questionTimes, -1).slug();
+    }
+
+    /**
+     * Submits the paper in one request and is safe to repeat.
+     * In progress: the page's final answers are merged in (never deleting stored ones) while
+     * {@link #SUBMIT_GRACE_SECONDS} allow it, then the paper is finalized.
+     * Already submitted (an earlier attempt, or the auto-submit got there first): answers the paper is still
+     * missing are filled in within the same window and the score is recalculated; stored answers are never
+     * overwritten after submission.
+     * expectedAnswers is how many answers the page holds (-1 = unknown); a shortfall is logged.
+     */
+    @Transactional
+    public SubmitResult finish(Long submissionId, ExamStudentDetailsForm details,
+                               Map<Integer, Integer> finalAnswers, Map<Integer, Integer> questionTimes,
+                               int expectedAnswers) {
         McqSubmission submission = requireOwned(submissionId, details);
         McqExam exam = submission.getExam();
-        if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) return exam.getSlug();
+        int before = submission.getAnswers().size();
+        if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) {
+            if (finalAnswers != null && !finalAnswers.isEmpty() && withinLateWindow(submission)
+                    && fillMissingAnswers(submission, finalAnswers)) {
+                McqScoring.score(exam, submission);
+                submission.setUpdatedAt(Instant.now());
+                submissions.save(submission);
+                log.info("Submission {}: late answers merged after submit (had {}, now {})",
+                        submissionId, before, submission.getAnswers().size());
+            }
+            return new SubmitResult(exam.getSlug(), submission.getAnswers().size());
+        }
         if (exam.getPublicationState() != McqExamPublicationState.PUBLISHED) {
             throw new IllegalStateException("This examination is no longer available");
         }
-        if (finalAnswers != null && isAvailable(exam) && acceptsAnswers(submission)) {
+        if (finalAnswers != null && isAvailable(exam) && acceptsFinalAnswers(submission)) {
             applyAnswers(submission, finalAnswers, questionTimes == null ? Map.of() : questionTimes);
         }
         finalizeSubmission(submission);
-        return exam.getSlug();
+        int saved = submission.getAnswers().size();
+        if (expectedAnswers >= 0 && saved < expectedAnswers) {
+            log.warn("Submission {}: client holds {} answers but only {} were stored (DB had {} before submit)",
+                    submissionId, expectedAnswers, saved, before);
+        } else {
+            log.info("Submission {}: submitted with {} answers (client {}, DB had {} before)",
+                    submissionId, saved, expectedAnswers, before);
+        }
+        return new SubmitResult(exam.getSlug(), saved);
+    }
+
+    private boolean withinLateWindow(McqSubmission submission) {
+        Instant submittedAt = submission.getSubmittedAt();
+        return submittedAt != null && Instant.now().isBefore(submittedAt.plusSeconds(SUBMIT_GRACE_SECONDS));
+    }
+
+    /** Adds answers for questions the paper has none for; returns true when something was added. */
+    private boolean fillMissingAnswers(McqSubmission submission, Map<Integer, Integer> answers) {
+        McqExam exam = submission.getExam();
+        boolean added = false;
+        for (Map.Entry<Integer, Integer> answer : answers.entrySet()) {
+            Integer question = answer.getKey();
+            Integer option = answer.getValue();
+            if (question == null || option == null || question < 1 || question > exam.getTotalQuestions()
+                    || option < 1 || option > exam.getOptionsPerQuestion()) continue;
+            if (!submission.getAnswers().containsKey(question)) {
+                submission.getAnswers().put(question, option);
+                added = true;
+            }
+        }
+        return added;
     }
 
     /** Submits the paper if its time (plus the grace period) is over. Returns true when it did. */
@@ -247,7 +305,7 @@ public class McqStudentExamService {
 
     /**
      * Background sweep: submits every in-progress paper whose time ran out, so papers are
-     * finalised even when the student closed the browser before the timer reached zero.
+     * finalized even when the student closed the browser before the timer reached zero.
      */
     @Transactional
     public int autoSubmitOverdue() {
@@ -452,13 +510,25 @@ public class McqStudentExamService {
         return submission.getStartedAt().plusSeconds(minutes * 60L);
     }
 
+    /**
+     * The student's final answers (sent with the submit) are accepted this long after the deadline, and a
+     * paper is not auto-submitted from the stored state before then, so a slow connection at 00:00 cannot
+     * cost answers. The answers were picked before the deadline (the page locks at 00:00).
+     */
+    static final long SUBMIT_GRACE_SECONDS = 180;
+
+    private static boolean acceptsFinalAnswers(McqSubmission submission) {
+        Instant deadline = deadline(submission);
+        return deadline == null || Instant.now().isBefore(deadline.plusSeconds(SUBMIT_GRACE_SECONDS));
+    }
+
     private static boolean acceptsAnswers(McqSubmission submission) {
         Instant deadline = deadline(submission);
         return deadline == null || Instant.now().isBefore(deadline.plusSeconds(ANSWER_GRACE_SECONDS));
     }
 
     private static boolean overdue(McqSubmission submission) {
-        return submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && !acceptsAnswers(submission);
+        return submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && !acceptsFinalAnswers(submission);
     }
 
     private static long remainingSeconds(McqSubmission submission) {
