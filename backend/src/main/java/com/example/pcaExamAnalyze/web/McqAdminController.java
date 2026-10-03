@@ -259,7 +259,13 @@ public class McqAdminController {
 
     @PostMapping("/exams/{id}/schedule")
     public String schedule(@PathVariable Long id, RedirectAttributes redirect) {
-        List<Integer> missing = admin.schedule(id);
+        List<Integer> missing;
+        try {
+            missing = admin.schedule(id);
+        } catch (IllegalStateException exception) {
+            redirect.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/exam/admin/exams/" + id + "/edit";
+        }
         if (!missing.isEmpty()) {
             redirect.addFlashAttribute("warning", missingImagesMessage(missing));
             return "redirect:/exam/admin/exams/" + id + "/questions";
@@ -338,7 +344,13 @@ public class McqAdminController {
             redirect.addFlashAttribute("success", "All questions saved. The exam is kept as a draft.");
             return "redirect:/exam/admin/exams";
         }
-        List<Integer> missing = admin.schedule(id);
+        List<Integer> missing;
+        try {
+            missing = admin.schedule(id);
+        } catch (IllegalStateException exception) {
+            redirect.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/exam/admin/exams/" + id + "/edit";
+        }
         if (!missing.isEmpty()) {
             redirect.addFlashAttribute("warning", missingImagesMessage(missing));
             return "redirect:/exam/admin/exams/" + id + "/questions";
@@ -350,6 +362,13 @@ public class McqAdminController {
     private static String missingImagesMessage(List<Integer> missing) {
         return "Everything is saved, but the exam stays a draft until every question has an image. Upload: "
                 + missing.stream().map(q -> "Q" + q).collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    @PostMapping("/exams/{id}/duplicate")
+    public String duplicateExam(@PathVariable Long id, Authentication authentication, RedirectAttributes redirect) {
+        var copy = admin.duplicate(id, authentication.getName());
+        redirect.addFlashAttribute("success", "Exam duplicated as a draft. Review the details and save.");
+        return "redirect:/exam/admin/exams/" + copy.getId() + "/edit";
     }
 
     @PostMapping("/exams/{id}/archive")

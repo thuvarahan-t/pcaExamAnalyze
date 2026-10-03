@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -188,23 +189,50 @@ public class McqExamQuestionService {
             row.setContentType(null);
             row.setImageUpdatedAt(null);
         }
-        if (oldKey != null && !oldKey.equals(row.getStorageKey())) storage.deleteQuietly(oldKey);
         row.setUpdatedAt(Instant.now());
         McqExamQuestion saved = questions.save(row);
+        if (oldKey != null && !oldKey.equals(row.getStorageKey())) deleteUnused(List.of(oldKey));
         if (edit.tags() != null) replaceTags(saved, edit.tags());
         return saved;
     }
 
+    /**
+     * Copies every question row, syllabus tag and supporting image of one exam into another.
+     * The copy points at the same R2 objects; {@link #deleteUnused} keeps them while any row uses them.
+     */
+    @Transactional
+    public void copyForExam(Long sourceExamId, Long targetExamId) {
+        questions.copyQuestions(sourceExamId, targetExamId);
+        questions.copyTags(sourceExamId, targetExamId);
+        questions.copySubImages(sourceExamId, targetExamId);
+    }
+
+    /** Deletes R2 objects that no question or supporting image row references any more. */
+    private void deleteUnused(java.util.Collection<String> keys) {
+        List<String> candidates = keys.stream().filter(k -> k != null && !k.isBlank()).distinct().toList();
+        if (candidates.isEmpty() || !storage.enabled()) return;
+        questions.flush();
+        Set<String> referenced = new java.util.HashSet<>(questions.findReferencedKeys(candidates));
+        List<String> unused = candidates.stream().filter(k -> !referenced.contains(k)).toList();
+        if (unused.isEmpty()) return;
+        // R2 calls are slow network round trips: run them after commit so the request returns at once.
+        Runnable delete = () -> Thread.startVirtualThread(() -> unused.forEach(storage::deleteQuietly));
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override public void afterCommit() { delete.run(); }
+                    });
+        } else delete.run();
+    }
+
     @Transactional
     public void deleteForExam(Long examId) {
-        subImages.findByExamId(examId).forEach(image -> {
-            storage.deleteQuietly(image.getStorageKey());
-            subImages.delete(image);
-        });
-        List<String> keys = questions.findStorageKeysByExamId(examId);
+        List<String> keys = new ArrayList<>(questions.findStorageKeysByExamId(examId));
+        keys.addAll(questions.findSubImageKeysByExamId(examId));
+        questions.deleteSubImagesByExamId(examId);
         tags.deleteByExamId(examId);
         questions.deleteByExamId(examId);
-        keys.forEach(storage::deleteQuietly);
+        deleteUnused(keys);
     }
 
     /** Where the browser should load a stored image from: an R2 presigned link, or null for DB bytes. */
@@ -289,10 +317,12 @@ public class McqExamQuestionService {
             String error = problem(file);
             if (error != null) throw new IllegalArgumentException(error);
         }
+        List<String> removedKeys = new ArrayList<>();
         for (var image : existing) if (deletions.contains(image.getId())) {
             subImages.delete(image);
-            storage.deleteQuietly(image.getStorageKey());
+            removedKeys.add(image.getStorageKey());
         }
+        deleteUnused(removedKeys);
         for (var file : uploads) {
             var image = new com.example.pcaExamAnalyze.domain.McqSubImage();
             image.setExamId(examId);

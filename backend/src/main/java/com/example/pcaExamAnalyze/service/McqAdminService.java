@@ -381,7 +381,7 @@ public class McqAdminService {
         form.setExamYear(exam.getExamYear());
         form.setExamMonth(exam.getExamMonth());
         form.setPaperDriveUrl(exam.getPaperDriveUrl());
-        form.setOpenAt(LocalDateTime.ofInstant(exam.getOpenAt(), PCA_ZONE));
+        if (hasOpenAt(exam)) form.setOpenAt(LocalDateTime.ofInstant(exam.getOpenAt(), PCA_ZONE));
         form.setCloseAt(LocalDateTime.ofInstant(exam.getCloseAt(), PCA_ZONE));
         if (exam.getResultReleaseAt() != null) form.setResultReleaseAt(LocalDateTime.ofInstant(exam.getResultReleaseAt(), PCA_ZONE));
         form.setInstructions(exam.getInstructions());
@@ -460,6 +460,7 @@ public class McqAdminService {
     @Transactional
     public List<Integer> schedule(Long id) {
         McqExam exam = requireExamLite(id);
+        if (!hasOpenAt(exam)) throw new IllegalStateException("Set the opening date in Exam Settings before scheduling.");
         List<Integer> missing = missingQuestionImages(id);
         if (missing.isEmpty()) {
             exam.setPublicationState(McqExamPublicationState.PUBLISHED);
@@ -523,6 +524,45 @@ public class McqAdminService {
         return new SaveResult(saved, published, missing);
     }
 
+    /**
+     * Copies an exam as a new draft named "Copy of …": same settings, answer key and questions
+     * (images, metadata, tags), but no submissions and no closed/released state.
+     */
+    @Transactional
+    public McqExam duplicate(Long id, String username) {
+        McqExam source = requireExam(id);
+        McqExam copy = new McqExam();
+        String name = "Copy of " + source.getName();
+        copy.setName(name.length() > 180 ? name.substring(0, 180) : name);
+        copy.setSlug(uniqueSlug(copy.getName(), null));
+        copy.setInstructions(source.getInstructions());
+        copy.setExamYear(source.getExamYear());
+        copy.setExamMonth(source.getExamMonth());
+        copy.setPaperDriveUrl(source.getPaperDriveUrl());
+        copy.setTotalQuestions(source.getTotalQuestions());
+        copy.setOptionsPerQuestion(source.getOptionsPerQuestion());
+        copy.setSheetType(source.getSheetType());
+        // Open date is cleared: the admin must pick a new one on the edit form before saving.
+        copy.setOpenAt(NO_CLOSE_AT);
+        copy.setCloseAt(NO_CLOSE_AT);
+        copy.setResultReleaseAt(NO_CLOSE_AT);
+        copy.setPublicationState(McqExamPublicationState.DRAFT);
+        copy.setAllowResubmission(source.isAllowResubmission());
+        copy.setDurationMinutes(source.getDurationMinutes());
+        copy.setPassMark(source.getPassMark());
+        copy.setFreeMarkQuestions(source.getFreeMarkQuestions());
+        copy.getEligibleBatches().addAll(source.getEligibleBatches());
+        copy.getEligibleStreams().addAll(source.getEligibleStreams());
+        copy.getAnswerKey().putAll(source.getAnswerKey());
+        copy.getAcceptedAnswerKeys().putAll(source.getAcceptedAnswerKeys());
+        copy.setCreatedBy(users.requireByUsername(username));
+        McqExam saved = exams.save(copy);
+        exams.flush();
+        questionImages.copyForExam(source.getId(), saved.getId());
+        invalidatePublicExamCache();
+        return saved;
+    }
+
     @Transactional
     public void archive(Long id) {
         McqExam exam = requireExam(id);
@@ -534,14 +574,16 @@ public class McqAdminService {
 
     @Transactional
     public void deleteExam(Long id) {
-        McqExam exam = requireExam(id);
-        List<McqSubmission> relatedSubmissions = submissions.findByExamIdOrderByCreatedAtDesc(id);
-        if (!relatedSubmissions.isEmpty()) {
-            submissions.deleteAll(relatedSubmissions);
-            submissions.flush();
-        }
+        if (!exams.existsById(id)) throw new IllegalArgumentException("Exam not found");
+        exams.deleteSubmissionAnswers(id);
+        exams.deleteSubmissionTimes(id);
+        exams.deleteSubmissions(id);
         questionImages.deleteForExam(id);
-        exams.delete(exam);
+        exams.deleteExamBatches(id);
+        exams.deleteExamStreams(id);
+        exams.deleteAnswerKeys(id);
+        exams.deleteAcceptedAnswerKeys(id);
+        exams.deleteExamRow(id);
         invalidatePublicExamCache();
     }
 
@@ -736,8 +778,13 @@ public class McqAdminService {
         return value == null ? "" : value.trim().replaceAll("\\s+", " ");
     }
 
+    /** A duplicated exam has no opening date until the admin sets one. */
+    private static boolean hasOpenAt(McqExam exam) {
+        return exam.getOpenAt() != null && !exam.getOpenAt().equals(NO_CLOSE_AT);
+    }
+
     private static String format(Instant instant) {
-        return instant == null ? "-" : DISPLAY_TIME.format(instant);
+        return instant == null || instant.equals(NO_CLOSE_AT) ? "-" : DISPLAY_TIME.format(instant);
     }
 
     public static String formatPublic(Instant instant) {
