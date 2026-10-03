@@ -592,6 +592,17 @@ public class McqAdminService {
         invalidatePublicExamCache();
     }
 
+    @Transactional
+    public void setExamClosed(Long id, boolean closed) {
+        McqExam exam = requireExam(id);
+        if (exam.getPublicationState() != McqExamPublicationState.PUBLISHED) {
+            throw new IllegalStateException("Only a published examination can be opened or closed");
+        }
+        exam.setManualClose(closed);
+        exam.setUpdatedAt(Instant.now());
+        invalidatePublicExamCache();
+    }
+
     @Transactional(readOnly = true)
     public List<SubmissionRow> submissionRows(Long examId, String search) {
         List<McqSubmission> source = examId == null
@@ -668,7 +679,7 @@ public class McqAdminService {
         return new ExamRow(exam.getId(), exam.getSlug(), exam.getName(), String.join(", ", exam.getEligibleBatches()),
                 format(exam.getOpenAt()), format(exam.getCloseAt()),
                 format(exam.getResultReleaseAt()), counts.getOrDefault(exam.getId(), 0L), exam.answerKeyCount(),
-                exam.getTotalQuestions(), status(exam), exam.isResultsPublished(), exam.getPaperDriveUrl(),
+                exam.getTotalQuestions(), status(exam), exam.isResultsPublished(), exam.isManualClose(), exam.getPaperDriveUrl(),
                 exam.usesQuestionImages());
     }
 
@@ -686,6 +697,7 @@ public class McqAdminService {
         if (exam.getPublicationState() == McqExamPublicationState.DRAFT) return "DRAFT";
         Instant now = Instant.now();
         if (exam.isResultsPublished()) return "RESULT RELEASED";
+        if (exam.isManualClose()) return "CLOSED";
         if (now.isBefore(exam.getOpenAt())) return "SCHEDULED";
         return "OPEN";
     }
@@ -806,7 +818,7 @@ public class McqAdminService {
                                    boolean resultsPublished, List<AnswerReview> answers, boolean imageSheet) {}
     public record ExamRow(Long id, String slug, String name, String batches, String opens, String closes,
                           String resultRelease, long submissions, int keyCount, int totalQuestions,
-                          String status, boolean resultsPublished, String paperUrl,
+                          String status, boolean resultsPublished, boolean manuallyClosed, String paperUrl,
                           boolean imageSheet) {}
     public record PublicExamRow(Long id, String slug, String name, String period, String month, Integer year,
                                 String batches, String opens, String closes, Integer durationMinutes,

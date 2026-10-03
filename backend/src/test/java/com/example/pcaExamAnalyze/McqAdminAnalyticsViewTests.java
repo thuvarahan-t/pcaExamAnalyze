@@ -216,7 +216,9 @@ class McqAdminAnalyticsViewTests {
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper submitted")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Result is not released yet")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Result is not released yet")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Your answers, question by question"))));
 
         mockMvc.perform(get("/exam/p/{slug}/result-lookup", exam.getSlug()))
                 .andExpect(status().isOk())
@@ -246,12 +248,53 @@ class McqAdminAnalyticsViewTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("My Results")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Last 5 exam percentages")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("RESULTS COMING SOON")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Student Flow Render Test")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Student Flow Render Test")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<iframe class=\"result-card-paper-frame\""))));
         mockMvc.perform(get("/exam/results/{id}", submissionId).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Results coming soon")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("PCA Test School")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper preview")));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Paper preview"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Your answers, question by question"))));
+
+        // Closing and result release are independent controls. A closed paper blocks new starts,
+        // but its results can still be released; reopening makes it available again.
+        mockMvc.perform(post("/exam/admin/exams/{id}/close", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/admin/exams"));
+        entityManager.flush();
+        entityManager.clear();
+        assertTrue(exams.findById(exam.getId()).orElseThrow().isManualClose());
+
+        ExamStudentDetailsForm secondStudent = new ExamStudentDetailsForm();
+        secondStudent.setEmail("second@example.com");
+        secondStudent.setRegistrationId("FLOW-002");
+        secondStudent.setNic("200012345679");
+        secondStudent.setFullName("Second Flow Student");
+        secondStudent.setBatch("2026 A/L");
+        secondStudent.setSchool("PCA Test School");
+        secondStudent.setStream("Physical Science");
+        secondStudent.setDistrict("Ampara");
+        MockHttpSession secondSession = new MockHttpSession();
+        secondSession.setAttribute("mcqStudentDetails", secondStudent);
+        mockMvc.perform(post("/exam/p/{slug}/start", exam.getSlug()).session(secondSession).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/p/" + exam.getSlug()));
+
+        mockMvc.perform(post("/exam/admin/exams/{id}/release-results", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet")));
+
+        mockMvc.perform(post("/exam/admin/exams/{id}/open", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush();
+        entityManager.clear();
+        assertFalse(exams.findById(exam.getId()).orElseThrow().isManualClose());
 
         mockMvc.perform(get("/exam/admin/submissions/{id}", submissionId)
                         .with(user("teacher").roles("TEACHER")))
@@ -267,9 +310,6 @@ class McqAdminAnalyticsViewTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Delete submission")));
 
-        exam.setResultsPublished(true);
-        exam.setResultReleaseAt(Instant.now().minusSeconds(1));
-        exams.saveAndFlush(exam);
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet")))

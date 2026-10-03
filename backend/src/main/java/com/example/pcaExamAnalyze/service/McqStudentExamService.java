@@ -100,6 +100,9 @@ public class McqStudentExamService {
     public Workspace workspace(Long submissionId, ExamStudentDetailsForm details) {
         McqSubmission submission = requireOwned(submissionId, details);
         McqExam exam = submission.getExam();
+        if (submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && exam.isManualClose()) {
+            throw new IllegalStateException("This examination is currently closed by the teacher");
+        }
         boolean autoSubmitted = submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && overdue(submission);
         if (autoSubmitted) finalizeSubmission(submission);
         if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) {
@@ -139,7 +142,9 @@ public class McqStudentExamService {
     /** A question image, readable only by the student who owns this submission. */
     @Transactional(readOnly = true)
     public Optional<McqExamQuestion> questionImage(Long submissionId, int question, ExamStudentDetailsForm details) {
-        McqExam exam = requireOwned(submissionId, details).getExam();
+        McqSubmission submission = requireOwned(submissionId, details);
+        McqExam exam = submission.getExam();
+        if (submission.getStatus() != McqSubmissionStatus.IN_PROGRESS || exam.isManualClose()) return Optional.empty();
         if (!exam.usesQuestionImages() || question < 1 || question > exam.getTotalQuestions()) return Optional.empty();
         return questionImages.findImage(exam.getId(), question);
     }
@@ -402,28 +407,34 @@ public class McqStudentExamService {
                 submission.getBatch(), McqAdminService.formatPublic(submission.getSubmittedAt()),
                 exam.getTotalQuestions(), released,
                 released ? submission.getScore() : null, released ? submission.getPercentage() : null,
-                exam.getPaperDriveUrl(), previewUrl(exam.getPaperDriveUrl()), thumbnailUrl(exam.getPaperDriveUrl()));
+                released ? exam.getPaperDriveUrl() : "", released ? previewUrl(exam.getPaperDriveUrl()) : "",
+                released ? thumbnailUrl(exam.getPaperDriveUrl()) : "");
     }
 
     private Result resultOf(McqSubmission submission) {
         McqExam exam = submission.getExam();
-        ReviewImages images = reviewImages(exam);
         boolean released = resultReleased(exam);
+        ReviewImages images = released ? reviewImages(exam)
+                : new ReviewImages(Map.of(), Map.of(), new McqExamQuestionService.ImageLinks(Map.of(), Map.of()));
         List<ResultAnswer> answers = new ArrayList<>();
-        for (int q = 1; q <= exam.getTotalQuestions(); q++) {
-            Integer selected = submission.getAnswers().get(q);
-            List<Integer> correct = released ? new ArrayList<>(exam.correctOptions(q)) : List.of();
-            String state = !released ? (selected == null ? "UNANSWERED" : "ANSWERED")
-                    : exam.isFreeMark(q) ? "FREE_MARK" : selected == null ? "UNANSWERED" : correct.contains(selected) ? "CORRECT" : "INCORRECT";
-            answers.add(new ResultAnswer(q, selected, correct, state));
+        if (released) {
+            for (int q = 1; q <= exam.getTotalQuestions(); q++) {
+                Integer selected = submission.getAnswers().get(q);
+                List<Integer> correct = new ArrayList<>(exam.correctOptions(q));
+                String state = exam.isFreeMark(q) ? "FREE_MARK" : selected == null ? "UNANSWERED"
+                        : correct.contains(selected) ? "CORRECT" : "INCORRECT";
+                answers.add(new ResultAnswer(q, selected, correct, state));
+            }
         }
         return new Result(submission.getId(), exam.getSlug(), exam.getName(), submission.getReceiptNumber(),
                 submission.getStudentName(), submission.getRegistrationId(), submission.getNic(), submission.getEmail(),
                 submission.getBatch(), submission.getSchool(), submission.getStream(), submission.getDistrict(),
                 McqAdminService.formatPublic(submission.getStartedAt()), McqAdminService.formatPublic(submission.getSubmittedAt()),
                 exam.getTotalQuestions(), submission.getAnswers().size(), released, released ? submission.getScore() : null,
-                released ? submission.getPercentage() : null, exam.getPaperDriveUrl(), previewUrl(exam.getPaperDriveUrl()),
-                thumbnailUrl(exam.getPaperDriveUrl()), answers, exam.usesQuestionImages(), images.versions(),
+                released ? submission.getPercentage() : null, released ? exam.getPaperDriveUrl() : "",
+                released ? previewUrl(exam.getPaperDriveUrl()) : "",
+                released ? thumbnailUrl(exam.getPaperDriveUrl()) : "", answers,
+                released && exam.usesQuestionImages(), images.versions(),
                 images.subIds(), images.links());
     }
 
@@ -455,7 +466,8 @@ public class McqStudentExamService {
             return Optional.empty();
         }
         McqExam exam = submission.getExam();
-        if (!exam.usesQuestionImages() || question < 1 || question > exam.getTotalQuestions()) return Optional.empty();
+        if (!exam.isResultsPublished() || !exam.usesQuestionImages()
+                || question < 1 || question > exam.getTotalQuestions()) return Optional.empty();
         return questionImages.findImage(exam.getId(), question);
     }
 
@@ -493,12 +505,13 @@ public class McqStudentExamService {
     private static String status(McqExam exam) {
         Instant now = Instant.now();
         if (exam.isResultsPublished()) return "RESULT RELEASED";
+        if (exam.isManualClose()) return "CLOSED";
         if (now.isBefore(exam.getOpenAt())) return "SCHEDULED";
         return "OPEN";
     }
 
     private static boolean isAvailable(McqExam exam) {
-        return !Instant.now().isBefore(exam.getOpenAt());
+        return !exam.isManualClose() && !Instant.now().isBefore(exam.getOpenAt());
     }
 
     /** Answers sent this many seconds after the deadline are still accepted (network delay at 00:00). */

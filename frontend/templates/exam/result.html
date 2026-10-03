@@ -19,7 +19,7 @@
         <div class="receipt-grid"><div class="receipt-item"><span>Receipt</span><strong th:text="${result.receipt}"></strong></div><div class="receipt-item"><span>Registration ID</span><strong th:text="${result.registrationId}"></strong></div><div class="receipt-item"><span>NIC Number</span><strong th:text="${result.nic}"></strong></div><div class="receipt-item"><span>Submitted</span><strong th:text="${result.submittedAt}"></strong></div><div class="receipt-item"><span>Answered</span><strong th:text="|${result.answered} / ${result.totalQuestions}|"></strong></div></div>
         <div class="result-actions"><span data-lang-slot></span><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a><a class="nav-link primary" th:href="@{/exam/p/{slug}(slug=${result.slug})}"><i class="bi bi-file-text-fill"></i> Paper Details</a></div>
     </section>
-    <th:block th:replace="~{exam/question-review :: review(${result})}"></th:block>
+    <th:block th:if="${result.released}" th:replace="~{exam/question-review :: review(${result})}"></th:block>
     <section class="surface review-sheet corrected-sheet" th:if="${result.released}">
         <div class="corrected-head"><div><h2>Corrected MCQ Sheet</h2><p>Blue X: your selection · Green: accepted answer · Red: incorrect selection</p></div><span th:text="|${result.score} / ${result.totalQuestions} correct|"></span></div>
         <div class="answer-sheet result-omr-sheet">

@@ -384,6 +384,28 @@ public class McqAdminController {
         return "redirect:/exam/admin/exams";
     }
 
+    @PostMapping("/exams/{id}/close")
+    public String closeExam(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            admin.setExamClosed(id, true);
+            redirect.addFlashAttribute("success", "Exam closed. Students cannot start or continue it until it is reopened.");
+        } catch (IllegalStateException exception) {
+            redirect.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/exam/admin/exams";
+    }
+
+    @PostMapping("/exams/{id}/open")
+    public String openExam(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            admin.setExamClosed(id, false);
+            redirect.addFlashAttribute("success", "Exam reopened successfully");
+        } catch (IllegalStateException exception) {
+            redirect.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/exam/admin/exams";
+    }
+
     @GetMapping("/submissions")
     public String submissions(@RequestParam(required = false) Long examId,
                               @RequestParam(defaultValue = "") String q,
