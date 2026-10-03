@@ -44,6 +44,51 @@ class McqAdminAnalyticsViewTests {
     @Autowired private McqSubmissionRepository submissions;
 
     @Test
+    void scheduledExamShowsCountdownBeforeAutomaticallyStarting() throws Exception {
+        McqExam exam = new McqExam();
+        exam.setName("Countdown Render Test");
+        exam.setSlug("countdown-render-test");
+        exam.setExamYear(2026);
+        exam.setExamMonth("October");
+        exam.setPaperDriveUrl("https://drive.google.com/file/d/countdown/view");
+        exam.setTotalQuestions(1);
+        exam.setOptionsPerQuestion(5);
+        exam.setOpenAt(Instant.now().plusSeconds(3600));
+        exam.setCloseAt(Instant.now().plusSeconds(7200));
+        exam.setResultReleaseAt(Instant.now().plusSeconds(10800));
+        exam.setPublicationState(McqExamPublicationState.PUBLISHED);
+        exam.setDurationMinutes(30);
+        exam.setEligibleBatches(new LinkedHashSet<>(java.util.List.of("2026 A/L")));
+        exam.setEligibleStreams(new LinkedHashSet<>(java.util.List.of("Bio Science")));
+        exam.setAnswerKey(new LinkedHashMap<>(java.util.Map.of(1, 2)));
+        exam = exams.saveAndFlush(exam);
+
+        ExamStudentDetailsForm details = new ExamStudentDetailsForm();
+        details.setRegistrationId("COUNT-001");
+        details.setNic("200012345670");
+        details.setFullName("Countdown Student");
+        details.setEmail("countdown@example.com");
+        details.setBatch("2026 A/L");
+        details.setStream("Bio Science");
+        details.setSchool("PCA Test School");
+        details.setDistrict("Ampara");
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("mcqStudentDetails", details);
+
+        mockMvc.perform(get("/exam/p/{slug}", exam.getSlug()).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("EXAM STARTS IN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("examStartCountdown")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("exam-start-countdown.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Waiting for start time")));
+
+        mockMvc.perform(post("/exam/p/{slug}/start", exam.getSlug()).session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/p/" + exam.getSlug()));
+        assertEquals(0, submissions.countByExamId(exam.getId()));
+    }
+
+    @Test
     @WithMockUser(username = "teacher", roles = "TEACHER")
     void analyticsPageRendersChartsDetailsAndCsvAction() throws Exception {
         McqExam exam = new McqExam();

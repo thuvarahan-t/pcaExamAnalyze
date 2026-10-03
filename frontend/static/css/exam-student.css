@@ -329,3 +329,9 @@ body.exam-submit-busy{overflow:hidden}
 @media(max-width:560px){.workspace-tools .timer{min-width:auto;padding:8px 10px}.workspace-tools .step-submit .submit-button{min-height:38px;padding:0 12px}.workspace-tools .step-submit .submit-button span{display:none}}
 
 .save-state.save-warn{color:#b45309;font-weight:850}
+
+.exam-start-countdown{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:18px;padding:22px;text-align:center;border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff,#eef2ff)}
+.exam-start-countdown>i{font-size:32px;color:#2563eb}.exam-start-countdown div{display:grid;gap:4px}
+.exam-start-countdown span{color:#475569;font-size:11px;font-weight:850;letter-spacing:.14em}
+.exam-start-countdown strong{color:#0f172a;font-family:Sora,sans-serif;font-size:clamp(28px,5vw,44px);font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.exam-start-countdown small{color:#64748b;font-size:12px;font-weight:650}

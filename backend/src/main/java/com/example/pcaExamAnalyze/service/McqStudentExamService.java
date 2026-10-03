@@ -52,7 +52,7 @@ public class McqStudentExamService {
                 exam.getExamMonth() + " " + exam.getExamYear(), String.join(", ", exam.getEligibleBatches()),
                 McqAdminService.STREAMS, exam.getTotalQuestions(), exam.getOptionsPerQuestion(),
                 McqAdminService.formatPublic(exam.getOpenAt()),
-                exam.getDurationMinutes(), status, isAvailable(exam), exam.isResultsPublished(),
+                exam.getOpenAt().toEpochMilli(), exam.getDurationMinutes(), status, isAvailable(exam), exam.isResultsPublished(),
                 exam.isAllowResubmission(), exam.getPaperDriveUrl());
     }
 
@@ -580,7 +580,7 @@ public class McqStudentExamService {
 
     public record ExamDetails(Long id, String slug, String name, String instructions, String period, String batches,
                               List<String> streams, Integer totalQuestions, Integer optionsPerQuestion,
-                              String opens, Integer durationMinutes, String status, boolean canStart,
+                              String opens, long opensAtEpochMillis, Integer durationMinutes, String status, boolean canStart,
                               boolean resultsPublished, boolean allowResubmission, String paperUrl) {}
     public record Workspace(Long submissionId, String slug, String examName, String instructions, Integer totalQuestions,
                             Integer optionsPerQuestion, Integer durationMinutes, long remainingSeconds,
