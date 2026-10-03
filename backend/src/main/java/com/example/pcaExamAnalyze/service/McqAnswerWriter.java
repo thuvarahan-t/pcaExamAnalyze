@@ -37,13 +37,21 @@ public class McqAnswerWriter {
             """;
 
     private static final String POSTGRES_CLEAR = """
-            DELETE FROM mcq_submission_answers a
-            WHERE a.submission_id = ? AND a.question_number = ?
-              AND EXISTS (SELECT 1 FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
-                          WHERE s.id = a.submission_id
-                            AND s.status = 'IN_PROGRESS'
-                            AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
-                                 OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now()))
+            WITH eligible AS MATERIALIZED (
+                SELECT s.id
+                FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
+                WHERE s.id = ?
+                  AND ?::int BETWEEN 1 AND e.total_questions
+                  AND s.status = 'IN_PROGRESS'
+                  AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
+                       OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now())
+            ), deleted AS (
+                DELETE FROM mcq_submission_answers a
+                WHERE a.submission_id = ? AND a.question_number = ?
+                  AND EXISTS (SELECT 1 FROM eligible)
+                RETURNING 1
+            )
+            SELECT EXISTS (SELECT 1 FROM eligible)
             """;
 
     /** Time per question only ever grows (GREATEST), so a late or repeated request cannot lower it. */
@@ -114,15 +122,18 @@ public class McqAnswerWriter {
     }
 
     /** Removes an answer (the student cleared it). Idempotent; ignored once the paper is closed. */
-    public void clear(long submissionId, int question) {
+    public boolean clear(long submissionId, int question) {
         if (postgres) {
-            jdbc.update(POSTGRES_CLEAR, submissionId, question, ANSWER_GRACE_SECONDS);
-            return;
+            Boolean accepted = jdbc.queryForObject(POSTGRES_CLEAR, Boolean.class,
+                    submissionId, question, ANSWER_GRACE_SECONDS, submissionId, question);
+            return Boolean.TRUE.equals(accepted);
         }
         if (acceptingFallback(submissionId, question, 1) != null) {
             jdbc.update("DELETE FROM mcq_submission_answers WHERE submission_id = ? AND question_number = ?",
                     submissionId, question);
+            return true;
         }
+        return false;
     }
 
     /** Portable path for the H2 dev/test database, which has no ON CONFLICT upsert. */

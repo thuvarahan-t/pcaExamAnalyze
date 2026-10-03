@@ -208,6 +208,11 @@ class McqAdminAnalyticsViewTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"saved\":2")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/result")));
+        // A clear after submission must be refused, not falsely acknowledged and dropped by the browser queue.
+        mockMvc.perform(post("/exam/session/{id}/answer", submissionId).session(session).with(csrf())
+                        .param("question", "1").param("clear", "true"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"saved\":false")));
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper submitted")))

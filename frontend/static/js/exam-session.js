@@ -78,15 +78,13 @@
   function showSaveState() {
     if (submitting) return;
     var count = pendingCount();
+    saveState.classList.toggle("save-warn", count > 0 || rejectedCount > 0);
     if (count > 0) {
-      saveState.className = saveState.className.replace(/save-warn/g, "").trim() + " save-warn";
       saveState.innerHTML = '<i class="bi bi-cloud-slash"></i> ' + count + (count === 1 ? " answer" : " answers") +
         ' not saved yet' + (retryTimer || flushing ? " - saving..." : " - check your connection");
     } else if (rejectedCount > 0) {
-      saveState.className = saveState.className.replace(/save-warn/g, "").trim() + " save-warn";
       saveState.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Some answers were not accepted (time may be over)';
     } else {
-      saveState.className = saveState.className.replace(/save-warn/g, "").trim();
       saveState.innerHTML = '<i class="bi bi-cloud-check"></i> Saved';
     }
   }

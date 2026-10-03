@@ -308,8 +308,11 @@ public class ExamPortalController {
             return ResponseEntity.status(403).body(Map.of("message", "This exam session does not belong to the saved student details"));
         }
         if (clear) {
-            answerWriter.clear(submissionId, question);
-            return ResponseEntity.ok(Map.of("saved", true));
+            if (answerWriter.clear(submissionId, question)) {
+                return ResponseEntity.ok(Map.of("saved", true));
+            }
+            return ResponseEntity.unprocessableEntity().body(Map.of("saved", false,
+                    "message", "This answer could not be cleared - the paper may be submitted or the time has ended"));
         }
         if (option == null || !answerWriter.save(submissionId, question, option)) {
             // 422 = definitive: the paper is submitted, time is over, or the choice is invalid. Do not retry.
