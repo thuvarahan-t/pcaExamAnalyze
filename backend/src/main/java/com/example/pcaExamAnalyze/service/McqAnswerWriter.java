@@ -29,6 +29,7 @@ public class McqAnswerWriter {
             FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
             WHERE s.id = ?
               AND s.status = 'IN_PROGRESS'
+              AND e.manual_close = false
               AND ?::int BETWEEN 1 AND e.total_questions
               AND ?::int BETWEEN 1 AND e.options_per_question
               AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
@@ -43,6 +44,7 @@ public class McqAnswerWriter {
                 WHERE s.id = ?
                   AND ?::int BETWEEN 1 AND e.total_questions
                   AND s.status = 'IN_PROGRESS'
+                  AND e.manual_close = false
                   AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
                        OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now())
             ), deleted AS (
@@ -61,6 +63,7 @@ public class McqAnswerWriter {
             FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
             WHERE s.id = ?
               AND s.status = 'IN_PROGRESS'
+              AND e.manual_close = false
               AND ?::int BETWEEN 1 AND e.total_questions
             ON CONFLICT (submission_id, question_number) DO UPDATE
               SET seconds_spent = GREATEST(mcq_submission_question_times.seconds_spent, EXCLUDED.seconds_spent)

@@ -44,6 +44,51 @@ class McqAdminAnalyticsViewTests {
     @Autowired private McqSubmissionRepository submissions;
 
     @Test
+    void scheduledExamShowsCountdownBeforeAutomaticallyStarting() throws Exception {
+        McqExam exam = new McqExam();
+        exam.setName("Countdown Render Test");
+        exam.setSlug("countdown-render-test");
+        exam.setExamYear(2026);
+        exam.setExamMonth("October");
+        exam.setPaperDriveUrl("https://drive.google.com/file/d/countdown/view");
+        exam.setTotalQuestions(1);
+        exam.setOptionsPerQuestion(5);
+        exam.setOpenAt(Instant.now().plusSeconds(3600));
+        exam.setCloseAt(Instant.now().plusSeconds(7200));
+        exam.setResultReleaseAt(Instant.now().plusSeconds(10800));
+        exam.setPublicationState(McqExamPublicationState.PUBLISHED);
+        exam.setDurationMinutes(30);
+        exam.setEligibleBatches(new LinkedHashSet<>(java.util.List.of("2026 A/L")));
+        exam.setEligibleStreams(new LinkedHashSet<>(java.util.List.of("Bio Science")));
+        exam.setAnswerKey(new LinkedHashMap<>(java.util.Map.of(1, 2)));
+        exam = exams.saveAndFlush(exam);
+
+        ExamStudentDetailsForm details = new ExamStudentDetailsForm();
+        details.setRegistrationId("COUNT-001");
+        details.setNic("200012345670");
+        details.setFullName("Countdown Student");
+        details.setEmail("countdown@example.com");
+        details.setBatch("2026 A/L");
+        details.setStream("Bio Science");
+        details.setSchool("PCA Test School");
+        details.setDistrict("Ampara");
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("mcqStudentDetails", details);
+
+        mockMvc.perform(get("/exam/p/{slug}", exam.getSlug()).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("EXAM STARTS IN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("examStartCountdown")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("exam-start-countdown.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Waiting for start time")));
+
+        mockMvc.perform(post("/exam/p/{slug}/start", exam.getSlug()).session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/p/" + exam.getSlug()));
+        assertEquals(0, submissions.countByExamId(exam.getId()));
+    }
+
+    @Test
     @WithMockUser(username = "teacher", roles = "TEACHER")
     void analyticsPageRendersChartsDetailsAndCsvAction() throws Exception {
         McqExam exam = new McqExam();
@@ -216,7 +261,9 @@ class McqAdminAnalyticsViewTests {
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper submitted")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Result is not released yet")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Result is not released yet")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Your answers, question by question"))));
 
         mockMvc.perform(get("/exam/p/{slug}/result-lookup", exam.getSlug()))
                 .andExpect(status().isOk())
@@ -246,12 +293,57 @@ class McqAdminAnalyticsViewTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("My Results")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Last 5 exam percentages")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("RESULTS COMING SOON")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Student Flow Render Test")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Student Flow Render Test")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<iframe class=\"result-card-paper-frame\""))));
         mockMvc.perform(get("/exam/results/{id}", submissionId).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Results coming soon")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("PCA Test School")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Paper preview")));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Paper preview"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Your answers, question by question"))));
+
+        // Closing and result release are independent controls. A closed paper blocks new starts,
+        // but its results can still be released; reopening makes it available again.
+        mockMvc.perform(post("/exam/admin/exams/{id}/close", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/admin/exams"));
+        entityManager.flush();
+        entityManager.clear();
+        assertTrue(exams.findById(exam.getId()).orElseThrow().isManualClose());
+        mockMvc.perform(get("/exam"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"exam-card  closed\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">CLOSED<")));
+
+        ExamStudentDetailsForm secondStudent = new ExamStudentDetailsForm();
+        secondStudent.setEmail("second@example.com");
+        secondStudent.setRegistrationId("FLOW-002");
+        secondStudent.setNic("200012345679");
+        secondStudent.setFullName("Second Flow Student");
+        secondStudent.setBatch("2026 A/L");
+        secondStudent.setSchool("PCA Test School");
+        secondStudent.setStream("Physical Science");
+        secondStudent.setDistrict("Ampara");
+        MockHttpSession secondSession = new MockHttpSession();
+        secondSession.setAttribute("mcqStudentDetails", secondStudent);
+        mockMvc.perform(post("/exam/p/{slug}/start", exam.getSlug()).session(secondSession).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/exam/p/" + exam.getSlug()));
+
+        mockMvc.perform(post("/exam/admin/exams/{id}/release-results", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet")));
+
+        mockMvc.perform(post("/exam/admin/exams/{id}/open", exam.getId()).with(csrf())
+                        .with(user("teacher").roles("TEACHER")))
+                .andExpect(status().is3xxRedirection());
+        entityManager.flush();
+        entityManager.clear();
+        assertFalse(exams.findById(exam.getId()).orElseThrow().isManualClose());
 
         mockMvc.perform(get("/exam/admin/submissions/{id}", submissionId)
                         .with(user("teacher").roles("TEACHER")))
@@ -267,9 +359,6 @@ class McqAdminAnalyticsViewTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Delete submission")));
 
-        exam.setResultsPublished(true);
-        exam.setResultReleaseAt(Instant.now().minusSeconds(1));
-        exams.saveAndFlush(exam);
         mockMvc.perform(get("/exam/p/{slug}/result", exam.getSlug()).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Corrected MCQ Sheet")))
