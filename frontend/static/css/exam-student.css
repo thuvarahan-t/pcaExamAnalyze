@@ -55,6 +55,8 @@
 .corrected-head>span{flex:0 0 auto;padding:8px 11px;border-radius:999px;color:#047857;background:#d1fae5;font-size:11px;font-weight:900}
 .result-omr-sheet{grid-template-columns:repeat(5,minmax(150px,1fr));padding:17px}
 .result-omr-row{grid-template-columns:28px repeat(5,minmax(30px,1fr))}
+.result-omr-row.unanswered-row{outline:1px solid #fca5a5;background:#fff1f2}
+.result-omr-row.unanswered-row .q-number{color:#b91c1c}
 .result-omr-choice{position:relative;display:grid;place-items:center;min-width:30px;height:33px;border:1px solid #cbd5e1;border-radius:50%;color:#475569;background:#fff;font-size:10px;font-weight:900}
 .result-omr-choice.correct-option{color:#047857;border:2px solid #10b981;background:#ecfdf5;box-shadow:0 0 0 2px rgba(16,185,129,.1)}
 .result-omr-choice.selected-option::before,.result-omr-choice.selected-option::after{content:"";position:absolute;z-index:2;width:72%;height:2.5px;border-radius:999px;background:#1677ff}
@@ -261,7 +263,7 @@ body.exam-submit-busy{overflow:hidden}
 .q-review-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .q-review-state{padding:6px 12px;border-radius:999px;font-size:11px;font-weight:850}
 .q-review-state.correct{color:#047857;background:#d1fae5}.q-review-state.incorrect{color:#b91c1c;background:#fee2e2}
-.q-review-state.unanswered{color:#475569;background:#f1f5f9}.q-review-state.answered{color:#1d4ed8;background:#dbeafe}
+.q-review-state.unanswered{color:#b91c1c;background:#fee2e2}.q-review-state.answered{color:#1d4ed8;background:#dbeafe}
 .q-review-state.free_mark{color:#6d28d9;background:#ede9fe}
 .q-review-free{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border-radius:12px;color:#5b21b6;background:#f5f3ff;font-size:12px;font-weight:700}
 .q-review-viewer{height:min(56vh,560px)}
@@ -282,11 +284,12 @@ body.exam-submit-busy{overflow:hidden}
 .q-review-counts span{padding:6px 8px;border-radius:10px;background:#f8fafc}
 .q-review-counts b{font-family:Sora,sans-serif;font-size:14px;margin-right:3px}
 .q-review-counts .correct{color:#047857;background:#ecfdf5}.q-review-counts .incorrect{color:#b91c1c;background:#fef2f2}
-.q-review-counts .unanswered{color:#475569}.q-review-counts .free{color:#6d28d9;background:#f5f3ff}
+.q-review-counts .unanswered{color:#b91c1c;background:#fef2f2}.q-review-counts .free{color:#6d28d9;background:#f5f3ff}
 .q-review-palette-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .q-review-palette-grid button{height:34px;border:1px solid #dbe7f5;border-radius:9px;color:#334155;background:#fff;cursor:pointer;font-size:12px;font-weight:800}
 .q-review-palette-grid button.correct{color:#065f46;border-color:#6ee7b7;background:#d1fae5}
 .q-review-palette-grid button.incorrect{color:#991b1b;border-color:#fca5a5;background:#fee2e2}
+.q-review-palette-grid button.unanswered{color:#991b1b;border-color:#fca5a5;background:#fee2e2}
 .q-review-palette-grid button.answered{color:#1e40af;border-color:#93c5fd;background:#dbeafe}
 .q-review-palette-grid button.free_mark{color:#5b21b6;border-color:#c4b5fd;background:#ede9fe}
 .q-review-palette-grid button.current{box-shadow:0 0 0 2px #0f172a}

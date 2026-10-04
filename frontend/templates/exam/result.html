@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=14)}">
+    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=15)}">
 </head>
 <body>
 <main class="result-wrap">
@@ -24,7 +24,7 @@
         <div class="corrected-head"><div><h2>Corrected MCQ Sheet</h2><p>Blue X: your selection · Green: accepted answer · Red: incorrect selection</p></div><span th:text="|${result.score} / ${result.totalQuestions} correct|"></span></div>
         <div class="answer-sheet result-omr-sheet">
             <section class="answer-column" th:each="group : ${#numbers.sequence(0,4)}">
-                <div class="answer-row result-omr-row" th:each="q : ${#numbers.sequence(group * 10 + 1, group * 10 + 10)}" th:classappend="${q > result.totalQuestions} ? ' disabled'" th:with="answer=${q <= result.totalQuestions ? result.answers[q - 1] : null}">
+                <div class="answer-row result-omr-row" th:each="q : ${#numbers.sequence(group * 10 + 1, group * 10 + 10)}" th:classappend="${q > result.totalQuestions} ? ' disabled' : (${result.answers[q - 1].state == 'UNANSWERED'} ? ' unanswered-row' : '')" th:with="answer=${q <= result.totalQuestions ? result.answers[q - 1] : null}">
                     <span class="q-number" th:text="${q}"></span>
                     <span class="result-omr-choice" th:each="option : ${#numbers.sequence(1,5)}"
                           th:classappend="${(answer != null and #lists.contains(answer.correct, option) ? ' correct-option' : '') + (answer != null and answer.selected == option ? (answer.state == 'INCORRECT' ? ' selected-option wrong-option' : ' selected-option') : '')}">

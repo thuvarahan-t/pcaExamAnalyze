@@ -482,9 +482,14 @@ public class McqAdminService {
     @Transactional
     public SaveResult save(Long id, McqExamForm form, boolean publish, String username) {
         McqExam exam = id == null ? new McqExam() : requireExam(id);
-        exam.setName(clean(form.getName()));
-        if (exam.getSlug() == null || exam.getSlug().isBlank()) {
-            exam.setSlug(uniqueSlug(exam.getName(), exam.getId()));
+        String name = clean(form.getName());
+        boolean nameChanged = exam.getName() == null || !exam.getName().equals(name);
+        exam.setName(name);
+        // Keep the public URL in sync with the edited exam name. This is especially
+        // important for duplicated drafts, whose first slug starts with "copy-of-".
+        // uniqueSlug also keeps the URL collision-free when two exams share a name.
+        if (nameChanged || exam.getSlug() == null || exam.getSlug().isBlank()) {
+            exam.setSlug(uniqueSlug(name, exam.getId()));
         }
         exam.getEligibleBatches().retainAll(Set.of(form.getBatch()));
         exam.getEligibleBatches().add(form.getBatch());
