@@ -1,0 +1,7 @@
+/* Tamil glyphs everywhere: Anek Tamil (self-hosted Tamil subset) is registered under the families the
+   site already uses, restricted to the Tamil unicode range. Whatever is typed in Tamil -- exam
+   instructions, names, answers -- therefore renders in Anek Tamil in ANY font stack, while Latin
+   text keeps Inter / Sora untouched. */
+@font-face{font-family:"Anek Tamil";font-style:normal;font-weight:100 800;font-display:swap;src:url("/fonts/anek-tamil.woff2") format("woff2");unicode-range:U+0964-0965,U+0B82-0BFA,U+200C-200D,U+20B9,U+25CC}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("/fonts/anek-tamil.woff2") format("woff2");unicode-range:U+0964-0965,U+0B82-0BFA,U+200C-200D,U+20B9,U+25CC}
+@font-face{font-family:"Sora";font-style:normal;font-weight:100 900;font-display:swap;src:url("/fonts/anek-tamil.woff2") format("woff2");unicode-range:U+0964-0965,U+0B82-0BFA,U+200C-200D,U+20B9,U+25CC}

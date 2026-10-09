@@ -85,6 +85,11 @@ public class R2ImageStorage {
                 RequestBody.fromBytes(data));
     }
 
+    /** Downloads one object (used when images are embedded into generated documents such as PDF reports). */
+    public byte[] read(String key) {
+        return client.getObjectAsBytes(GetObjectRequest.builder().bucket(bucket).key(key).build()).asByteArray();
+    }
+
     /** A time-limited link the browser can load directly from R2. */
     public String presignedUrl(String key, Duration validity) {
         GetObjectPresignRequest request = GetObjectPresignRequest.builder()

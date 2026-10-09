@@ -642,3 +642,4 @@ textarea.form-input { min-height:78px; resize:vertical; }
     .sheet-type-picker { grid-template-columns:1fr; }
 }
 .head-actions { align-items:center; }
+.btn.is-busy{pointer-events:none;opacity:.85}

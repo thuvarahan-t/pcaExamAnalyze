@@ -1,5 +1,6 @@
 package com.example.pcaExamAnalyze.web;
 
+import com.example.pcaExamAnalyze.report.ExamReportPdfService;
 import com.example.pcaExamAnalyze.service.McqAdminService;
 import com.example.pcaExamAnalyze.service.SyllabusService;
 import com.example.pcaExamAnalyze.web.dto.McqExamForm;
@@ -44,12 +45,14 @@ public class McqAdminController {
     private final McqAdminService admin;
     private final McqExamQuestionService questionImages;
     private final SyllabusService syllabusService;
+    private final ExamReportPdfService reportPdf;
 
     public McqAdminController(McqAdminService admin, McqExamQuestionService questionImages,
-                              SyllabusService syllabusService) {
+                              SyllabusService syllabusService, ExamReportPdfService reportPdf) {
         this.questionImages = questionImages;
         this.admin = admin;
         this.syllabusService = syllabusService;
+        this.reportPdf = reportPdf;
     }
 
     @ModelAttribute
@@ -137,6 +140,17 @@ public class McqAdminController {
         model.addAttribute("adminPage", "exam-analytics");
         model.addAttribute("analytics", admin.examAnalytics(id));
         return "exam/admin/portal";
+    }
+
+    /** Complete exam analysis as a downloadable PDF report. */
+    @GetMapping("/exams/{id}/report.pdf")
+    public ResponseEntity<byte[]> examReport(@PathVariable Long id) {
+        ExamReportPdfService.Pdf pdf = reportPdf.render(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(pdf.fileName()).build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.noStore())
+                .body(pdf.bytes());
     }
 
     @GetMapping("/submissions/{id}")
