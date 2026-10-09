@@ -1,24 +1,96 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <meta charset="UTF-8"><script th:src="@{/js/i18n.js(v=1)}"></script>
+    <meta charset="UTF-8"><script th:src="@{/js/i18n.js(v=7)}"></script>
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#0b1f3a">
     <title th:text="|${exam.name} · PCA MCQ|">Exam Details</title>
     <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=15)}">
+    <link rel="stylesheet" th:href="@{/css/exam-nav-base.css(v=1)}">
+    <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=24)}">
+    <link rel="stylesheet" th:href="@{/css/exam-detail.css(v=2)}">
 </head>
-<body>
-<header class="student-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><span data-lang-slot></span><a class="nav-link" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}"><i class="bi bi-person-vcard"></i> My Details</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>
-<main class="student-shell page-main">
-    <a class="back-link" th:href="@{/exam}"><i class="bi bi-arrow-left"></i> Back to exam papers</a>
-    <div class="alert" th:if="${examError}" th:text="${examError}"></div>
-    <section class="surface details-hero"><span class="status-pill" th:classappend="${#strings.toLowerCase(#strings.replace(exam.status, ' ', '-'))}" th:text="${exam.status}"></span><h1 th:text="${exam.name}"></h1><p th:text="${exam.period}"></p></section>
-    <div class="details-layout">
-        <section class="surface detail-card">
-            <h2>Paper details</h2>
+<body class="detail-page">
+
+<header class="topbar">
+    <nav class="nav" aria-label="Exam portal navigation">
+        <a class="brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA logo"><span class="brand-text">PCA MCQ Exam System<small>Physics Cube Academy</small></span></a>
+        <div class="nav-right">
+            <div class="student-greeting" th:if="${hasSavedStudentDetails}"><span class="greet-avatar" aria-hidden="true" th:text="${#strings.toUpperCase(#strings.substring(studentDetails.fullName,0,1))}">S</span><span class="greet-text"><span>Hi,</span><strong th:text="${studentDetails.fullName}">Student</strong></span></div>
+            <span data-lang-slot></span>
+            <div class="nav-actions">
+                <a class="back primary details-nav" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}"><i class="bi bi-person-vcard-fill" aria-hidden="true"></i><span>My Details</span></a>
+                <a class="back result-nav" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i><span>My Result</span></a>
+                <a class="back all-nav" th:href="@{/exam}"><i class="bi bi-grid-fill" aria-hidden="true"></i><span>All Exams</span></a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<section class="hero detail-hero">
+    <div class="hero-aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="wrap">
+        <a class="crumb" th:href="@{/exam}"><i class="bi bi-arrow-left"></i> Back to exam papers</a>
+        <div class="detail-status"><span class="status-pill" th:classappend="${#strings.toLowerCase(#strings.replace(exam.status, ' ', '-'))}" th:text="${exam.status}">SCHEDULED</span><span class="detail-period" th:text="${exam.period}">August 2026</span></div>
+        <h1 th:text="${exam.name}">Exam name</h1>
+        <div class="hero-chips">
+            <span class="chip"><i class="bi bi-ui-checks-grid"></i><span th:text="|${exam.totalQuestions} questions|">25 questions</span></span>
+            <span class="chip"><i class="bi bi-clock"></i><span th:text="${exam.durationMinutes == null ? 'No fixed limit' : exam.durationMinutes + ' minutes'}">60 minutes</span></span>
+            <span class="chip" th:if="${!#strings.isEmpty(exam.batches)}"><i class="bi bi-people"></i><span th:text="${exam.batches}">2027 A/L</span></span>
+        </div>
+    </div>
+    <div class="hero-waves" aria-hidden="true"><svg class="wave" viewBox="0 0 2880 120" preserveAspectRatio="none"><path d="M0,70 C240,52 480,52 720,70 S1200,88 1440,70 C1680,52 1920,52 2160,70 S2640,88 2880,70 L2880,120 L0,120Z"/></svg></div>
+</section>
+
+<main class="wrap detail-main">
+    <div class="alert" th:if="${examError}"><i class="bi bi-exclamation-circle-fill"></i><span th:text="${examError}"></span></div>
+
+    <div class="detail-grid">
+        <!-- Countdown to the start time -->
+        <section class="countdown" id="examStartCountdown" th:if="${hasSavedStudentDetails and !alreadySubmitted and exam.status == 'SCHEDULED'}"
+                 th:attr="data-starts-at=${exam.opensAtEpochMillis},data-server-now=${serverNowMillis}" aria-live="off">
+            <div class="cd-head">
+                <span class="cd-badge"><i class="bi bi-hourglass-split"></i> Exam starts in</span>
+                <span class="cd-when"><i class="bi bi-calendar-event"></i> <span th:text="${exam.opens}">09 Oct 2026, 12:42 PM</span></span>
+            </div>
+            <div class="cd-timer" role="timer" aria-label="Time until the exam starts">
+                <div class="cd-unit" data-unit="d" hidden><b data-value>00</b><span>Days</span></div>
+                <div class="cd-unit" data-unit="h"><b data-value>--</b><span>Hours</span></div>
+                <div class="cd-sep" aria-hidden="true">:</div>
+                <div class="cd-unit" data-unit="m"><b data-value>--</b><span>Minutes</span></div>
+                <div class="cd-sep" aria-hidden="true">:</div>
+                <div class="cd-unit" data-unit="s"><b data-value>--</b><span>Seconds</span></div>
+            </div>
+            <div class="cd-bar" aria-hidden="true"><i data-cd-bar></i></div>
+            <p class="cd-note" data-cd-note><i class="bi bi-info-circle"></i> The paper opens automatically when the timer ends. Keep this page open.</p>
+        </section>
+
+        <!-- Your details + start -->
+        <aside class="panel profile-card">
+            <div class="panel-head"><h2>Your details</h2><a class="edit-link" th:if="${hasSavedStudentDetails}" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}"><i class="bi bi-pencil"></i> Edit</a></div>
+            <div th:if="${hasSavedStudentDetails}">
+                <div class="me-head">
+                    <span class="me-avatar" aria-hidden="true" th:text="${#strings.toUpperCase(#strings.substring(studentDetails.fullName,0,1))}">S</span>
+                    <div><strong th:text="${studentDetails.fullName}">Name</strong><small th:text="${studentDetails.email}">mail</small></div>
+                </div>
+                <ul class="me-list">
+                    <li><i class="bi bi-credit-card-2-front-fill"></i><div><span>Registration ID</span><b th:text="${studentDetails.registrationId}"></b></div></li>
+                    <li><i class="bi bi-mortarboard-fill"></i><div><span>Batch · Stream</span><b th:text="|${studentDetails.batch} · ${studentDetails.stream}|"></b></div></li>
+                    <li><i class="bi bi-building"></i><div><span>School</span><b th:text="${studentDetails.school}"></b></div></li>
+                </ul>
+                <a class="start-btn result" th:if="${alreadySubmitted}" th:href="@{/exam/p/{slug}/result(slug=${exam.slug})}"><span>View Result</span> <i class="bi bi-bar-chart-fill"></i></a>
+                <form id="examStartForm" th:if="${!alreadySubmitted}" th:action="@{/exam/p/{slug}/start(slug=${exam.slug})}" method="post" data-busy="Opening your paper…"><button class="start-btn" type="submit" th:disabled="${!exam.canStart}"><span th:text="${exam.canStart ? 'Start / Continue MCQ Paper' : (exam.status == 'SCHEDULED' ? 'Waiting for start time' : 'Paper is not open')}"></span><i class="bi bi-arrow-right"></i></button></form>
+            </div>
+            <div th:unless="${hasSavedStudentDetails}" class="profile-empty"><span class="pe-icon"><i class="bi bi-person-plus"></i></span><p>Enter your details once. They will be saved for this and your next PCA examinations.</p><a class="start-btn" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}"><span>Continue</span> <i class="bi bi-arrow-right"></i></a></div>
+        </aside>
+
+        <!-- Paper details -->
+        <section class="panel info-card">
+            <div class="panel-head"><h2>Paper details</h2></div>
             <div class="meta-grid">
                 <div class="meta-item"><span class="meta-icon"><i class="bi bi-ui-checks-grid"></i></span><div><span>Paper</span><strong th:text="|${exam.totalQuestions} questions · ${exam.optionsPerQuestion} options|"></strong></div></div>
                 <div class="meta-item"><span class="meta-icon"><i class="bi bi-clock"></i></span><div><span>Duration</span><strong th:text="${exam.durationMinutes == null ? 'No fixed limit' : exam.durationMinutes + ' minutes'}"></strong></div></div>
@@ -27,27 +99,45 @@
                 <div class="meta-item"><span class="meta-icon"><i class="bi bi-people"></i></span><div><span>Batch category</span><strong th:text="${exam.batches}"></strong></div></div>
                 <div class="meta-item"><span class="meta-icon"><i th:class="${#strings.isEmpty(exam.paperUrl)} ? 'bi bi-images' : 'bi bi-file-earmark-pdf'"></i></span><div><span>Question paper</span><strong th:text="${#strings.isEmpty(exam.paperUrl)} ? 'One question at a time' : 'PDF preview available'">PDF preview available</strong></div></div>
             </div>
-            <div class="instructions" th:if="${exam.instructions != null and !#strings.isEmpty(exam.instructions)}" th:text="${exam.instructions}"></div>
-        </section>
-        <aside class="surface profile-card">
-            <div class="profile-head"><h2>Your details</h2><a class="edit-link" th:if="${hasSavedStudentDetails}" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}"><i class="bi bi-pencil"></i> Edit</a></div>
-            <div th:if="${hasSavedStudentDetails}">
-                <div class="profile-row"><i class="bi bi-person-fill"></i><strong th:text="${studentDetails.fullName}"></strong></div>
-                <div class="profile-row"><i class="bi bi-envelope-fill"></i><span th:text="${studentDetails.email}"></span></div>
-                <div class="profile-row"><i class="bi bi-credit-card-2-front-fill"></i><span th:text="${studentDetails.registrationId}"></span></div>
-                <div class="profile-row"><i class="bi bi-mortarboard-fill"></i><span th:text="|${studentDetails.batch} · ${studentDetails.stream}|"></span></div>
-                <div class="profile-row"><i class="bi bi-building"></i><span th:text="${studentDetails.school}"></span></div>
-                <a class="start-btn result" th:if="${alreadySubmitted}" th:href="@{/exam/p/{slug}/result(slug=${exam.slug})}">View Result <i class="bi bi-bar-chart-fill"></i></a>
-                <form id="examStartForm" th:if="${!alreadySubmitted}" th:action="@{/exam/p/{slug}/start(slug=${exam.slug})}" method="post" data-busy="Opening your paper…"><button class="start-btn" type="submit" th:disabled="${!exam.canStart}"><span th:text="${exam.canStart ? 'Start / Continue MCQ Paper' : (exam.status == 'SCHEDULED' ? 'Waiting for start time' : 'Paper is not open')}"></span><i class="bi bi-arrow-right"></i></button></form>
+            <div class="instructions" th:if="${exam.instructions != null and !#strings.isEmpty(exam.instructions)}">
+                <span class="ins-title"><i class="bi bi-lightbulb-fill"></i> Instructions</span>
+                <p th:text="${exam.instructions}"></p>
             </div>
-            <div th:unless="${hasSavedStudentDetails}" class="profile-empty"><i class="bi bi-person-plus" style="font-size:28px;color:#2563eb"></i><p>Enter your details once. They will be saved for this and your next PCA examinations.</p><a class="start-btn" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}">Continue <i class="bi bi-arrow-right"></i></a></div>
-        </aside>
-        <section class="surface exam-start-countdown" id="examStartCountdown" th:if="${hasSavedStudentDetails and !alreadySubmitted and exam.status == 'SCHEDULED'}" th:attr="data-starts-at=${exam.opensAtEpochMillis}">
-            <i class="bi bi-hourglass-split"></i><div><span>EXAM STARTS IN</span><strong data-countdown-value>--:--:--</strong><small>The paper will open automatically when the countdown ends. Keep this page open.</small></div>
         </section>
     </div>
 </main>
+
+<footer class="portal-footer">
+    <div class="wrap">
+        <div class="footer-brand"><img th:src="@{/img/favicon-circle.png(v=2)}" alt="PCA logo"><div>Physics Cube Academy<small>PCA MCQ Exam System</small></div></div>
+        <div class="footer-copy">© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2026</span> Physics Cube Academy (PCA). All rights reserved.</div>
+    </div>
+</footer>
+
+<nav class="bottom-nav" aria-label="Quick navigation">
+    <a class="bn-item" th:href="@{/exam/details(returnTo=${'/exam/p/' + exam.slug})}">
+        <span class="bn-icon"><i class="bi bi-person-vcard-fill" aria-hidden="true"></i><span class="bn-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span></span>
+        <span class="bn-label">My Details</span>
+    </a>
+    <a class="bn-item bn-home" th:href="@{/exam}">
+        <span class="bn-icon"><i class="bi bi-house-door-fill" aria-hidden="true"></i></span>
+        <span class="bn-label">Home</span>
+    </a>
+    <a class="bn-item" th:href="@{/exam/result}">
+        <span class="bn-icon"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span>
+        <span class="bn-label">My Result</span>
+    </a>
+</nav>
+
+<script>
+    (function () {
+        var bar = document.querySelector(".topbar");
+        function onScroll() { bar.classList.toggle("scrolled", window.scrollY > 40); }
+        window.addEventListener("scroll", onScroll, {passive: true});
+        onScroll();
+    })();
+</script>
 <script th:src="@{/js/exam-busy.js(v=1)}"></script>
-<script defer th:if="${hasSavedStudentDetails and !alreadySubmitted and exam.status == 'SCHEDULED'}" th:src="@{/js/exam-start-countdown.js(v=1)}"></script>
+<script defer th:if="${hasSavedStudentDetails and !alreadySubmitted and exam.status == 'SCHEDULED'}" th:src="@{/js/exam-start-countdown.js(v=3)}"></script>
 </body>
 </html>
