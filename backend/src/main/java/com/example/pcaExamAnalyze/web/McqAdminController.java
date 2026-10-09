@@ -1,5 +1,6 @@
 package com.example.pcaExamAnalyze.web;
 
+import com.example.pcaExamAnalyze.report.ExamReportJobs;
 import com.example.pcaExamAnalyze.report.ExamReportPdfService;
 import com.example.pcaExamAnalyze.service.McqAdminService;
 import com.example.pcaExamAnalyze.service.SyllabusService;
@@ -46,13 +47,16 @@ public class McqAdminController {
     private final McqExamQuestionService questionImages;
     private final SyllabusService syllabusService;
     private final ExamReportPdfService reportPdf;
+    private final ExamReportJobs reportJobs;
 
     public McqAdminController(McqAdminService admin, McqExamQuestionService questionImages,
-                              SyllabusService syllabusService, ExamReportPdfService reportPdf) {
+                              SyllabusService syllabusService, ExamReportPdfService reportPdf,
+                              ExamReportJobs reportJobs) {
         this.questionImages = questionImages;
         this.admin = admin;
         this.syllabusService = syllabusService;
         this.reportPdf = reportPdf;
+        this.reportJobs = reportJobs;
     }
 
     @ModelAttribute
@@ -151,6 +155,36 @@ public class McqAdminController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .cacheControl(CacheControl.noStore())
                 .body(pdf.bytes());
+    }
+
+    /** Starts building the report in the background; the page then polls {@link #reportStatus}. */
+    @PostMapping("/exams/{id}/report/start")
+    @ResponseBody
+    public Map<String, String> startReport(@PathVariable Long id) {
+        return Map.of("job", reportJobs.start(id));
+    }
+
+    @GetMapping("/reports/{job}/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> reportStatus(@PathVariable String job) {
+        ExamReportJobs.Job found = reportJobs.get(job);
+        if (found == null) {
+            return ResponseEntity.status(404).cacheControl(CacheControl.noStore())
+                    .body(Map.of("state", "MISSING", "stage", "", "error", "This report is no longer available. Please start it again."));
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(Map.of("state", found.state().name(), "stage", found.stage(), "error", found.error()));
+    }
+
+    @GetMapping("/reports/{job}/file")
+    public ResponseEntity<byte[]> reportFile(@PathVariable String job) {
+        ExamReportJobs.Job found = reportJobs.get(job);
+        if (found == null || found.bytes() == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(found.fileName()).build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.noStore())
+                .body(found.bytes());
     }
 
     @GetMapping("/submissions/{id}")

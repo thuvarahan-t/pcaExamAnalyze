@@ -220,20 +220,95 @@
     updateQuestionRows();
 })();
 
-// PDF exam report: generating it takes a few seconds, so the button shows a spinner meanwhile.
-document.addEventListener("click", function (event) {
-    var link = event.target.closest && event.target.closest("a[data-report]");
-    if (!link || link.classList.contains("is-busy")) return;
-    link.classList.add("is-busy");
-    var label = link.querySelector("span");
-    var icon = link.querySelector("i");
-    var oldLabel = label ? label.textContent : "";
-    var oldIcon = icon ? icon.className : "";
-    if (label) label.textContent = "Preparing report…";
-    if (icon) icon.className = "bi bi-arrow-repeat busy-spin";
-    window.setTimeout(function () {
-        link.classList.remove("is-busy");
-        if (label) label.textContent = oldLabel;
-        if (icon) icon.className = oldIcon;
-    }, 12000);
-});
+// PDF exam report. The server builds it in the background; this shows live progress and downloads the file
+// when it is ready, so a slow report can never time out or fail silently. The link's own href still works
+// as a plain fallback (if JavaScript is blocked).
+(function () {
+    var MAX_WAIT_MS = 10 * 60 * 1000;
+
+    function csrf() {
+        var token = document.querySelector('meta[name="_csrf"]');
+        var header = document.querySelector('meta[name="_csrf_header"]');
+        var headers = { "X-Requested-With": "XMLHttpRequest" };
+        if (token) headers[header ? header.content : "X-CSRF-TOKEN"] = token.content;
+        return headers;
+    }
+
+    function fail(message) {
+        if (window.PcaDialog && window.PcaDialog.alert) {
+            window.PcaDialog.alert(message, { title: "Report not created", type: "error" });
+        } else {
+            window.alert(message);
+        }
+    }
+
+    document.addEventListener("click", function (event) {
+        var link = event.target.closest && event.target.closest("a[data-report]");
+        if (!link) return;
+        var startUrl = link.getAttribute("data-report-start");
+        if (!startUrl || !window.fetch) return; // fall back to the plain download link
+        event.preventDefault();
+        if (link.classList.contains("is-busy")) return;
+
+        var label = link.querySelector("span");
+        var icon = link.querySelector("i");
+        var oldLabel = label ? label.textContent : "";
+        var oldIcon = icon ? icon.className : "";
+        var base = startUrl.replace(/\/exams\/\d+\/report\/start.*$/, "");
+
+        function busy(text) {
+            link.classList.add("is-busy");
+            if (label) label.textContent = text;
+            if (icon) icon.className = "bi bi-arrow-repeat busy-spin";
+        }
+        function idle(text, iconClass) {
+            if (label) label.textContent = text || oldLabel;
+            if (icon) icon.className = iconClass || oldIcon;
+            if (text) {
+                window.setTimeout(function () { link.classList.remove("is-busy"); if (label) label.textContent = oldLabel; if (icon) icon.className = oldIcon; }, 2500);
+            } else {
+                link.classList.remove("is-busy");
+            }
+        }
+
+        busy("Starting…");
+        var started = Date.now();
+        fetch(startUrl, { method: "POST", headers: csrf(), credentials: "same-origin" })
+            .then(function (response) {
+                if (!response.ok) throw new Error(response.status === 403 || response.status === 401
+                    ? "Your session has expired. Please sign in again." : "The server could not start the report (error " + response.status + ").");
+                return response.json();
+            })
+            .then(function (data) { poll(data.job); })
+            .catch(function (error) { idle(); fail(error.message || "The report could not be started."); });
+
+        function poll(job) {
+            fetch(base + "/reports/" + job + "/status", { credentials: "same-origin", cache: "no-store" })
+                .then(function (response) { return response.json().catch(function () { return { state: "FAILED", error: "Unexpected server response." }; }); })
+                .then(function (status) {
+                    if (status.state === "DONE") {
+                        var anchor = document.createElement("a");
+                        anchor.href = base + "/reports/" + job + "/file";
+                        anchor.download = "";
+                        anchor.style.display = "none";
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        window.setTimeout(function () { anchor.remove(); }, 1000);
+                        idle("Downloaded", "bi bi-check2-circle");
+                    } else if (status.state === "RUNNING") {
+                        if (Date.now() - started > MAX_WAIT_MS) { idle(); fail("The report is taking too long. Please try again."); return; }
+                        if (label) label.textContent = (status.stage || "Preparing") + "…";
+                        window.setTimeout(function () { poll(job); }, 1200);
+                    } else {
+                        idle();
+                        fail(status.error || "The report could not be created. Please try again.");
+                    }
+                })
+                .catch(function () {
+                    // A dropped request is not a failure of the job: keep waiting.
+                    if (Date.now() - started > MAX_WAIT_MS) { idle(); fail("Lost connection to the server. Please try again."); return; }
+                    window.setTimeout(function () { poll(job); }, 2000);
+                });
+        }
+    });
+})();
