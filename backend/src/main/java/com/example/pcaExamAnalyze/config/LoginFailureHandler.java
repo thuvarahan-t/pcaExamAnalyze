@@ -17,17 +17,13 @@ import java.io.IOException;
 public class LoginFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     public LoginFailureHandler() {
-        super("/login?error");
+        super("/exam/admin-login?error");
     }
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception)
             throws IOException, ServletException {
-        if ("true".equals(request.getParameter("adminLogin"))) {
-            getRedirectStrategy().sendRedirect(request, response, "/exam/admin-login?error");
-            return;
-        }
         super.onAuthenticationFailure(request, response, exception);
     }
 }
