@@ -29,6 +29,7 @@ public class ExamReportJobs {
         final long created = System.currentTimeMillis();
         volatile State state = State.RUNNING;
         volatile String stage = "Starting";
+        volatile int percentage = 1;
         volatile String error = "";
         volatile byte[] bytes;
         volatile String fileName = "report.pdf";
@@ -37,9 +38,15 @@ public class ExamReportJobs {
 
         public State state() { return state; }
         public String stage() { return stage; }
+        public int percentage() { return percentage; }
         public String error() { return error; }
         public byte[] bytes() { return bytes; }
         public String fileName() { return fileName; }
+
+        synchronized void progress(String nextStage, int nextPercentage) {
+            stage = nextStage;
+            percentage = Math.max(percentage, Math.min(99, nextPercentage));
+        }
     }
 
     private final ExamReportPdfService pdf;
@@ -64,11 +71,12 @@ public class ExamReportJobs {
         jobs.put(job.id, job);
         pool.submit(() -> {
             try {
-                ExamReportPdfService.Pdf result = pdf.render(examId, stage -> job.stage = stage);
+                ExamReportPdfService.Pdf result = pdf.render(examId, job::progress);
                 job.bytes = result.bytes();
                 job.fileName = result.fileName();
                 job.state = State.DONE;
                 job.stage = "Ready";
+                job.percentage = 100;
             } catch (Throwable ex) {
                 log.error("Exam report for exam {} failed", examId, ex);
                 job.error = ex instanceof IllegalArgumentException ? ex.getMessage()

@@ -170,10 +170,11 @@ public class McqAdminController {
         ExamReportJobs.Job found = reportJobs.get(job);
         if (found == null) {
             return ResponseEntity.status(404).cacheControl(CacheControl.noStore())
-                    .body(Map.of("state", "MISSING", "stage", "", "error", "This report is no longer available. Please start it again."));
+                    .body(Map.of("state", "MISSING", "stage", "", "percentage", "0", "error", "This report is no longer available. Please start it again."));
         }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(Map.of("state", found.state().name(), "stage", found.stage(), "error", found.error()));
+                .body(Map.of("state", found.state().name(), "stage", found.stage(),
+                        "percentage", Integer.toString(found.percentage()), "error", found.error()));
     }
 
     @GetMapping("/reports/{job}/file")

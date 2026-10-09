@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
 import java.util.Locale;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,13 +45,13 @@ public class ExamReportPdfService {
     public record Pdf(byte[] bytes, String fileName) {}
 
     public Pdf render(Long examId) {
-        return render(examId, stage -> { });
+        return render(examId, (stage, percentage) -> { });
     }
 
-    public Pdf render(Long examId, Consumer<String> progress) {
+    public Pdf render(Long examId, BiConsumer<String, Integer> progress) {
         long t0 = System.nanoTime();
         ExamReport report = reports.build(examId, logo(), banner(), progress);
-        progress.accept("Designing the pages");
+        progress.accept("Designing the pages", 80);
         long t1 = System.nanoTime();
         Context ctx = new Context(Locale.ENGLISH);
         ctx.setVariable("r", report);
@@ -63,7 +63,7 @@ public class ExamReportPdfService {
         org.w3c.dom.Document w3c = new W3CDom().fromJsoup(parsed);
         long t3 = System.nanoTime();
 
-        progress.accept("Writing the PDF");
+        progress.accept("Writing the PDF", 90);
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();

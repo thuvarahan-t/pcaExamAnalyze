@@ -258,6 +258,7 @@
 
         function busy(text) {
             link.classList.add("is-busy");
+            link.style.setProperty("--report-progress", "0%");
             if (label) label.textContent = text;
             if (icon) icon.className = "bi bi-arrow-repeat busy-spin";
         }
@@ -286,7 +287,9 @@
             fetch(base + "/reports/" + job + "/status", { credentials: "same-origin", cache: "no-store" })
                 .then(function (response) { return response.json().catch(function () { return { state: "FAILED", error: "Unexpected server response." }; }); })
                 .then(function (status) {
-                    if (status.state === "DONE") {
+            if (status.state === "DONE") {
+                        link.style.setProperty("--report-progress", "100%");
+                        if (label) label.textContent = "100% · Ready";
                         var anchor = document.createElement("a");
                         anchor.href = base + "/reports/" + job + "/file";
                         anchor.download = "";
@@ -297,7 +300,9 @@
                         idle("Downloaded", "bi bi-check2-circle");
                     } else if (status.state === "RUNNING") {
                         if (Date.now() - started > MAX_WAIT_MS) { idle(); fail("The report is taking too long. Please try again."); return; }
-                        if (label) label.textContent = (status.stage || "Preparing") + "…";
+                        var percentage = Math.max(0, Math.min(99, Number(status.percentage) || 0));
+                        link.style.setProperty("--report-progress", percentage + "%");
+                        if (label) label.textContent = percentage + "% · " + (status.stage || "Preparing") + "…";
                         window.setTimeout(function () { poll(job); }, 1200);
                     } else {
                         idle();
