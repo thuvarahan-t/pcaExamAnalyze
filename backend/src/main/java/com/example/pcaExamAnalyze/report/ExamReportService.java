@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -72,7 +73,8 @@ public class ExamReportService {
     }
 
     @Transactional(readOnly = true)
-    public ExamReport build(Long examId, String logo, String banner) {
+    public ExamReport build(Long examId, String logo, String banner, Consumer<String> progress) {
+        progress.accept("Analysing the results");
         McqExam exam = exams.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
         int total = exam.getTotalQuestions();
         int options = exam.getOptionsPerQuestion();
@@ -197,6 +199,7 @@ public class ExamReportService {
                 }
             }
         }
+        progress.accept("Preparing the question images");
         // Heavy work (R2 download, decode, down-scale, base64) needs no database session: do it in parallel.
         Map<Integer, String> mainUris = new ConcurrentHashMap<>();
         Map<Integer, List<String>> subUris = new ConcurrentHashMap<>();
@@ -218,6 +221,7 @@ public class ExamReportService {
             if (!subs.isEmpty()) subUris.put(q, subs);
         });
 
+        progress.accept("Calculating question statistics");
         for (int q = 1; q <= total; q++) {
             Set<Integer> correctSet = exam.correctOptions(q);
             boolean free = exam.isFreeMark(q);
