@@ -131,6 +131,16 @@ public class McqExamQuestionService {
                 .boxed().toList();
     }
 
+    /** Downloads an image stored in R2 (for documents that embed images); empty when unavailable. */
+    public Optional<byte[]> imageBytesByKey(String storageKey) {
+        if (storageKey == null || storageKey.isBlank() || !storage.enabled()) return Optional.empty();
+        try {
+            return Optional.of(storage.read(storageKey));
+        } catch (RuntimeException ex) {
+            return Optional.empty();
+        }
+    }
+
     @Transactional(readOnly = true)
     public Optional<McqExamQuestion> findImage(Long examId, int question) {
         return questions.findByExamIdAndQuestionNumber(examId, question).filter(McqExamQuestion::hasImage);

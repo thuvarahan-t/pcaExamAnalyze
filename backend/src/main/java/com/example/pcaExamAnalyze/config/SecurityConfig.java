@@ -40,16 +40,13 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                        "/", "/login", "/register", "/auth/login", "/auth/register",
-                        "/register/username-available", "/forgot-password",
-                        "/exam", "/exam/", "/exam/p/**", "/exam/details", "/exam/details/clear",
+                        "/", "/login",
+                        "/exam", "/exam/", "/exam/time", "/exam/p/**", "/exam/details", "/exam/details/clear",
                         "/exam/session/**", "/exam/admin-login", "/exam/result", "/exam/results/**",
-                        "/css/**", "/js/**", "/img/**", "/favicon.ico",
+                        "/css/**", "/js/**", "/img/**", "/fonts/**", "/favicon.ico",
                         "/webjars/**", "/h2-console/**"
                 ).permitAll()
                 .requestMatchers("/exam/admin", "/exam/admin/**").hasRole("TEACHER")
-                .requestMatchers("/teacher/**").hasRole("TEACHER")
-                .requestMatchers("/student/**").hasRole("STUDENT")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -73,7 +70,7 @@ public class SecurityConfig {
                 .alwaysRemember(true)
                 .tokenValiditySeconds(REMEMBER_ME_DAYS * 24 * 60 * 60)
             )
-            // Send role-mismatched users to their own dashboard instead of a raw 403 page.
+            // Redirect access-denied users instead of showing a raw 403 page.
             .exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler))
             // Allow the H2 console (dev profile) to render inside frames.
             .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))

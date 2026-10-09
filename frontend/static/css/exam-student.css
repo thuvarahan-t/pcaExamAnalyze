@@ -338,3 +338,47 @@ body.exam-submit-busy{overflow:hidden}
 .exam-start-countdown span{color:#475569;font-size:11px;font-weight:850;letter-spacing:.14em}
 .exam-start-countdown strong{color:#0f172a;font-family:Sora,sans-serif;font-size:clamp(28px,5vw,44px);font-variant-numeric:tabular-nums;letter-spacing:.06em}
 .exam-start-countdown small{color:#64748b;font-size:12px;font-weight:650}
+
+/* Zoom controls sit in a slim bar UNDER the question image, so they can never cover the question. */
+.zoom-bar{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex:0 0 auto;padding:4px 6px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;user-select:none;-webkit-user-select:none}
+.zoom-bar .zoom-hint{display:inline-flex;align-items:center;gap:6px;margin-right:auto;padding-left:6px;color:#64748b;font-size:11.5px;font-weight:600;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zoom-bar .zoom-hint i{color:#94a3b8}
+.zoom-bar .hint-touch{display:none}
+@media (pointer:coarse){.zoom-bar .hint-touch{display:inline}.zoom-bar .hint-mouse{display:none}}
+.zoom-bar button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:#fff;cursor:pointer;font-size:15px;transition:background .15s,color .15s,border-color .15s,transform .15s}
+.zoom-bar button:hover{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}
+.zoom-bar button:active{transform:scale(.92)}
+.zoom-bar button:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+.zoom-bar .zoom-level{position:static;opacity:1;min-width:48px;padding:0;color:#334155;background:transparent;font-size:12.5px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;pointer-events:none}
+@media (max-width:420px){.zoom-bar .zoom-hint{font-size:10.5px}.zoom-bar button{width:32px;height:32px}}
+
+/* My Results cards: a real first-question cover when the paper has images, otherwise a designed illustration (never an empty box). */
+.result-paper-preview{position:relative;height:150px;overflow:hidden;background:linear-gradient(150deg,#0b1450,#1636c9 55%,#22a5ee)}
+.result-paper-fallback.art{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:8px;color:#fff;background:radial-gradient(120px 90px at 18% 20%,rgba(165,180,252,.55),transparent 70%),radial-gradient(150px 110px at 85% 85%,rgba(34,211,238,.5),transparent 70%),linear-gradient(150deg,#0b1450,#1636c9 55%,#22a5ee)}
+.result-paper-fallback.art::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:26px 26px;-webkit-mask-image:radial-gradient(ellipse at 50% 50%,#000 25%,transparent 78%);mask-image:radial-gradient(ellipse at 50% 50%,#000 25%,transparent 78%)}
+.result-paper-fallback.art>i{position:relative;display:grid;place-items:center;width:54px;height:54px;border-radius:17px;color:#fff;font-size:26px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.14);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 12px 26px rgba(5,10,60,.35),inset 0 1px 0 rgba(255,255,255,.35)}
+.result-paper-fallback.art .art-label{position:relative;color:#e0ecff;font-size:12.5px;font-weight:700;letter-spacing:.02em}
+.art-sym{position:absolute;display:grid;place-items:center;min-width:34px;height:34px;padding:0 9px;border-radius:11px;color:rgba(224,242,254,.9);font:700 13px Sora,sans-serif;white-space:nowrap;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);animation:artFloat 6s ease-in-out infinite}
+.art-sym.s1{left:9%;top:44%}.art-sym.s2{right:12%;top:20%;animation-delay:-2s}.art-sym.s3{left:26%;bottom:12%;animation-delay:-4s;opacity:.8}.art-sym.s4{right:9%;bottom:16%;animation-delay:-1s}
+@keyframes artFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(3deg)}}
+.result-cover-img{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;object-position:top left;background:#fff;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.result-cover-img+.result-card-paper-frame{display:none}
+.result-paper-preview:has(.result-cover-img)::after{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(11,20,80,.28),transparent 38%,transparent 70%,rgba(11,20,80,.22));pointer-events:none}
+.my-result-card:hover .result-cover-img{transform:scale(1.06)}
+.result-card-status{z-index:3}
+@media (prefers-reduced-motion:reduce){.art-sym{animation:none}}
+
+/* My Results cover: a designed illustration, one of five colour tones per paper. No question content is shown. */
+.result-paper-fallback.art{--c1:#0b1450;--c2:#1636c9;--c3:#22a5ee;--glow:rgba(165,180,252,.55);--glow2:rgba(34,211,238,.5);background:radial-gradient(140px 100px at 16% 18%,var(--glow),transparent 70%),radial-gradient(170px 120px at 88% 88%,var(--glow2),transparent 70%),linear-gradient(150deg,var(--c1),var(--c2) 55%,var(--c3))}
+.result-paper-fallback.art.tone-1{--c1:#2a0f5c;--c2:#5b2fd6;--c3:#a56bff;--glow:rgba(244,114,182,.45);--glow2:rgba(129,140,248,.55)}
+.result-paper-fallback.art.tone-2{--c1:#06384a;--c2:#0891b2;--c3:#34d399;--glow:rgba(103,232,249,.5);--glow2:rgba(16,185,129,.5)}
+.result-paper-fallback.art.tone-3{--c1:#3b0d3f;--c2:#be185d;--c3:#fb923c;--glow:rgba(253,186,116,.5);--glow2:rgba(244,114,182,.5)}
+.result-paper-fallback.art.tone-4{--c1:#0f2a1f;--c2:#047857;--c3:#a3e635;--glow:rgba(110,231,183,.5);--glow2:rgba(190,242,100,.4)}
+/* concentric "orbit" rings + a soft wave along the bottom */
+.result-paper-fallback.art::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-radial-gradient(circle at 78% 30%,transparent 0 22px,rgba(255,255,255,.07) 22px 23px),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 40' preserveAspectRatio='none'%3E%3Cpath d='M0 22 C70 4 130 40 200 22 S330 4 400 22 L400 40 L0 40Z' fill='white' fill-opacity='.14'/%3E%3C/svg%3E") bottom/100% 34px no-repeat}
+.result-paper-fallback.art>i{width:58px;height:58px;font-size:28px;border-radius:19px}
+.result-paper-fallback.art .art-label{padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);font-size:12px}
+.my-result-card:hover .art-sym{animation-duration:3s}
+.my-result-card .result-paper-preview{height:150px}
+.art-sym.s3{left:30%;top:12%;bottom:auto}
+.art-sym.s1{top:36%}.art-sym.s4{bottom:auto;top:52%}

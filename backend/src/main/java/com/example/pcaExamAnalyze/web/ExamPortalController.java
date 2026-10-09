@@ -87,11 +87,19 @@ public class ExamPortalController {
         return "exam/index";
     }
 
+    /** Server clock for the start-time countdown, so a wrong device clock cannot skew it. */
+    @GetMapping("/exam/time")
+    public ResponseEntity<Map<String, Long>> serverTime() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(Map.of("now", System.currentTimeMillis()));
+    }
+
     @GetMapping("/exam/p/{slug}")
     public String sharedExam(@PathVariable String slug, Model model, HttpSession session) {
         var exam = studentExamService.examDetails(slug);
         ExamStudentDetailsForm details = savedDetails(session);
         model.addAttribute("exam", exam);
+        model.addAttribute("serverNowMillis", System.currentTimeMillis());
         model.addAttribute("studentDetails", details);
         model.addAttribute("hasSavedStudentDetails", details != null);
         model.addAttribute("savedStudentName", details == null ? null : details.getFullName());

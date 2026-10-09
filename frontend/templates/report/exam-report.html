@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<meta charset="UTF-8" />
+<title th:text="|${r.meta.examName} - Exam Analysis Report|">Exam Analysis Report</title>
+<style>
+/* ===================================================================== page setup */
+@page {
+  size: A4;
+  margin: 26mm 15mm 20mm 15mm;
+  @top-left { content: element(pagehead); width: 180mm; vertical-align: bottom; padding-bottom: 3mm; border-bottom: 0.6pt solid #cbd5e1; }
+  @bottom-left { content: "Physics Cube Academy  |  Exam Analysis Report"; font-family: Inter; font-size: 7.5pt; color: #64748b; vertical-align: top; padding-top: 3mm; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: Inter; font-size: 7.5pt; color: #64748b; vertical-align: top; padding-top: 3mm; }
+}
+@page cover { margin: 0; @top-left { content: none; border: 0; } @bottom-left { content: none; } @bottom-right { content: none; } }
+
+/* ===================================================================== base */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, sans-serif; font-size: 9pt; line-height: 1.45; color: #1e293b; }
+h1, h2, h3, h4 { font-family: Sora, Inter, sans-serif; color: #0b1450; margin: 0; page-break-after: avoid; }
+p { margin: 0 0 6pt 0; }
+table { border-collapse: collapse; width: 100%; }
+td, th { vertical-align: top; }
+img { border: 0; }
+.muted { color: #64748b; }
+.right { text-align: right; }
+.center { text-align: center; }
+.nowrap { white-space: nowrap; }
+.pb { page-break-before: always; }
+.keep { page-break-inside: avoid; }
+
+#pagehead { position: running(pagehead); }
+bookmarks, bookmark { display: none; }
+.runhead td { vertical-align: middle; padding: 0; }
+.runhead img { height: 24px; }
+.rh-title { font-family: Sora; font-weight: 700; font-size: 8.5pt; color: #0b1450; padding-left: 8px; }
+.rh-title span { display: block; font-family: Inter; font-weight: 500; font-size: 7pt; color: #64748b; }
+.rh-exam { text-align: right; font-size: 7.5pt; color: #64748b; font-weight: 600; }
+
+/* ===================================================================== section heading */
+.sec-head { margin: 0 0 12pt 0; padding-bottom: 7pt; border-bottom: 2.2pt solid #3b5bff; }
+.sec-head .kicker { font-size: 7.5pt; font-weight: 700; letter-spacing: 1.4pt; color: #3b5bff; text-transform: uppercase; }
+.sec-head h1 { font-size: 20pt; font-weight: 800; letter-spacing: -0.3pt; margin-top: 2pt; }
+.sec-head p { margin: 3pt 0 0 0; color: #64748b; font-size: 8.5pt; }
+h3.sub { font-size: 11pt; font-weight: 700; margin: 14pt 0 6pt 0; color: #0b1450; }
+h3.sub .tag { font-family: Inter; font-weight: 600; font-size: 7.5pt; color: #64748b; margin-left: 6pt; }
+
+/* ===================================================================== cover */
+.cover { page: cover; page-break-after: always; width: 210mm; height: 296mm; position: relative; }
+.cover-hero { width: 210mm; height: 140mm; background-color: #0c1550; background-size: 210mm 140mm; background-repeat: no-repeat; position: relative; }
+.cover-top { width: 174mm; margin: 14mm 0 0 18mm; }
+.cover-top td { vertical-align: middle; }
+.logo-badge { width: 24mm; height: 24mm; background: #ffffff; border-radius: 12mm; text-align: center; padding-top: 4.2mm; overflow: hidden; }
+.logo-badge img { width: 15.6mm; height: 15.6mm; }
+.cover-brand { font-family: Sora; font-weight: 800; font-size: 14pt; color: #ffffff; padding-left: 5mm; }
+.cover-brand span { display: block; font-family: Inter; font-weight: 600; font-size: 7.5pt; letter-spacing: 2pt; color: #a5b4fc; margin-top: 1.5mm; }
+.cover-title { position: absolute; left: 18mm; right: 18mm; top: 56mm; }
+.cover-kicker { white-space: nowrap; display: inline-block; padding: 1.6mm 4mm; border: 0.8pt solid #67e8f9; border-radius: 6mm; color: #67e8f9; font-size: 8pt; font-weight: 700; letter-spacing: 1.6pt; text-transform: uppercase; }
+.cover-title h1 { font-size: 34pt; font-weight: 800; line-height: 1.05; color: #ffffff; margin: 5mm 0 0 0; letter-spacing: -0.8pt; }
+.cover-title h2 { font-family: Inter; font-size: 15pt; font-weight: 600; color: #bfdbfe; margin: 4mm 0 0 0; line-height: 1.3; }
+.cover-title .sub { margin-top: 3mm; color: #93c5fd; font-size: 10pt; font-weight: 500; }
+.cover-body { padding: 0 18mm; margin-top: -14mm; position: relative; }
+.kpis { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3mm 0; margin-left: -3mm; width: 180mm; }
+.kpi { background: #ffffff; border: 0.8pt solid #dbe4ff; border-radius: 3.5mm; padding: 4.5mm 4mm 4mm 4mm; border-top: 2.2pt solid #3b5bff; }
+.kpi .v { font-family: Sora; font-weight: 800; font-size: 18pt; color: #0b1450; line-height: 1.1; }
+.kpi .l { margin-top: 1.2mm; font-size: 7.2pt; font-weight: 700; letter-spacing: 0.8pt; color: #64748b; text-transform: uppercase; }
+.kpi.green { border-top-color: #10b981; } .kpi.cyan { border-top-color: #22b8e6; } .kpi.amber { border-top-color: #f59e0b; }
+.cover-meta { margin-top: 9mm; width: 100%; }
+.cover-meta td { padding: 2.3mm 0; border-bottom: 0.6pt solid #e2e8f0; font-size: 9.5pt; }
+.cover-meta td.k { width: 38mm; color: #64748b; font-weight: 600; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.8pt; padding-top: 2.8mm; }
+.cover-meta td.v { font-weight: 600; color: #0f172a; }
+.cover-foot { position: absolute; left: 18mm; right: 18mm; bottom: 14mm; border-top: 0.8pt solid #e2e8f0; padding-top: 4mm; font-size: 7.5pt; color: #64748b; }
+.cover-foot b { color: #0b1450; }
+
+/* ===================================================================== contents */
+.toc { margin-top: 4pt; }
+.toc-row { margin: 0; padding: 7pt 0 6pt 0; border-bottom: 0.6pt solid #e2e8f0; font-size: 10.5pt; }
+.toc-row a.tl { color: #0f172a; text-decoration: none; font-weight: 600; display: block; }
+.toc-row a.tl::after { content: leader('.') target-counter(attr(href), page); font-weight: 600; color: #3b5bff; }
+.toc-row .n { display: inline-block; width: 9mm; font-family: Sora; font-weight: 800; color: #3b5bff; }
+.toc-row .d { display: block; margin: 2pt 0 0 9mm; font-size: 8pt; color: #64748b; font-weight: 400; }
+.qgrid { margin: 8pt 0 0 9mm; width: 169mm; table-layout: fixed; }
+.qgrid td { width: 16.6%; padding: 0 4pt 4pt 0; }
+.qlink { display: block; border: 0.7pt solid #dbe4ff; border-radius: 3pt; background: #f5f8ff; padding: 3pt 0 3pt 6pt; font-size: 8pt; color: #0b1450; text-decoration: none; font-weight: 700; }
+.qlink::after { content: "  p." target-counter(attr(href), page); font-weight: 500; color: #64748b; font-size: 7pt; }
+
+/* ===================================================================== blocks */
+.tiles { border-collapse: separate; border-spacing: 5pt 0; margin: 0 -5pt; width: 183.6mm; table-layout: fixed; }
+.tile { border: 0.8pt solid #dbe4ff; border-radius: 4pt; background: #f8faff; padding: 8pt 8pt 7pt 8pt; }
+.tile .v { font-family: Sora; font-weight: 800; font-size: 14pt; color: #0b1450; line-height: 1.15; }
+.tile .l { font-size: 6.8pt; font-weight: 700; letter-spacing: 0.7pt; color: #64748b; text-transform: uppercase; margin-top: 2pt; }
+.tile .s { font-size: 7.5pt; color: #64748b; margin-top: 1pt; }
+.card { border: 0.8pt solid #e2e8f0; border-radius: 5pt; padding: 9pt 11pt; background: #ffffff; }
+.card.blue { background: #f4f7ff; border-color: #cfdcff; }
+.card.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.card.red { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.card h4 { font-size: 9.5pt; margin-bottom: 4pt; }
+ul.insights { margin: 0; padding: 0 0 0 11pt; }
+ul.insights li { margin: 0 0 4pt 0; }
+.tbl th { background: #0b1450; color: #ffffff; font-size: 7.3pt; font-weight: 700; letter-spacing: 0.4pt; text-transform: uppercase; text-align: left; padding: 5pt 5pt; }
+.tbl th.right, .tbl td.right { text-align: right; }
+.tbl th.center, .tbl td.center { text-align: center; }
+.tbl td { padding: 4.2pt 5pt; border-bottom: 0.5pt solid #e5e9f2; font-size: 8.3pt; }
+.tbl tr.alt td { background: #f8faff; }
+.tbl thead { display: table-header-group; }
+.tbl.fixed { table-layout: fixed; }
+.tbl.fixed td, .tbl.fixed th { padding-left: 3pt; padding-right: 3pt; }
+.tbl tr { page-break-inside: avoid; }
+.kv td { padding: 5pt 7pt; border-bottom: 0.5pt solid #e5e9f2; font-size: 8.8pt; }
+.kv td.k { width: 42mm; color: #64748b; font-weight: 600; background: #f8faff; font-size: 7.8pt; text-transform: uppercase; letter-spacing: 0.5pt; }
+.badge { display: inline-block; padding: 1.5pt 8pt 1.5pt 7pt; border-radius: 8pt; font-size: 7pt; font-weight: 700; color: #ffffff; background: #64748b; letter-spacing: 0.3pt; white-space: nowrap; }
+.badge.easy, .badge.good, .badge.A { background: #10b981; }
+.badge.mod, .badge.fair, .badge.B { background: #3b5bff; }
+.badge.hard, .badge.poor, .badge.F { background: #ef4444; }
+.badge.free, .badge.na { background: #94a3b8; }
+.badge.C { background: #22b8e6; } .badge.S { background: #f59e0b; }
+
+/* bars */
+.hbar { width: 100%; }
+.hbar td { padding: 2.2pt 0; vertical-align: middle; }
+.compact td { padding: 1.4pt 0 !important; }
+.compact-tbl td { padding: 3pt 5pt !important; }
+.hbar .lab { width: 34mm; font-size: 8pt; font-weight: 600; color: #1e293b; padding-right: 6pt; }
+.hbar .val { width: 24mm; font-size: 7.8pt; color: #475569; padding-left: 6pt; white-space: nowrap; }
+.track { background: #eef2fb; height: 9pt; border-radius: 4.5pt; width: 100%; }
+.fill { height: 9pt; border-radius: 4.5pt; background: #3b5bff; }
+.fill.green { background: #10b981; } .fill.red { background: #ef4444; } .fill.grey { background: #cbd5e1; }
+.fill.cyan { background: #22b8e6; } .fill.amber { background: #f59e0b; } .fill.violet { background: #7c5cff; }
+.vchart { width: 100%; table-layout: fixed; }
+.vchart td { text-align: center; vertical-align: bottom; padding: 0 2.5pt; }
+.vbar { background: #3b5bff; border-radius: 3pt 3pt 0 0; margin: 0 auto; width: 100%; min-height: 1px; }
+.vcount { font-size: 8pt; font-weight: 700; color: #0b1450; padding-bottom: 2pt; }
+.vlab { font-size: 6.6pt; color: #64748b; padding-top: 3pt; border-top: 0.8pt solid #cbd5e1; }
+
+/* ===================================================================== question pages */
+.qhead { width: 100%; margin-bottom: 8pt; }
+.qhead td { vertical-align: middle; }
+.qnum { width: 17mm; }
+.qnum div { width: 15mm; height: 15mm; background: #0b1450; color: #ffffff; border-radius: 4mm; text-align: center; font-family: Sora; font-weight: 800; font-size: 14pt; padding-top: 3.4mm; }
+.qtitle { padding-left: 4pt; }
+.qtitle h2 { font-size: 15pt; font-weight: 800; }
+.qtitle .meta { margin-top: 2pt; }
+.qimgbox { border: 0.8pt solid #dbe4ff; border-radius: 5pt; padding: 7pt; text-align: center; background: #ffffff; margin: 6pt 0 6pt 0; }
+.qimg { max-width: 100%; max-height: 340px; }
+.noimg { padding: 18pt; text-align: center; color: #94a3b8; border: 0.8pt dashed #cbd5e1; border-radius: 5pt; margin: 6pt 0; }
+.subs { margin: 0 0 6pt 0; }
+.subs td { text-align: center; padding: 0 3pt 0 0; vertical-align: middle; }
+.subs img { max-width: 100%; max-height: 74px; border: 0.6pt solid #dbe4ff; border-radius: 3pt; }
+.taglist { margin: 0 0 4pt 0; }
+.tagbox { border-left: 2.4pt solid #3b5bff; background: #f4f7ff; padding: 4pt 8pt; margin: 0 0 3pt 0; font-size: 8pt; }
+.tagbox b { color: #0b1450; }
+.optchart td { padding: 2.6pt 0; vertical-align: middle; }
+.opt-n { width: 8mm; }
+.opt-n div { width: 6mm; height: 6mm; border-radius: 3mm; background: #e8edfb; color: #1e3a8a; text-align: center; font-weight: 800; font-size: 8pt; padding-top: 0.9mm; }
+.opt-n div.c { background: #10b981; color: #ffffff; } .opt-n div.w { background: #ef4444; color: #ffffff; }
+.opt-v { width: 26mm; font-size: 7.8pt; color: #334155; padding-left: 5pt; white-space: nowrap; }
+.track.big, .fill.big { height: 11pt; border-radius: 5.5pt; }
+.stat td { padding: 3.6pt 6pt; border-bottom: 0.5pt solid #e5e9f2; font-size: 8.3pt; }
+.stat td.k { color: #64748b; font-weight: 600; width: 36mm; }
+.stat td.v { font-weight: 700; color: #0f172a; text-align: right; }
+.insight { border-left: 3pt solid #22b8e6; background: #f0f9ff; padding: 7pt 10pt; margin-top: 7pt; border-radius: 0 4pt 4pt 0; font-size: 8.6pt; }
+.flagbox { border-left: 3pt solid #ef4444; background: #fef2f2; padding: 6pt 10pt; margin-top: 5pt; border-radius: 0 4pt 4pt 0; color: #991b1b; font-size: 8.4pt; font-weight: 600; }
+.legend { font-size: 7pt; color: #64748b; margin-top: 3pt; }
+.dot { display: inline-block; width: 6pt; height: 6pt; border-radius: 3pt; margin: 0 2pt 0 5pt; }
+.r1 td { background: #fff8e1 !important; } .r2 td { background: #f1f5f9 !important; } .r3 td { background: #fdf0e6 !important; }
+</style>
+</head>
+<body>
+
+<bookmarks>
+  <bookmark name="Cover" href="#cover"></bookmark>
+  <bookmark name="Table of Contents" href="#sec-toc"></bookmark>
+  <bookmark name="1. Executive Summary" href="#sec-summary"></bookmark>
+  <bookmark name="2. Examination Details" href="#sec-details"></bookmark>
+  <bookmark name="3. Participation Analysis" href="#sec-participation"></bookmark>
+  <bookmark name="4. District Analysis" href="#sec-districts"></bookmark>
+  <bookmark name="5. Question Analysis Overview" href="#sec-questions"></bookmark>
+  <bookmark name="6. Question-by-Question Analysis" href="#sec-qpages">
+    <bookmark th:each="q : ${r.questions}" th:attr="name=${'Question ' + q.number},href=${'#' + q.anchor}"></bookmark>
+  </bookmark>
+  <bookmark name="7. Student Ranking" href="#sec-ranking"></bookmark>
+  <bookmark name="8. Appendix" href="#sec-appendix"></bookmark>
+</bookmarks>
+
+<!-- running page header -->
+<div id="pagehead">
+  <table class="runhead"><tr>
+    <td style="width:28px"><img th:src="${r.meta.logo}" alt="PCA" /></td>
+    <td class="rh-title">Physics Cube Academy<span>Exam Analysis Report</span></td>
+    <td class="rh-exam" th:text="${r.meta.examName}">Exam</td>
+  </tr></table>
+</div>
+
+<!-- ============================================================ COVER -->
+<div class="cover" id="cover">
+  <div class="cover-hero" th:style="'background-image: url(' + ${r.meta.banner} + ')'">
+    <table class="cover-top"><tr>
+      <td style="width:29mm"><div class="logo-badge"><img th:src="${r.meta.logo}" alt="PCA" /></div></td>
+      <td class="cover-brand">Physics Cube Academy<span>MCQ EXAMINATION SYSTEM</span></td>
+    </tr></table>
+    <div class="cover-title">
+      <div class="cover-kicker">Exam Analysis Report</div>
+      <h1>Complete Performance Analysis</h1>
+      <h2 th:text="${r.meta.examName}">Exam name</h2>
+      <div class="sub" th:text="${r.meta.period} + '   |   ' + ${r.meta.batches}">Period | Batch</div>
+    </div>
+  </div>
+  <div class="cover-body">
+    <table class="kpis"><tr>
+      <td class="kpi"><div class="v" th:text="${r.summary.participants}">0</div><div class="l">Students</div></td>
+      <td class="kpi cyan"><div class="v" th:text="${r.summary.meanPct}">0%</div><div class="l">Average score</div></td>
+      <td class="kpi green"><div class="v" th:text="${r.summary.highestPct}">0%</div><div class="l">Highest score</div></td>
+      <td class="kpi amber"><div class="v" th:text="${r.summary.passRate}">0%</div><div class="l">Pass rate</div></td>
+    </tr></table>
+    <table class="cover-meta">
+      <tr><td class="k">Examination</td><td class="v" th:text="${r.meta.examName}">-</td></tr>
+      <tr><td class="k">Questions</td><td class="v" th:text="|${r.meta.totalQuestions} multiple-choice questions|">-</td></tr>
+      <tr><td class="k">Batches</td><td class="v" th:text="${r.meta.batches}">-</td></tr>
+      <tr><td class="k">Streams</td><td class="v" th:text="${r.meta.streams}">-</td></tr>
+      <tr><td class="k">Report generated</td><td class="v" th:text="${r.meta.generatedAt}">-</td></tr>
+    </table>
+    <div th:if="${!r.highlights.isEmpty()}" style="margin-top:8mm">
+      <div style="font-family:Sora; font-weight:800; font-size:11pt; color:#0b1450; margin-bottom:2mm">Highlights</div>
+      <table class="cover-meta" style="margin-top:0">
+        <tr th:each="h : ${r.highlights}"><td class="k" th:text="${h.label}">Label</td><td class="v" th:text="${h.value}">Value</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="cover-foot"><b>Physics Cube Academy (PCA)</b> &#8211; Confidential. This report contains student performance data and is intended for academy staff only.</div>
+</div>
+
+<!-- ============================================================ CONTENTS -->
+<div id="sec-toc">
+  <div class="sec-head"><div class="kicker">Navigation</div><h1>Table of Contents</h1><p>Every entry below is a link - click it to jump to that page. The PDF bookmarks panel mirrors this list.</p></div>
+  <div class="toc">
+    <div class="toc-row"><a class="tl" href="#sec-summary"><span class="n">1</span>Executive Summary</a><span class="d">Key figures, insights, score and grade distribution</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-details"><span class="n">2</span>Examination Details</a><span class="d">Paper configuration, schedule, marking rules and syllabus coverage</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-participation"><span class="n">3</span>Participation Analysis</a><span class="d">Batches, streams, time taken and submission timeline</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-districts"><span class="n">4</span>District Analysis</a><span class="d">Where students came from and each district's average marks</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-questions"><span class="n">5</span>Question Analysis Overview</a><span class="d">Difficulty, discrimination, hardest and easiest questions, syllabus units</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-qpages"><span class="n">6</span>Question-by-Question Analysis</a><span class="d">One page per question with its image, answer distribution and insight</span>
+      <table class="qgrid"><tr th:each="row : ${#numbers.sequence(0, (r.questions.size() - 1) / 6)}">
+        <td th:each="q : ${r.questions.subList(row * 6, T(java.lang.Math).min(row * 6 + 6, r.questions.size()))}"><a class="qlink" th:href="'#' + ${q.anchor}" th:text="'Q' + ${q.number}">Q1</a></td>
+      </tr></table>
+    </div>
+    <div class="toc-row"><a class="tl" href="#sec-ranking"><span class="n">7</span>Student Ranking</a><span class="d">All students in rank order with marks, percentage and grade</span></div>
+    <div class="toc-row"><a class="tl" href="#sec-appendix"><span class="n">8</span>Appendix: Definitions &amp; Method</a><span class="d">How difficulty, discrimination and grades are calculated</span></div>
+  </div>
+</div>
+
+<!-- ============================================================ 1 SUMMARY -->
+<div class="pb" id="sec-summary">
+  <div class="sec-head"><div class="kicker">Section 1</div><h1>Executive Summary</h1><p th:text="|${r.meta.examName}  -  ${r.meta.period}|">Exam</p></div>
+
+  <div class="card red keep" th:each="w : ${r.warnings}" style="margin-bottom:6pt"><span th:text="${w}">Warning</span></div>
+
+  <table class="tiles"><tr>
+    <td class="tile"><div class="v" th:text="${r.summary.participants}">0</div><div class="l">Submitted</div><div class="s" th:text="|${r.summary.inProgress} in progress|">0</div></td>
+    <td class="tile"><div class="v" th:text="${r.summary.meanPct}">0</div><div class="l">Mean score</div><div class="s" th:text="${r.summary.meanMarks}">0</div></td>
+    <td class="tile"><div class="v" th:text="${r.summary.medianPct}">0</div><div class="l">Median</div><div class="s" th:text="|Std dev ${r.summary.stdDev}|">0</div></td>
+    <td class="tile"><div class="v" th:text="${r.summary.highestPct}">0</div><div class="l">Highest</div><div class="s" th:text="${r.summary.highest}">0</div></td>
+    <td class="tile"><div class="v" th:text="${r.summary.lowestPct}">0</div><div class="l">Lowest</div><div class="s" th:text="${r.summary.lowest}">0</div></td>
+    <td class="tile"><div class="v" th:text="${r.summary.passRate}">0</div><div class="l">Pass rate</div><div class="s" th:text="|${r.summary.passCount} students|">0</div></td>
+  </tr></table>
+
+  <div class="card blue keep" style="margin-top:11pt" th:if="${!r.insights.isEmpty()}">
+    <h4>Key insights</h4>
+    <ul class="insights"><li th:each="i : ${r.insights}" th:text="${i}">Insight</li></ul>
+  </div>
+
+  <div th:if="${r.meta.hasData}">
+    <h3 class="sub">Score distribution<span class="tag">number of students per 10% band</span></h3>
+    <div class="keep">
+      <table class="vchart"><tr>
+        <td th:each="b : ${r.histogram}"><div class="vcount" th:text="${b.count}">0</div><div class="vbar" th:style="'height:' + ${b.size + 2} + 'px'"></div></td>
+      </tr><tr>
+        <td class="vlab" th:each="b : ${r.histogram}" th:text="${b.label}">0-10</td>
+      </tr></table>
+    </div>
+
+    <h3 class="sub">Grade distribution<span class="tag">A 75%+  |  B 65-74%  |  C 50-64%  |  S 35-49%  |  F below 35%</span></h3>
+    <table class="hbar keep">
+      <tr th:each="g : ${r.grades}">
+        <td class="lab"><span class="badge" th:classappend="${g.grade}" th:text="${g.grade}">A</span> <span class="muted" th:text="${g.range}">range</span></td>
+        <td><div class="track"><div class="fill" th:style="'width:' + ${g.size} + '%; background:' + ${g.color}"></div></div></td>
+        <td class="val" th:text="|${g.count} (${g.share})|">0</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ 2 DETAILS -->
+<div class="pb" id="sec-details">
+  <div class="sec-head"><div class="kicker">Section 2</div><h1>Examination Details</h1><p>How the paper was set up and marked.</p></div>
+  <table class="kv" style="border-top:0.5pt solid #e5e9f2">
+    <tr th:each="p : ${r.examDetails}"><td class="k" th:text="${p.label}">Label</td><td th:text="${p.value}">Value</td></tr>
+  </table>
+  <div class="card blue keep" style="margin-top:12pt" th:if="${!#strings.isEmpty(r.meta.instructions)}">
+    <h4>Instructions given to students</h4><p style="margin:0; white-space:pre-line" th:text="${r.meta.instructions}">text</p>
+  </div>
+  <div th:if="${!r.units.isEmpty()}">
+    <h3 class="sub">Syllabus coverage<span class="tag">questions grouped by the syllabus unit they are tagged to</span></h3>
+    <table class="tbl keep">
+      <thead><tr><th>Syllabus unit</th><th>Questions</th><th class="right" style="width:22mm">Count</th></tr></thead>
+      <tbody><tr th:each="u, st : ${r.units}" th:classappend="${st.odd} ? 'alt'"><td><b th:text="${u.unit}">Unit</b></td><td th:text="${u.questions}">Q1</td><td class="right" th:text="${u.questionCount}">0</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ 3 PARTICIPATION -->
+<div class="pb" id="sec-participation">
+  <div class="sec-head"><div class="kicker">Section 3</div><h1>Participation Analysis</h1><p>Who sat the paper and how long they took.</p></div>
+  <div th:if="${!r.meta.hasData}" class="card">No submissions yet.</div>
+  <div th:if="${r.meta.hasData}">
+    <table style="width:100%"><tr>
+      <td style="width:50%; padding-right:8pt">
+        <h3 class="sub" style="margin-top:0">By batch</h3>
+        <table class="hbar"><tr th:each="g : ${r.byBatch}">
+          <td class="lab" th:text="${g.name}">Batch</td>
+          <td><div class="track"><div class="fill" th:style="'width:' + ${g.size} + '%'"></div></div></td>
+          <td class="val" th:text="${g.count} + '  |  ' + ${g.avgPct}">0</td>
+        </tr></table>
+        <div class="legend">count  |  average score</div>
+      </td>
+      <td style="width:50%; padding-left:8pt">
+        <h3 class="sub" style="margin-top:0">By stream</h3>
+        <table class="hbar"><tr th:each="g : ${r.byStream}">
+          <td class="lab" th:text="${g.name}">Stream</td>
+          <td><div class="track"><div class="fill violet" th:style="'width:' + ${g.size} + '%'"></div></div></td>
+          <td class="val" th:text="${g.count} + '  |  ' + ${g.avgPct}">0</td>
+        </tr></table>
+        <div class="legend">count  |  average score</div>
+      </td>
+    </tr></table>
+
+    <h3 class="sub">Time taken</h3>
+    <table class="tiles" th:if="${r.timeStats.hasData}"><tr>
+      <td class="tile"><div class="v" th:text="${r.timeStats.average}">-</div><div class="l">Average time</div></td>
+      <td class="tile"><div class="v" th:text="${r.timeStats.fastest}">-</div><div class="l">Fastest</div></td>
+      <td class="tile"><div class="v" th:text="${r.timeStats.slowest}">-</div><div class="l">Slowest</div></td>
+      <td class="tile"><div class="v" th:text="${r.timeStats.allotted}">-</div><div class="l">Time allowed</div></td>
+    </tr></table>
+    <table style="width:100%; margin-top:8pt" th:if="${r.timeStats.hasData}"><tr>
+      <td style="width:50%; padding-right:8pt">
+        <div class="muted" style="font-size:8pt; margin-bottom:3pt">Students by time used</div>
+        <table class="hbar"><tr th:each="b : ${r.timeBuckets}">
+          <td class="lab" style="width:24mm" th:text="${b.label}">0-15 min</td>
+          <td><div class="track"><div class="fill cyan" th:style="'width:' + ${b.size} + '%'"></div></div></td>
+          <td class="val" style="width:18mm" th:text="${b.count}">0</td>
+        </tr></table>
+      </td>
+      <td style="width:50%; padding-left:8pt" th:if="${!r.timeline.isEmpty()}">
+        <div class="muted" style="font-size:8pt; margin-bottom:3pt">Submissions per day</div>
+        <table class="hbar"><tr th:each="b : ${r.timeline}">
+          <td class="lab" style="width:20mm" th:text="${b.label}">09 Oct</td>
+          <td><div class="track"><div class="fill amber" th:style="'width:' + ${b.size} + '%'"></div></div></td>
+          <td class="val" style="width:18mm" th:text="${b.count}">0</td>
+        </tr></table>
+      </td>
+    </tr></table>
+    <p class="muted" th:if="${!r.timeStats.hasData}">Time-taken figures are not available for this exam.</p>
+  </div>
+</div>
+
+<!-- ============================================================ 4 DISTRICTS -->
+<div class="pb" id="sec-districts">
+  <div class="sec-head"><div class="kicker">Section 4</div><h1>District Analysis</h1><p>Participation and average marks by district, best average first.</p></div>
+  <div th:if="${!r.meta.hasData}" class="card">No submissions yet.</div>
+  <div th:if="${r.meta.hasData}">
+    <h3 class="sub" style="margin-top:0">Average score by district<span class="tag">bar length = average percentage</span></h3>
+    <table class="hbar compact keep">
+      <tr th:each="d : ${r.districts}">
+        <td class="lab" th:text="${d.name}">District</td>
+        <td><div class="track"><div class="fill" th:style="'width:' + ${d.size} + '%'"></div></div></td>
+        <td class="val" th:text="|${d.avgPct}  (${d.count})|">0</td>
+      </tr>
+    </table>
+    <div class="legend">average score  (number of students)</div>
+
+    <h3 class="sub" style="margin-top:9pt">District table</h3>
+    <table class="tbl compact-tbl">
+      <thead><tr><th style="width:8mm">#</th><th>District</th><th class="right">Students</th><th class="right">Share</th><th class="right">Avg marks</th><th class="right">Avg %</th><th class="right">Highest</th><th class="right">Lowest</th><th class="right">Pass rate</th></tr></thead>
+      <tbody><tr th:each="d, st : ${r.districts}" th:classappend="${st.odd} ? 'alt'">
+        <td th:text="${d.position}">1</td><td><b th:text="${d.name}">District</b></td><td class="right" th:text="${d.count}">0</td><td class="right" th:text="${d.share}">0</td>
+        <td class="right" th:text="${d.avgMarks}">0</td><td class="right"><b th:text="${d.avgPct}">0</b></td><td class="right" th:text="${d.highest}">0</td><td class="right" th:text="${d.lowest}">0</td><td class="right" th:text="${d.passRate}">0</td>
+      </tr></tbody>
+    </table>
+    <div class="card keep" style="margin-top:9pt; font-size:8.4pt" th:if="${!r.missingDistricts.isEmpty()}">
+      <b>Districts with no participants (</b><b th:text="${r.missingDistricts.size()}">0</b><b>):</b>
+      <span class="muted" th:text="${#strings.listJoin(r.missingDistricts, ', ')}">list</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 5 QUESTION OVERVIEW -->
+<div class="pb" id="sec-questions">
+  <div class="sec-head"><div class="kicker">Section 5</div><h1>Question Analysis Overview</h1><p>Every question at a glance. Correct % is the share of all submitted students who answered correctly.</p></div>
+  <table class="tbl">
+    <thead><tr><th style="width:9mm">Q</th><th style="width:44mm">Correct answers</th><th class="right" style="width:15mm">Correct</th><th class="center" style="width:22mm">Difficulty</th><th class="right" style="width:14mm">Disc.</th><th style="width:30mm">Most chosen wrong</th><th class="right" style="width:24mm">Time avg / exp.</th></tr></thead>
+    <tbody><tr th:each="q, st : ${r.questions}" th:classappend="${st.odd} ? 'alt'">
+      <td><a th:href="'#' + ${q.anchor}" style="color:#3b5bff; font-weight:800; text-decoration:none" th:text="'Q' + ${q.number}">Q1</a></td>
+      <td><div class="track" style="height:7pt"><div class="fill" style="height:7pt" th:classappend="${q.difficultyClass == 'easy'} ? 'green' : (${q.difficultyClass == 'hard'} ? 'red' : '')" th:style="'height:7pt; width:' + ${q.correctSize} + '%'"></div></div></td>
+      <td class="right"><b th:text="${q.correctPct}">0</b></td>
+      <td class="center"><span class="badge" th:classappend="${q.difficultyClass}" th:text="${q.difficulty}">Easy</span></td>
+      <td class="right" th:text="${q.discrimination}">0</td>
+      <td class="nowrap" th:text="${#strings.replace(q.topWrong, 'Option', 'Opt')}">-</td>
+      <td class="right nowrap" th:text="|${q.averageTime} / ${q.expectedTime}|">-</td>
+    </tr></tbody>
+  </table>
+  <div class="legend"><span class="badge easy">Easy</span> 70% or more  <span class="badge mod">Moderate</span> 40-69%  <span class="badge hard">Difficult</span> below 40%  |  Disc. = discrimination index (see appendix)</div>
+
+  <table style="width:100%; margin-top:12pt" class="keep" th:if="${!r.hardest.isEmpty()}"><tr>
+    <td style="width:50%; padding-right:7pt">
+      <h3 class="sub" style="margin-top:0">Five hardest questions</h3>
+      <table class="tbl"><thead><tr><th>Question</th><th class="right">Correct</th><th>Top wrong</th></tr></thead>
+        <tbody><tr th:each="q, st : ${r.hardest}" th:classappend="${st.odd} ? 'alt'"><td><b th:text="'Q' + ${q.number}">Q1</b></td><td class="right" th:text="${q.correctPct}">0</td><td th:text="${q.topWrong}">-</td></tr></tbody></table>
+    </td>
+    <td style="width:50%; padding-left:7pt">
+      <h3 class="sub" style="margin-top:0">Five easiest questions</h3>
+      <table class="tbl"><thead><tr><th>Question</th><th class="right">Correct</th><th>Top wrong</th></tr></thead>
+        <tbody><tr th:each="q, st : ${r.easiest}" th:classappend="${st.odd} ? 'alt'"><td><b th:text="'Q' + ${q.number}">Q1</b></td><td class="right" th:text="${q.correctPct}">0</td><td th:text="${q.topWrong}">-</td></tr></tbody></table>
+    </td>
+  </tr></table>
+
+  <div th:if="${!r.units.isEmpty()}">
+    <h3 class="sub">Performance by syllabus unit<span class="tag">average correct % of the questions tagged to each unit, weakest first</span></h3>
+    <table class="tbl keep">
+      <thead><tr><th>Syllabus unit</th><th style="width:30mm">Questions</th><th style="width:40mm">Average correct</th><th class="center" style="width:26mm">Level</th></tr></thead>
+      <tbody><tr th:each="u, st : ${r.units}" th:classappend="${st.odd} ? 'alt'">
+        <td><b th:text="${u.unit}">Unit</b></td><td th:text="${u.questions}">Q1</td>
+        <td><table class="hbar"><tr><td><div class="track" style="height:7pt"><div class="fill" th:classappend="${u.levelClass == 'easy'} ? 'green' : (${u.levelClass == 'hard'} ? 'red' : '')" th:style="'height:7pt; width:' + ${u.size} + '%'"></div></div></td><td class="val" style="width:14mm" th:text="${u.correctPct}">0</td></tr></table></td>
+        <td class="center"><span class="badge" th:classappend="${u.levelClass}" th:text="${u.level}">Strong</span></td>
+      </tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ 6 QUESTION PAGES -->
+<div th:each="q, st : ${r.questions}" th:attr="id=${q.anchor}" class="pb">
+  <div th:if="${st.first}" id="sec-qpages" style="height: 0; font-size: 0; line-height: 0;">&#160;</div>
+  <table class="qhead"><tr>
+    <td class="qnum"><div th:text="'Q' + ${q.number}">Q1</div></td>
+    <td class="qtitle">
+      <h2 th:text="|Question ${q.number} of ${r.meta.totalQuestions}|">Question 1</h2>
+      <div class="meta"><span class="badge" th:classappend="${q.difficultyClass}" th:text="${q.difficulty}">Easy</span>
+        <span class="badge" th:classappend="${q.discriminationClass}" th:if="${!q.freeMark}" th:text="|Disc: ${q.discriminationLabel}|">Good</span>
+        <span class="muted" style="font-size:8pt" th:if="${q.weight != '-'}" th:text="|  Weight ${q.weight}|"></span></div>
+    </td>
+    <td class="right" style="width:46mm"><div class="muted" style="font-size:7pt; text-transform:uppercase; letter-spacing:0.8pt; font-weight:700">Correct answer</div><div style="font-family:Sora; font-weight:800; font-size:15pt; color:#10b981" th:text="${q.correctAnswer}">1</div></td>
+  </tr></table>
+
+  <div class="taglist" th:if="${!q.tags.isEmpty()}">
+    <div class="tagbox" th:each="t : ${q.tags}"><b th:text="${t.unit}">Unit</b><span th:if="${!t.level.isEmpty()}" th:text="'  /  ' + ${t.level}"></span>
+      <div class="muted" th:if="${!t.contents.isEmpty()}" th:text="'Content: ' + ${#strings.listJoin(t.contents, '; ')}">content</div>
+      <div class="muted" th:if="${!t.outcomes.isEmpty()}" th:text="'Learning outcome: ' + ${#strings.listJoin(t.outcomes, '; ')}">outcome</div></div>
+  </div>
+
+  <div class="qimgbox" th:if="${q.image != null}"><img class="qimg" th:src="${q.image}" alt="Question image" /></div>
+  <div class="noimg" th:if="${q.image == null}">Question image not available for this exam type.</div>
+  <table class="subs" th:if="${!q.subImages.isEmpty()}" style="width:100%"><tr><td th:each="s : ${q.subImages}"><img th:src="${s}" alt="Supporting image" /></td></tr></table>
+
+  <table style="width:100%; margin-top:8pt" class="keep"><tr>
+    <td style="width:58%; padding-right:10pt">
+      <h3 class="sub" style="margin:0 0 5pt 0">Answer distribution</h3>
+      <table class="optchart">
+        <tr th:each="o : ${q.options}">
+          <td class="opt-n"><div th:classappend="${o.correct} ? 'c' : (${o.topWrong} ? 'w' : '')" th:text="${o.option}">1</div></td>
+          <td><div class="track big"><div class="fill big" th:classappend="${o.correct} ? 'green' : (${o.topWrong} ? 'red' : '')" th:style="'width:' + ${o.size} + '%'"></div></div></td>
+          <td class="opt-v" th:text="|${o.count}  (${o.pct})|">0</td>
+        </tr>
+        <tr>
+          <td class="opt-n"><div style="background:#e2e8f0; color:#64748b">-</div></td>
+          <td><div class="track big"><div class="fill big grey" th:style="'width:' + ${q.unanswered.size} + '%'"></div></div></td>
+          <td class="opt-v" th:text="|${q.unanswered.count}  (${q.unanswered.pct})|">0</td>
+        </tr>
+      </table>
+      <div class="legend"><span class="dot" style="background:#10b981"></span>correct answer <span class="dot" style="background:#ef4444"></span>most chosen wrong <span class="dot" style="background:#cbd5e1"></span>left blank</div>
+    </td>
+    <td style="width:42%">
+      <h3 class="sub" style="margin:0 0 5pt 0">Question statistics</h3>
+      <table class="stat">
+        <tr><td class="k">Answered correctly</td><td class="v" th:text="|${q.correctCount} of ${q.participants}  (${q.correctPct})|">0</td></tr>
+        <tr><td class="k">Attempted</td><td class="v" th:text="|${q.answeredCount}  (${q.attemptedPct})|">0</td></tr>
+        <tr><td class="k">Left blank</td><td class="v" th:text="${q.unansweredCount}">0</td></tr>
+        <tr><td class="k">Most chosen wrong</td><td class="v" th:text="${q.topWrong}">-</td></tr>
+        <tr><td class="k">Top 27% correct</td><td class="v" th:text="${q.topGroupPct}">-</td></tr>
+        <tr><td class="k">Middle correct</td><td class="v" th:text="${q.midGroupPct}">-</td></tr>
+        <tr><td class="k">Bottom 27% correct</td><td class="v" th:text="${q.bottomGroupPct}">-</td></tr>
+        <tr><td class="k">Discrimination index</td><td class="v" th:text="|${q.discrimination}  (${q.discriminationLabel})|">-</td></tr>
+        <tr><td class="k">Average time (m:ss)</td><td class="v" th:text="|${q.averageTime}  (exp. ${q.expectedTime})|">-</td></tr>
+      </table>
+    </td>
+  </tr></table>
+
+  <div class="insight keep"><b>Insight.</b> <span th:text="${q.insight}">text</span></div>
+  <div class="flagbox keep" th:if="${!q.flag.isEmpty()}" th:text="${q.flag}">flag</div>
+</div>
+
+<!-- ============================================================ 7 RANKING -->
+<div class="pb" id="sec-ranking">
+  <div class="sec-head"><div class="kicker">Section 7</div><h1>Student Ranking</h1><p th:text="|${r.summary.participants} students ranked by marks. Equal marks share the same rank; ties are listed fastest first.|">Ranking</p></div>
+  <div th:if="${r.ranking.isEmpty()}" class="card">No submissions yet.</div>
+  <table class="tbl fixed" th:if="${!r.ranking.isEmpty()}">
+    <thead><tr><th class="center" style="width:10mm">Rank</th><th>Student</th><th style="width:15mm">Reg. ID</th><th style="width:22mm">District</th><th style="width:18mm">Batch</th><th class="right" style="width:14mm">Marks</th><th class="right" style="width:12mm">%</th><th class="center" style="width:11mm">Grade</th><th class="right" style="width:12mm">Time</th></tr></thead>
+    <tbody><tr th:each="s, st : ${r.ranking}" th:classappend="${s.rank == 1} ? 'r1' : (${s.rank == 2} ? 'r2' : (${s.rank == 3} ? 'r3' : (${st.odd} ? 'alt' : '')))">
+      <td class="center"><b th:text="${s.rank}">1</b></td>
+      <td><b th:if="${s.nameImg == null}" th:text="${s.name}">Name</b><img th:if="${s.nameImg != null}" th:src="${s.nameImg.uri}" th:style="'height:' + ${s.nameImg.heightPt} + 'pt'" alt="" /></td>
+      <td th:text="${s.registrationId}">0</td><td th:text="${s.district}">District</td><td th:text="${s.batch}">Batch</td>
+      <td class="right" th:text="${s.marks}">0</td><td class="right"><b th:text="${s.pct}">0</b></td>
+      <td class="center"><span class="badge" th:classappend="${s.gradeLetter}" th:text="${s.gradeLetter}">A</span></td>
+      <td class="right nowrap" th:text="${s.timeTaken}">-</td>
+    </tr></tbody>
+  </table>
+</div>
+
+<!-- ============================================================ 8 APPENDIX -->
+<div class="pb" id="sec-appendix">
+  <div class="sec-head"><div class="kicker">Section 8</div><h1>Appendix: Definitions &amp; Method</h1><p>How the figures in this report are calculated.</p></div>
+  <table class="kv" style="border-top:0.5pt solid #e5e9f2">
+    <tr><td class="k">Marks</td><td>One mark per correct answer; no negative marking. Questions the teacher marked as <i>free mark</i> count as correct for every student. Marks are recalculated from the current answer key when this report is generated.</td></tr>
+    <tr><td class="k">Percentage</td><td>Marks divided by the number of questions, times 100.</td></tr>
+    <tr><td class="k">Pass rate</td><td>Share of students scoring 50% or more.</td></tr>
+    <tr><td class="k">Grades</td><td>A: 75% and above. B: 65-74%. C: 50-64%. S: 35-49%. F: below 35%.</td></tr>
+    <tr><td class="k">Mean, median, std dev</td><td>Mean is the average percentage. Median is the middle student. Standard deviation shows how spread out the scores are (population formula).</td></tr>
+    <tr><td class="k">Correct %</td><td>Students who answered the question correctly divided by all students who submitted the paper (blank answers count as not correct).</td></tr>
+    <tr><td class="k">Difficulty</td><td>Easy: 70% or more answered correctly. Moderate: 40-69%. Difficult: below 40%.</td></tr>
+    <tr><td class="k">Discrimination index</td><td>Correct share of the top 27% of students (by total marks) minus that of the bottom 27%. 0.40 and above is excellent, 0.30-0.39 good, 0.20-0.29 fair, below 0.20 poor, and a negative value means weaker students did better than stronger ones - check the answer key. It needs at least 10 submissions.</td></tr>
+    <tr><td class="k">Most chosen wrong</td><td>The wrong option picked by the most students - useful for spotting a common misconception.</td></tr>
+    <tr><td class="k">Average time</td><td>Mean time students spent viewing the question (question-by-question exams only), compared with the expected time set by the teacher.</td></tr>
+    <tr><td class="k">Syllabus units</td><td>Questions are grouped by the syllabus units tagged in the Question Editor; the unit score is the average Correct % of its questions.</td></tr>
+    <tr><td class="k">District</td><td>The district each student entered in their details form.</td></tr>
+  </table>
+  <p class="muted" style="margin-top:14pt; font-size:8pt">Generated by the PCA MCQ Examination System on <span th:text="${r.meta.generatedAt}">date</span>.</p>
+</div>
+
+</body>
+</html>

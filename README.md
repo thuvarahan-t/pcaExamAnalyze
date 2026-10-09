@@ -1,12 +1,13 @@
-# PCA Exam Analyzer
+# PCA MCQ Exam System
 
-A web app for **Physics Cube Academy (PCA)** where students analyze their Physics
-past-paper performance (2021–2025), track progress across attempts, and download a
-personalized PDF study report. Teachers configure each year's paper, tag questions to
-topics, and attach the reference materials students should study when they score low.
+A web app for **Physics Cube Academy (PCA)** to run MCQ examinations. Students take
+papers without an account (they just enter their details); the teacher/admin builds exams
+(answer-sheet or question-image papers), manages the syllabus, schedules and releases
+results, and reviews analytics.
 
-Built as a single **Spring Boot 4 / Java 21** monolith with **Thymeleaf**, a custom
-**liquid-glass (glassmorphism)** UI, **Chart.js**, and **openhtmltopdf** for reports.
+Built as a single **Spring Boot 4 / Java 21** monolith with **Thymeleaf** and a custom
+glassmorphism UI. `/` redirects to the exam portal (`/exam`); the admin signs in at
+`/exam/admin-login`.
 
 ---
 
@@ -20,7 +21,7 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Open http://localhost:8080 and sign in with one of the seeded accounts below.
+Open http://localhost:8080 (the exam portal). Admin login is at `/exam/admin-login` with the seeded teacher account below.
 
 ### Option B — Run against your Supabase database (production)
 1. Copy the env template and fill in your Supabase values:
@@ -40,39 +41,11 @@ cd backend
 > The app reads secrets from `.env` via `DotenvLoader`. `.env` is git-ignored — never commit it.
 
 ---
----
 
 ## Authentication
 
-The app uses username + password login. Students can reset forgotten passwords by
-entering their username, NIC, and a new password.
-
----
-
-## What each role can do
-
-**Teacher** (`/teacher/**`)
-- Dashboard with paper / question / reference counts.
-- Manage papers (one per year, 2021–2025).
-- Manage the question map by year and structured question number.
-- Tag each question with a teacher-managed section/topic and max marks.
-- Attach references per question: file/resource, video, or practical work.
-
-**Student** (`/student/**`)
-- Dashboard: attempt tabs and cross-paper marking sheet.
-- Enter marks per question; marks autosave as students type.
-- Generate all-attempt or per-attempt reports.
-- Download a personalized **PDF report**.
-
----
-
-## Classification bands (tunable)
-
-Set in `application.properties` (`pca.analysis.*`):
-
-- **Weak** — topic % `< 50`
-- **Mid-range** — `50 ≤ % < 75`
-- **Strong** — `% ≥ 75`
+Only the admin/teacher logs in (username + password, seeded from `.env`). Students take
+exams without an account.
 
 ---
 
@@ -88,3 +61,18 @@ Set in `application.properties` (`pca.analysis.*`):
 - **Render:** build with `mvn -f backend/pom.xml clean package -DskipTests` and start with
   `java -jar backend/target/pcaExamAnalyze-0.0.1-SNAPSHOT.jar`.
 - **Tests:** `./mvnw test` (boots on the H2 dev profile — no database required).
+
+---
+
+## Exam analysis PDF report
+
+Admin portal -> **Manage Exams -> Report** (or **Download PDF Report** on an exam's analysis page) downloads a complete
+report for one exam: cover page, hyperlinked table of contents (+ PDF bookmarks), executive summary and insights,
+exam details, participation analysis, **district analysis** (students and average marks per district), question
+overview (difficulty, discrimination, time), syllabus-unit performance, **one page per question** (image, answer
+distribution graph, statistics, insight), the full **rank list**, and an appendix of definitions.
+
+Code: `report/` package (`ExamReportService` = analysis, `ExamReportPdfService` = PDF), template
+`frontend/templates/report/exam-report.html`, fonts in `backend/src/main/resources/report/fonts`.
+A sample is in `docs/samples/sample-exam-report.pdf`.
+Tamil student names/schools are drawn as shaped images because openhtmltopdf cannot shape Tamil text.

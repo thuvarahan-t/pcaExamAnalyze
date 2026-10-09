@@ -51,7 +51,7 @@
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 
-		<!-- HTML -> PDF for student performance reports -->
+		<!-- HTML -> PDF for the admin exam analysis report -->
 		<dependency>
 			<groupId>com.openhtmltopdf</groupId>
 			<artifactId>openhtmltopdf-pdfbox</artifactId>

@@ -3,13 +3,16 @@
 
   // Shared question-image viewer (exam paper + result review): zoom and pan only the image,
   // never the page. Usage: PcaZoom.create(boxElement) -> { reset() }.
-  // Buttons in the corner, mouse drag, Ctrl/trackpad-pinch wheel, double click/tap and two-finger pinch.
+  // Buttons in a bar under the image, mouse drag, Ctrl/trackpad-pinch wheel, double click/tap and two-finger pinch.
   var MIN_SCALE = 1;
   var MAX_SCALE = 5;
 
   function createViewer(box) {
     var img = box.querySelector("img");
-    var level = box.querySelector(".zoom-level");
+    // The controls live in a slim bar right after the image box (never over the image);
+    // older markup keeps them inside the box.
+    var bar = box.nextElementSibling && box.nextElementSibling.classList.contains("zoom-bar") ? box.nextElementSibling : box;
+    var level = bar.querySelector(".zoom-level") || box.querySelector(".zoom-level");
     var state = { scale: 1, x: 0, y: 0 };
     var pointers = new Map();
     var pinch = null;
@@ -30,11 +33,13 @@
       img.style.transition = animate ? "transform .18s ease" : "none";
       img.style.transform = "translate(" + state.x + "px," + state.y + "px) scale(" + state.scale + ")";
       box.classList.toggle("zoomed", state.scale > 1.001);
-      if (level && showLevel) {
+      if (level && (showLevel || bar !== box)) {
         level.textContent = Math.round(state.scale * 100) + "%";
-        level.classList.add("show");
-        window.clearTimeout(levelTimer);
-        levelTimer = window.setTimeout(function () { level.classList.remove("show"); }, 900);
+        if (bar === box) {
+          level.classList.add("show");
+          window.clearTimeout(levelTimer);
+          levelTimer = window.setTimeout(function () { level.classList.remove("show"); }, 900);
+        }
       }
     }
 
@@ -54,7 +59,7 @@
       return { x: clientX - rect.left - rect.width / 2, y: clientY - rect.top - rect.height / 2 };
     }
 
-    box.querySelectorAll("[data-zoom]").forEach(function (button) {
+    bar.querySelectorAll("[data-zoom]").forEach(function (button) {
       button.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
       button.addEventListener("click", function (event) {
         event.stopPropagation();

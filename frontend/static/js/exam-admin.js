@@ -219,3 +219,21 @@
 
     updateQuestionRows();
 })();
+
+// PDF exam report: generating it takes a few seconds, so the button shows a spinner meanwhile.
+document.addEventListener("click", function (event) {
+    var link = event.target.closest && event.target.closest("a[data-report]");
+    if (!link || link.classList.contains("is-busy")) return;
+    link.classList.add("is-busy");
+    var label = link.querySelector("span");
+    var icon = link.querySelector("i");
+    var oldLabel = label ? label.textContent : "";
+    var oldIcon = icon ? icon.className : "";
+    if (label) label.textContent = "Preparing report…";
+    if (icon) icon.className = "bi bi-arrow-repeat busy-spin";
+    window.setTimeout(function () {
+        link.classList.remove("is-busy");
+        if (label) label.textContent = oldLabel;
+        if (icon) icon.className = oldIcon;
+    }, 12000);
+});

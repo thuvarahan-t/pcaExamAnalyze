@@ -8,8 +8,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
- * Exposes the logged-in user and role flags to every Thymeleaf view so the
- * shared navbar can render the correct dashboard link without the security dialect.
+ * Exposes the logged-in user's display name to every Thymeleaf view (admin portal header).
  */
 @ControllerAdvice(basePackages = "com.example.pcaExamAnalyze.web")
 public class GlobalModelAdvice {
@@ -26,20 +25,13 @@ public class GlobalModelAdvice {
         boolean authenticated = auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()));
 
-        boolean teacher = false;
-        boolean student = false;
         String displayName = null;
 
         if (authenticated) {
-            teacher = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
-            student = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT"));
             User u = users.findByUsernameIgnoreCase(auth.getName()).orElse(null);
             displayName = u != null ? u.getFullName() : auth.getName();
         }
 
-        model.addAttribute("isAuthenticated", authenticated);
-        model.addAttribute("isTeacher", teacher);
-        model.addAttribute("isStudent", student);
         model.addAttribute("currentUserName", displayName);
     }
 }

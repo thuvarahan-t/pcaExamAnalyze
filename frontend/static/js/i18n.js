@@ -26,6 +26,11 @@
     location.reload();
   }
 
+  var tamilFonts = document.createElement("link");
+  tamilFonts.rel = "stylesheet";
+  tamilFonts.href = "/css/tamil-fonts.css?v=1";
+  (document.head || document.documentElement).appendChild(tamilFonts);
+
   var lang = readLang();
   window.PcaLang = { current: lang, set: setLang, t: function (s) { return s; } };
 
@@ -86,8 +91,33 @@
   document.documentElement.classList.add("lang-ta");
   var font = document.createElement("link");
   font.rel = "stylesheet";
-  font.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap";
+  font.href = "/css/tamil-fonts.css?v=1";
   (document.head || document.documentElement).appendChild(font);
+
+  // Tamil typography: Anek Tamil (modern, clean) for Tamil glyphs; Latin text keeps Inter (body)
+  // and Sora (headings) because those come first in the stack. !important is needed because
+  // buttons, inputs and headings set their own font-family.
+  var tamilStyle = document.createElement("style");
+  tamilStyle.textContent =
+    "html.lang-ta body,html.lang-ta button,html.lang-ta input,html.lang-ta select,html.lang-ta textarea," +
+    "html.lang-ta p,html.lang-ta span,html.lang-ta a,html.lang-ta label,html.lang-ta li,html.lang-ta div{" +
+    "font-family:Inter,'Anek Tamil','Noto Sans Tamil','Nirmala UI',Latha,system-ui,sans-serif!important}" +
+    "html.lang-ta h1,html.lang-ta h2,html.lang-ta h3,html.lang-ta h4,html.lang-ta .brand-text,html.lang-ta .brand," +
+    "html.lang-ta .footer-brand,html.lang-ta .exam-card h3{" +
+    "font-family:Sora,'Anek Tamil','Noto Sans Tamil','Nirmala UI',Latha,sans-serif!important;letter-spacing:0!important}" +
+    "html.lang-ta body{line-height:1.6}" +
+    "html.lang-ta h1,html.lang-ta h2,html.lang-ta h3,html.lang-ta h4{line-height:1.35!important}" +
+    "html.lang-ta .hero h1{line-height:1.22!important;font-size:clamp(30px,5.2vw,58px)!important;font-weight:800}" +
+    "html.lang-ta h2,html.lang-ta h3,html.lang-ta .modal-head h2{font-weight:700!important}" +
+    "html.lang-ta .public-select-trigger,html.lang-ta .exam-filter-control,html.lang-ta .gselect-trigger{font-weight:600!important}" +
+    "html.lang-ta .public-select-trigger span,html.lang-ta .gselect-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+    "html.lang-ta .exam-filter-group label{font-size:12px!important;font-weight:700;letter-spacing:0;text-transform:none}" +
+    "html.lang-ta .hero-sub{line-height:1.75}" +
+    "html.lang-ta .exam-card h3{line-height:1.5!important}" +
+    "html.lang-ta .bn-label,html.lang-ta .exam-status,html.lang-ta .section-kicker,html.lang-ta .kicker{letter-spacing:0!important}" +
+    "html.lang-ta .lang-switch button[lang=ta]{font-family:'Anek Tamil','Noto Sans Tamil','Nirmala UI',Latha,sans-serif!important;font-weight:600}" +
+    "html.lang-ta .bi,html.lang-ta [class^='bi-'],html.lang-ta [class*=' bi-']{font-family:'bootstrap-icons'!important}";
+  (document.head || document.documentElement).appendChild(tamilStyle);
 
   // Only text that needs Tamil is listed. Anything not listed (Login, Submit, Saved,
   // Next, Question, Batch, month names...) stays in English on purpose: students
@@ -290,6 +320,30 @@
     "Details saved": "விபரங்கள் save செய்யப்பட்டுள்ளன",
     "My Details": "எனது Details",
     "My Result": "எனது Result",
+    "Pinch or double-tap to zoom": "பெரிதாக்க இரு விரல்களால் இழுக்கவும் அல்லது இருமுறை தட்டவும்",
+    "Double-click or Ctrl + scroll to zoom": "பெரிதாக்க இருமுறை கிளிக் செய்யவும் அல்லது Ctrl + scroll செய்யவும்",
+    "Exam starts in": "தேர்வு தொடங்க இன்னும்",
+    "Days": "நாட்கள்",
+    "Hours": "மணி",
+    "Minutes": "நிமிடம்",
+    "Seconds": "வினாடி",
+    "Instructions": "அறிவுறுத்தல்கள்",
+    "Registration ID": "Registration ID",
+    "Batch · Stream": "Batch · Stream",
+    "Paper details": "Paper விபரங்கள்",
+    "Starting your paper…": "உங்கள் Paper திறக்கப்படுகிறது…",
+    "The paper opens automatically when the timer ends. Keep this page open.": "நேரம் முடிந்ததும் Paper தானாகவே திறக்கும். இந்தப் பக்கத்தை மூட வேண்டாம்.",
+    "Physics Cube Academy": "Physics Cube Academy",
+    "Sit your Physics MCQ papers online, get auto-marked results and see exactly where to improve.": "உங்கள் Physics MCQ Paper-களை online-இல் எழுதுங்கள்; தானாக மதிப்பிடப்பட்ட Result-ஐப் பெற்று, எங்கு முன்னேற வேண்டும் என்பதைத் தெளிவாக அறிந்துகொள்ளுங்கள்.",
+    "Browse papers": "Paper-களைப் பாருங்கள்",
+    "Exam papers": "Exam Paper-கள்",
+    "Options per question": "ஒரு Question-க்கான Options",
+    "Marked results": "மதிப்பிடப்பட்ட Results",
+    "Languages": "மொழிகள்",
+    "Examinations": "தேர்வுகள்",
+    "Available papers": "கிடைக்கும் Paper-கள்",
+    "Papers": "Paper-கள்",
+    "All rights reserved.": "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
     "My Results": "எனது Results",
     "Search exam name...": "Exam பெயரைத் தேடுங்கள்...",
     "Month": "மாதம்",

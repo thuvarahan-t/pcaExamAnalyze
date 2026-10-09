@@ -201,7 +201,8 @@ public class McqAdminService {
         PageResult<McqExam> examPage = page(filtered, requestedPage, 10);
         Map<Long, Long> counts = submissionCounts();
         return new PageResult<>(examPage.items().stream().map(exam -> examRow(exam, counts)).toList(), examPage.page(),
-                examPage.totalPages(), examPage.totalItems(), examPage.hasPrevious(), examPage.hasNext());
+                examPage.totalPages(), examPage.totalItems(), examPage.hasPrevious(), examPage.hasNext(),
+                examPage.pageSize());
     }
 
     @Transactional(readOnly = true)
@@ -320,7 +321,7 @@ public class McqAdminService {
                 .filter(exam -> month == null || month.isBlank() || month.equals(exam.month()))
                 .filter(exam -> year == null || year.equals(exam.year()))
                 .toList();
-        return page(filtered, requestedPage, 9);
+        return page(filtered, requestedPage, 6);
     }
 
     @Transactional(readOnly = true)
@@ -809,7 +810,7 @@ public class McqAdminService {
         int start = Math.min(currentPage * pageSize, rows.size());
         int end = Math.min(start + pageSize, rows.size());
         return new PageResult<>(rows.subList(start, end), currentPage, totalPages, rows.size(),
-                currentPage > 0, currentPage + 1 < totalPages);
+                currentPage > 0, currentPage + 1 < totalPages, pageSize);
     }
 
     private static String csv(String value) {
@@ -826,7 +827,7 @@ public class McqAdminService {
     private record DashboardSnapshot(long expiresAtNanos, Dashboard dashboard) {}
     public record BatchRow(Long id, String name, boolean active) {}
     public record PageResult<T>(List<T> items, int page, int totalPages, long totalItems,
-                                boolean hasPrevious, boolean hasNext) {}
+                                boolean hasPrevious, boolean hasNext, int pageSize) {}
     public record AnalyticsBar(String label, int value, int height) {}
     public record QuestionPerformance(int question, int correct, int answered, int percentage, Double weight,
                                       String unit, Integer expectedSeconds, Integer averageSeconds,

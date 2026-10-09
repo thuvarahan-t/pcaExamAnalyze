@@ -12,9 +12,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Replaces the raw Whitelabel 403 page. When a logged-in user reaches a path their
- * role can't access (e.g. a student opening a /teacher/** URL), send them to their own
- * dashboard instead of a dead-end error. Anyone not authenticated goes to the login page.
+ * Replaces the raw Whitelabel 403 page: a logged-in user without access goes to the exam
+ * portal; anyone not authenticated goes to the admin login.
  */
 @Component
 public class RoleAwareAccessDeniedHandler implements AccessDeniedHandler {
@@ -26,14 +25,7 @@ public class RoleAwareAccessDeniedHandler implements AccessDeniedHandler {
         boolean authenticated = auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(auth.getPrincipal());
 
-        String target;
-        if (!authenticated) {
-            target = "/login";
-        } else {
-            boolean teacher = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
-            target = teacher ? "/teacher/dashboard" : "/student/dashboard";
-        }
+        String target = authenticated ? "/exam" : "/exam/admin-login";
         response.sendRedirect(request.getContextPath() + target);
     }
 }

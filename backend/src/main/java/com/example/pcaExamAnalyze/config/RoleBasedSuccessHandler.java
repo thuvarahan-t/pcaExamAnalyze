@@ -8,28 +8,13 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-/**
- * Sends users to the right home after login: teachers to the teacher dashboard,
- * students to the student dashboard.
- */
+/** After login, the teacher (admin) lands in the exam admin portal. */
 @Component
 public class RoleBasedSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     @Override
-    protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response,
-                                         Authentication authentication) {
-        boolean teacher = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"));
-        if (teacher && "true".equals(request.getParameter("adminLogin"))) {
-            return "/exam/admin";
-        }
-        return teacher ? "/teacher/dashboard" : "/student/dashboard";
-    }
-
-    @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
-        getRedirectStrategy().sendRedirect(request, response,
-                determineTargetUrl(request, response, authentication));
+        getRedirectStrategy().sendRedirect(request, response, "/exam/admin");
     }
 }
