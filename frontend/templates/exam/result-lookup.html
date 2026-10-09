@@ -2,13 +2,13 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
-    <script th:src="@{/js/i18n.js(v=1)}"></script><meta name="viewport" content="width=device-width,initial-scale=1">
+    <script th:src="@{/js/i18n.js(v=7)}"></script><meta name="viewport" content="width=device-width,initial-scale=1">
     <title th:text="|View Result · ${exam.name}|">View Result</title>
     <link rel="icon" type="image/png" th:href="@{/img/favicon-circle.png}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=7)}">
+    <link rel="stylesheet" th:href="@{/css/exam-student.css(v=23)}">
 </head>
 <body>
 <header class="student-nav"><nav class="student-shell nav-glass"><a class="student-brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA"><span>PCA MCQ Exam System</span></a><div class="nav-links"><span data-lang-slot></span><a class="nav-link" th:href="@{/exam/p/{slug}(slug=${exam.slug})}"><i class="bi bi-arrow-left"></i> Paper Details</a><a class="nav-link" th:href="@{/exam}"><i class="bi bi-grid-fill"></i> All Exams</a></div></nav></header>

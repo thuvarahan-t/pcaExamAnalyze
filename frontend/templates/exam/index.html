@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
-    <script th:src="@{/js/i18n.js(v=1)}"></script>
+    <script th:src="@{/js/i18n.js(v=7)}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1f3a">
     <title>PCA MCQ Exam System</title>
@@ -210,17 +210,22 @@
         @media (max-width:560px) { .exam-filter { grid-template-columns:1fr; padding:13px; } .filter-clear { width:100%; justify-content:center; } }
         @media (max-width:480px) { .nav,.wrap { width:min(100% - 24px,1120px); } .brand span { font-size:14px; } .details-nav,.result-nav { padding:9px 7px; font-size:11px; } .admin-modal { padding:22px 16px; border-radius:18px; } }
     </style>
+    <script type="speculationrules">
+    {"prerender":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}],
+     "prefetch":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}]}
+    </script>
+    <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=24)}">
 </head>
 <body>
 <header class="topbar">
     <nav class="nav" aria-label="Exam portal navigation">
-        <a class="brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA logo"><span>PCA MCQ Exam System</span></a>
+        <a class="brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA logo"><span class="brand-text">PCA MCQ Exam System<small>Physics Cube Academy</small></span></a>
         <div class="nav-right">
-            <div class="student-greeting" th:if="${savedStudentName != null}"><span>Hi,</span><strong th:text="${savedStudentName}">Student</strong></div>
-            <div class="nav-actions"><span data-lang-slot></span>
-                <a class="back primary details-nav" th:href="@{/exam/details}"><span class="saved-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span><span>My Details</span></a>
+            <div class="student-greeting" th:if="${savedStudentName != null}"><span class="greet-avatar" aria-hidden="true" th:text="${#strings.toUpperCase(#strings.substring(savedStudentName,0,1))}">S</span><span class="greet-text"><span>Hi,</span><strong th:text="${savedStudentName}">Student</strong></span></div>
+            <span data-lang-slot></span>
+            <div class="nav-actions">
+                <a class="back primary details-nav" th:href="@{/exam/details}"><span class="saved-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span><i class="bi bi-person-vcard-fill" aria-hidden="true"></i><span>My Details</span></a>
                 <a class="back result-nav" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i><span>My Result</span></a>
-                <a class="back icon-nav" th:href="@{/}" aria-label="Home" title="Home"><i class="bi bi-house-door-fill" aria-hidden="true"></i></a>
                 <a class="back icon-nav admin" th:href="@{/exam/admin-login}" aria-label="Admin login" title="Admin login"><i class="bi bi-person-lock" aria-hidden="true"></i></a>
             </div>
         </div>
@@ -228,13 +233,28 @@
 </header>
 
 <section class="hero">
-    <div class="hero-orbit" aria-hidden="true"><span class="hero-formula f1">E = mc²</span><span class="hero-formula f2">F = ma</span><span class="hero-dot d1"></span><span class="hero-dot d2"></span></div>
-    <div class="wrap">
-        <h1>PCA MCQ EXAM SYSTEM</h1>
+    <div class="hero-aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="hero-orbit" aria-hidden="true">
+        <span class="hero-sym s1">E=mc²</span><span class="hero-sym s2">F=ma</span><span class="hero-sym s3">λ</span>
+        <span class="hero-sym s4">Δ</span><span class="hero-sym s5">ω</span><span class="hero-sym s6">ψ</span>
     </div>
+    <div class="wrap">
+        <div class="hero-eyebrow"><i></i> Physics Cube Academy</div>
+        <h1>PCA <span class="grad">MCQ Exam</span> System</h1>
+        <p class="hero-sub">Sit your Physics MCQ papers online, get auto-marked results and see exactly where to improve.</p>
+        <div class="hero-cta">
+            <a class="cta primary" href="#papers">Browse papers <i class="bi bi-arrow-down"></i></a>
+            <a class="cta ghost" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill"></i> My Result</a>
+        </div>
+    </div>
+    <div class="hero-waves" aria-hidden="true"><svg class="wave" viewBox="0 0 2880 120" preserveAspectRatio="none"><path d="M0,70 C240,52 480,52 720,70 S1200,88 1440,70 C1680,52 1920,52 2160,70 S2640,88 2880,70 L2880,120 L0,120Z"/></svg></div>
 </section>
 
-<main class="wrap">
+<main class="wrap" id="papers">
+    <div class="section-head">
+        <div><span class="kicker">Examinations</span><h2>Available papers</h2></div>
+    </div>
     <form class="exam-filter" th:action="@{/exam}" method="get">
         <div class="exam-filter-group"><div class="filter-label-row"><label for="publicExamSearch">Search</label><span class="filter-result-count" id="publicExamCount" th:text="${examPage.totalItems == 1} ? '1 paper' : |${examPage.totalItems} papers|">0 papers</span></div><div class="exam-search-box"><i class="bi bi-search"></i><input class="exam-filter-control" id="publicExamSearch" type="search" name="q" th:value="${examSearch}" placeholder="Search exam name..."></div></div>
         <div class="exam-filter-group">
@@ -264,6 +284,7 @@
     <section id="examResults" th:fragment="examResults" th:attr="data-total-items=${examPage.totalItems}">
     <div class="exam-grid" id="publicExamGrid" aria-live="polite">
         <article class="exam-card" th:each="exam : ${exams}" th:classappend="${exam.status == 'CLOSED'} ? ' closed'" th:attr="data-card-href=@{/exam/p/{slug}(slug=${exam.slug})}" tabindex="0">
+            <div class="exam-card-body">
             <div class="exam-card-head"><span class="exam-status" th:classappend="${#strings.toLowerCase(#strings.replace(exam.status, ' ', '-'))}" th:text="${exam.status}">SCHEDULED</span><span class="exam-count" th:text="|${exam.totalQuestions} Questions · 5 Options|">50 Questions</span></div>
             <h3 th:text="${exam.name}">Exam name</h3>
             <p class="exam-period" th:text="${exam.period}">July 2026</p>
@@ -273,6 +294,7 @@
                 <div th:if="${exam.durationMinutes != null}"><i class="bi bi-clock-fill"></i><span th:text="|${exam.durationMinutes} minutes|">Duration</span></div>
             </div>
             <div class="exam-card-actions"><a class="exam-card-action" th:href="@{/exam/p/{slug}(slug=${exam.slug})}">Select Paper <i class="bi bi-arrow-right"></i></a><a class="exam-card-action result" th:href="@{/exam/p/{slug}/result-lookup(slug=${exam.slug})}">View Result <i class="bi bi-bar-chart-fill"></i></a></div>
+            </div>
         </article>
         <section class="empty" th:if="${#lists.isEmpty(exams)}" aria-live="polite">
             <div class="empty-icon" aria-hidden="true">◎</div>
@@ -280,9 +302,42 @@
             <p>Try changing the search, batch, month or year filters.</p>
         </section>
     </div>
-    <div id="studentPaginationSlot"><nav class="student-pagination" th:if="${examPage.totalPages > 1}" aria-label="Exam paper pages"><a class="student-page" th:classappend="${!examPage.hasPrevious} ? ' disabled'" th:href="${examPage.hasPrevious} ? @{/exam(page=${examPage.page - 1},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})} : '#'"><i class="bi bi-chevron-left"></i></a><a class="student-page" th:each="number : ${#numbers.sequence(0, examPage.totalPages - 1)}" th:classappend="${number == examPage.page} ? ' active'" th:href="@{/exam(page=${number},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})}" th:text="${number + 1}"></a><a class="student-page" th:classappend="${!examPage.hasNext} ? ' disabled'" th:href="${examPage.hasNext} ? @{/exam(page=${examPage.page + 1},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})} : '#'"><i class="bi bi-chevron-right"></i></a></nav></div>
+    <div id="studentPaginationSlot"><th:block th:if="${examPage.totalPages > 1}">
+        <p class="page-summary" th:with="from=${examPage.page * examPage.pageSize + 1}, to=${examPage.page * examPage.pageSize + #lists.size(exams)}">Showing <b th:text="|${from}–${to}|">1–6</b> of <b th:text="${examPage.totalItems}">12</b> papers</p>
+        <nav class="student-pagination" aria-label="Exam paper pages">
+            <a class="student-page nav-step" th:classappend="${!examPage.hasPrevious} ? ' disabled'" th:attr="aria-disabled=${!examPage.hasPrevious}" th:href="${examPage.hasPrevious} ? @{/exam(page=${examPage.page - 1},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})} : '#'" aria-label="Previous page"><i class="bi bi-chevron-left"></i><span>Prev</span></a>
+            <th:block th:each="number : ${#numbers.sequence(0, examPage.totalPages - 1)}">
+                <a class="student-page" th:if="${number == 0 or number == examPage.totalPages - 1 or (number >= examPage.page - 1 and number <= examPage.page + 1)}" th:classappend="${number == examPage.page} ? ' active'" th:attr="aria-current=${number == examPage.page} ? 'page'" th:href="@{/exam(page=${number},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})}" th:text="${number + 1}"></a>
+                <span class="student-gap" th:if="${(number == examPage.page - 2 and number > 0) or (number == examPage.page + 2 and number < examPage.totalPages - 1)}">…</span>
+            </th:block>
+            <a class="student-page nav-step" th:classappend="${!examPage.hasNext} ? ' disabled'" th:attr="aria-disabled=${!examPage.hasNext}" th:href="${examPage.hasNext} ? @{/exam(page=${examPage.page + 1},q=${examSearch},batch=${selectedExamBatch},month=${selectedExamMonth},year=${selectedExamYear})} : '#'" aria-label="Next page"><span>Next</span><i class="bi bi-chevron-right"></i></a>
+        </nav>
+    </th:block></div>
     </section>
 </main>
+
+<footer class="portal-footer">
+    <div class="wrap">
+        <div class="footer-brand"><img th:src="@{/img/favicon-circle.png(v=2)}" alt="PCA logo"><div>Physics Cube Academy<small>PCA MCQ Exam System</small></div></div>
+        <nav class="footer-links" aria-label="Footer"><a href="#papers">Papers</a><a th:href="@{/exam/result}">My Result</a><a th:href="@{/exam/details}">My Details</a></nav>
+        <div class="footer-copy">© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2026</span> Physics Cube Academy (PCA). All rights reserved.</div>
+    </div>
+</footer>
+
+<nav class="bottom-nav" aria-label="Quick navigation">
+    <a class="bn-item" th:classappend="${detailsModal == true} ? ' active'" th:href="@{/exam/details}">
+        <span class="bn-icon"><i class="bi bi-person-vcard-fill" aria-hidden="true"></i><span class="bn-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span></span>
+        <span class="bn-label">My Details</span>
+    </a>
+    <a class="bn-item bn-home" th:classappend="${!(detailsModal == true or resultModal == true)} ? ' active'" th:href="@{/exam}">
+        <span class="bn-icon"><i class="bi bi-house-door-fill" aria-hidden="true"></i></span>
+        <span class="bn-label">Home</span>
+    </a>
+    <a class="bn-item" th:classappend="${resultModal == true} ? ' active'" th:href="@{/exam/result}">
+        <span class="bn-icon"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span>
+        <span class="bn-label">My Result</span>
+    </a>
+</nav>
 
 <div class="details-overlay" th:if="${detailsModal}" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
     <section class="details-modal">
@@ -618,6 +673,66 @@
     (function () {
         var selected = document.getElementById("exam-" + /*[[${selectedExamSlug}]]*/ "");
         if (selected) window.setTimeout(function () { selected.scrollIntoView({behavior:"smooth", block:"center"}); }, 120);
+    })();
+</script>
+<script>
+    (function () {
+        var bar = document.querySelector(".topbar");
+        if (!bar) return;
+        function onScroll() { bar.classList.toggle("scrolled", window.scrollY > 40); }
+        window.addEventListener("scroll", onScroll, {passive: true});
+        onScroll();
+    })();
+</script>
+<script>
+    (function () {
+        if (!/[?&]page=/.test(location.search)) return;
+        var head = document.querySelector(".section-head");
+        if (head) head.scrollIntoView({block: "start"});
+    })();
+</script>
+<script>
+    (function () {
+        var bar = document.createElement("div");
+        bar.className = "nav-progress";
+        bar.setAttribute("aria-hidden", "true");
+        document.body.appendChild(bar);
+
+        var warmed = {};
+        function paperUrl(el) {
+            var node = el && el.closest ? el.closest("[data-card-href], a.exam-card-action:not(.result)") : null;
+            if (!node) return null;
+            return node.dataset.cardHref || node.getAttribute("href");
+        }
+        function warm(event) {
+            var url = paperUrl(event.target);
+            if (!url || warmed[url]) return;
+            warmed[url] = true;
+            var link = document.createElement("link");
+            link.rel = "prefetch";
+            link.as = "document";
+            link.href = url;
+            document.head.appendChild(link);
+        }
+        ["pointerover", "touchstart", "pointerdown", "focusin"].forEach(function (name) {
+            document.addEventListener(name, warm, {passive: true, capture: true});
+        });
+
+        function opening(event) {
+            if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            var link = event.target.closest && event.target.closest("a.exam-card-action:not(.result)");
+            var card = event.target.closest && event.target.closest(".exam-card");
+            if (!link && !(card && card.dataset.cardHref && !event.target.closest("a,button,input,select"))) return;
+            if (card) card.classList.add("is-opening");
+            if (link) link.classList.add("is-loading");
+            bar.className = "nav-progress run";
+        }
+        document.addEventListener("click", opening, true);
+        window.addEventListener("pageshow", function (event) {
+            if (!event.persisted) return;
+            bar.className = "nav-progress";
+            document.querySelectorAll(".is-opening,.is-loading").forEach(function (el) { el.classList.remove("is-opening", "is-loading"); });
+        });
     })();
 </script>
 <script th:src="@{/js/exam-dialog.js(v=1)}"></script>

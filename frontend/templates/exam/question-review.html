@@ -28,9 +28,9 @@
                 <p class="q-review-free" th:if="${answer.state == 'FREE_MARK'}"><i class="bi bi-gift-fill"></i> This question was withdrawn by the teacher, so everyone receives its mark.</p>
                 <div class="step-viewer q-review-viewer" th:if="${result.imageVersions.get(q) != null}">
                     <img th:attr="data-src=${result.imageUrl(q)},data-fallback=@{/exam/results/{id}/questions/{q}/image(id=${result.submissionId},q=${q},v=${result.imageVersions.get(q)})}" th:alt="|Question ${q}|" decoding="async" draggable="false">
-                    <div class="zoom-tools" role="group" aria-label="Image zoom"><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div>
-                    <span class="zoom-level" aria-live="polite"></span>
+
                 </div>
+                <div class="zoom-bar" th:if="${result.imageVersions.get(q) != null}" role="group" aria-label="Image zoom"><span class="zoom-hint"><i class="bi bi-hand-index-thumb"></i><span class="hint-touch">Pinch or double-tap to zoom</span><span class="hint-mouse">Double-click or Ctrl + scroll to zoom</span></span><button type="button" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button><span class="zoom-level" aria-live="polite">100%</span><button type="button" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button><button type="button" data-zoom="reset" aria-label="Fit image"><i class="bi bi-arrows-angle-contract"></i></button></div>
                 <div class="step-missing" th:if="${result.imageVersions.get(q) == null}"><i class="bi bi-image"></i><span>Image for this question is not available.</span></div>
                 <div class="step-subs" th:if="${subs != null and !#lists.isEmpty(subs)}" aria-label="Supporting images">
                     <button type="button" class="step-sub" th:each="sid, st : ${subs}" th:attr="data-sub-index=${st.index},aria-label=|Open supporting image ${st.count}|">

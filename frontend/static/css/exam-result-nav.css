@@ -1,0 +1,8 @@
+/* Result page (/exam/p/{slug}/result): shares the portal top bar + phone bottom nav. */
+.result-page { background: #f5f7ff; }
+.result-page .result-wrap { margin-top: 100px; }
+.result-page .topbar .all-nav { color: var(--p-blue); }
+@media (max-width: 760px) {
+    .result-page .topbar .all-nav { display: none; }
+    .result-page .result-wrap { margin-top: 86px; margin-bottom: calc(100px + env(safe-area-inset-bottom)); }
+}
