@@ -42,6 +42,7 @@ public class McqAdminService {
 
     public static final ZoneId PCA_ZONE = ZoneId.of("Asia/Colombo");
     private static final Instant NO_CLOSE_AT = Instant.parse("9999-12-31T23:59:59Z");
+    private static final int SUBMISSION_PAGE_SIZE = 20;
     public static final List<String> STREAMS = List.of("Bio Science", "Physical Science");
     public static final List<String> MONTHS = List.of(
             "January", "February", "March", "April", "May", "June",
@@ -76,20 +77,17 @@ public class McqAdminService {
         DashboardSnapshot snapshot = dashboardSnapshot;
         if (now < snapshot.expiresAtNanos()) return snapshot.dashboard();
         List<McqExam> allExams = exams.findAllByOrderByCreatedAtDesc();
-        List<McqSubmission> allSubmissions = submissions.findAllByOrderByCreatedAtDesc();
         Instant since = Instant.now().minusSeconds(24 * 60 * 60);
-        List<McqSubmission> recentSubmissions = allSubmissions.stream()
-                .filter(submission -> submission.getSubmittedAt() != null
-                        && !submission.getSubmittedAt().isBefore(since))
-                .toList();
-        Map<Long, List<McqSubmission>> byExam = recentSubmissions.stream()
-                .collect(Collectors.groupingBy(submission -> submission.getExam().getId()));
+        // Counted in the database: loading every submission with its answers grew with all-time traffic.
+        Map<Long, Long> byExam = new java.util.HashMap<>();
+        submissions.countSubmittedSinceByExam(since).forEach(row -> byExam.put(row.getExamId(), row.getTotal()));
         List<ExamSubmissionCount> submissionCounts = allExams.stream()
                 .filter(exam -> byExam.containsKey(exam.getId()))
-                .map(exam -> new ExamSubmissionCount(exam.getId(), exam.getName(), byExam.get(exam.getId()).size()))
+                .map(exam -> new ExamSubmissionCount(exam.getId(), exam.getName(), byExam.get(exam.getId())))
                 .sorted(Comparator.comparingLong(ExamSubmissionCount::count).reversed())
                 .toList();
-        Dashboard loaded = new Dashboard(allExams.size(), recentSubmissions.size(), activeBatchRows().size(),
+        long recentSubmissions = submissionCounts.stream().mapToLong(ExamSubmissionCount::count).sum();
+        Dashboard loaded = new Dashboard(allExams.size(), recentSubmissions, activeBatchRows().size(),
                 submissionCounts, allExams.stream().limit(5).map(exam -> examRow(exam, submissionCounts())).toList());
         dashboardSnapshot = new DashboardSnapshot(now + 5_000_000_000L, loaded);
         return loaded;
@@ -653,9 +651,7 @@ public class McqAdminService {
 
     @Transactional(readOnly = true)
     public List<SubmissionRow> submissionRows(Long examId, String search) {
-        List<McqSubmission> source = examId == null
-                ? submissions.findAllByOrderByCreatedAtDesc()
-                : submissions.findByExamIdOrderByCreatedAtDesc(examId);
+        List<McqSubmission> source = submissionListRows(examId);
         String needle = clean(search).toLowerCase(Locale.ROOT);
         return source.stream()
                 .filter(s -> needle.isBlank()
@@ -667,25 +663,34 @@ public class McqAdminService {
     @Transactional(readOnly = true)
     public PageResult<SubmissionRow> submissionPage(Long examId, String search, LocalDate from,
                                                      LocalDate to, int requestedPage) {
-        List<McqSubmission> source = examId == null
-                ? submissions.findAllByOrderByCreatedAtDesc()
-                : submissions.findByExamIdOrderByCreatedAtDesc(examId);
+        // Same filters as before (name or registration contains the search; submitted date within the PCA-zone
+        // day range), but evaluated by the database so only one page of rows is loaded.
         String needle = clean(search).toLowerCase(Locale.ROOT);
-        List<SubmissionRow> filtered = source.stream()
-                .filter(s -> needle.isBlank()
-                        || s.getStudentName().toLowerCase(Locale.ROOT).contains(needle)
-                        || s.getRegistrationId().toLowerCase(Locale.ROOT).contains(needle))
-                .filter(s -> dateMatches(s.getSubmittedAt(), from, to))
-                .map(this::submissionRow)
-                .toList();
-        return page(filtered, requestedPage, 20);
+        String pattern = "%" + needle.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        Instant fromInstant = from == null ? Instant.EPOCH : from.atStartOfDay(PCA_ZONE).toInstant();
+        Instant toInstant = to == null ? NO_CLOSE_AT : to.plusDays(1).atStartOfDay(PCA_ZONE).toInstant();
+        java.util.function.IntFunction<org.springframework.data.domain.Page<McqSubmission>> fetch = page ->
+                submissions.findSubmissionPage(examId == null, examId == null ? -1L : examId, pattern,
+                        from != null, fromInstant, to != null, toInstant,
+                        org.springframework.data.domain.PageRequest.of(page, SUBMISSION_PAGE_SIZE));
+        var result = fetch.apply(Math.max(0, requestedPage));
+        // A page past the end shows the last page, as the in-memory pager did.
+        if (result.getContent().isEmpty() && result.getTotalElements() > 0) result = fetch.apply(result.getTotalPages() - 1);
+        int currentPage = result.getTotalElements() == 0 ? 0 : result.getNumber();
+        return new PageResult<>(result.getContent().stream().map(this::submissionRow).toList(), currentPage,
+                result.getTotalPages(), result.getTotalElements(), currentPage > 0,
+                currentPage + 1 < result.getTotalPages(), SUBMISSION_PAGE_SIZE);
+    }
+
+    private List<McqSubmission> submissionListRows(Long examId) {
+        return examId == null
+                ? submissions.findAllByOrderByCreatedAtDescIdDesc()
+                : submissions.findRowsByExamIdOrderByCreatedAtDescIdDesc(examId);
     }
 
     @Transactional(readOnly = true)
     public byte[] exportCsv(Long examId) {
-        List<McqSubmission> source = examId == null
-                ? submissions.findAllByOrderByCreatedAtDesc()
-                : submissions.findByExamIdOrderByCreatedAtDesc(examId);
+        List<McqSubmission> source = submissionListRows(examId);
         StringBuilder csv = new StringBuilder("Receipt,Exam,Student,Registration ID,NIC,Email,Batch,School,Stream,District,Submitted,Status,Score\r\n");
         for (McqSubmission s : source) {
             csv.append(csv(s.getReceiptNumber())).append(',')
@@ -795,13 +800,6 @@ public class McqAdminService {
 
     public static String formatPublic(Instant instant) {
         return format(instant);
-    }
-
-    private static boolean dateMatches(Instant instant, LocalDate from, LocalDate to) {
-        if (from == null && to == null) return true;
-        if (instant == null) return false;
-        LocalDate date = instant.atZone(PCA_ZONE).toLocalDate();
-        return (from == null || !date.isBefore(from)) && (to == null || !date.isAfter(to));
     }
 
     private static <T> PageResult<T> page(List<T> rows, int requestedPage, int pageSize) {

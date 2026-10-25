@@ -323,6 +323,8 @@ public class ExamPortalController {
                             .filename(pdf.fileName()).build().toString()).body(pdf.bytes());
         } catch (IllegalArgumentException | IllegalStateException ex) {
             return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            return McqAdminController.reportsBusy();
         }
     }
     @PostMapping("/exam/details")

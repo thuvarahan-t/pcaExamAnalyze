@@ -149,7 +149,12 @@ public class McqAdminController {
     /** Complete exam analysis as a downloadable PDF report. */
     @GetMapping("/exams/{id}/report.pdf")
     public ResponseEntity<byte[]> examReport(@PathVariable Long id) {
-        ExamReportPdfService.Pdf pdf = reportPdf.render(id);
+        ExamReportPdfService.Pdf pdf;
+        try {
+            pdf = reportPdf.render(id);
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            return reportsBusy();
+        }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(pdf.fileName()).build().toString())
                 .contentType(MediaType.APPLICATION_PDF)
@@ -160,8 +165,20 @@ public class McqAdminController {
     /** Starts building the report in the background; the page then polls {@link #reportStatus}. */
     @PostMapping("/exams/{id}/report/start")
     @ResponseBody
-    public Map<String, String> startReport(@PathVariable Long id) {
-        return Map.of("job", reportJobs.start(id));
+    public ResponseEntity<Map<String, String>> startReport(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(Map.of("job", reportJobs.start(id)));
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            return ResponseEntity.status(503).header(HttpHeaders.RETRY_AFTER, "30").cacheControl(CacheControl.noStore())
+                    .body(Map.of("message", "Reports are busy. Please try again shortly."));
+        }
+    }
+
+    /** Every report slot is taken: say so plainly rather than failing with a server error. */
+    static ResponseEntity<byte[]> reportsBusy() {
+        return ResponseEntity.status(503).header(HttpHeaders.RETRY_AFTER, "30").cacheControl(CacheControl.noStore())
+                .contentType(new MediaType("text", "plain", java.nio.charset.StandardCharsets.UTF_8))
+                .body("Reports are busy. Please try again shortly.".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     @GetMapping("/reports/{job}/status")

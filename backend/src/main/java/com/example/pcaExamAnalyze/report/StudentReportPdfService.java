@@ -2,16 +2,13 @@ package com.example.pcaExamAnalyze.report;
 
 import com.example.pcaExamAnalyze.repo.McqSubmissionRepository;
 import com.example.pcaExamAnalyze.service.McqStudentExamService;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.W3CDom;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import java.awt.Color;
-import java.io.ByteArrayOutputStream;
 import java.util.*;
 
 /** Private, release-gated student report; never exposes other students' identities. */
@@ -22,21 +19,46 @@ public class StudentReportPdfService {
     private final ExamReportService reports;
     private final SpringTemplateEngine templates;
     private final StudentPerformanceReportService performance;
+    private final PdfRenderGate gate;
+    private final TransactionTemplate readOnly;
 
     public StudentReportPdfService(McqStudentExamService students, McqSubmissionRepository submissions,
                                    ExamReportService reports, SpringTemplateEngine templates,
-                                   StudentPerformanceReportService performance) {
+                                   StudentPerformanceReportService performance, PdfRenderGate gate,
+                                   PlatformTransactionManager transactions) {
         this.students = students; this.submissions = submissions; this.reports = reports; this.templates = templates;
-        this.performance = performance;
+        this.performance = performance; this.gate = gate;
+        this.readOnly = new TransactionTemplate(transactions);
+        this.readOnly.setReadOnly(true);
     }
 
-    @Transactional(readOnly = true)
     public ExamReportPdfService.Pdf render(Long id, String registration, String nic) {
         return render(id, registration, nic, (stage, percent) -> {});
     }
 
-    @Transactional(readOnly = true)
+    /** Not transactional: the database work runs in {@link #model}, so no connection is held while the PDF is painted. */
     public ExamReportPdfService.Pdf render(Long id, String registration, String nic,
+            java.util.function.BiConsumer<String, Integer> progress) {
+        return gate.run(() -> {
+            org.w3c.dom.Document dom = page(id, registration, nic, progress);
+            progress.accept("Writing your PDF", 90);
+            try {
+                byte[] bytes = PdfHtml.write(dom, Map.of("Inter", new int[]{400, 700}));
+                progress.accept("Finishing your report", 98);
+                return new ExamReportPdfService.Pdf(bytes, "PCA-Student-Report-" + id + ".pdf");
+            } catch (java.io.IOException e) { throw new IllegalStateException("Could not create your report", e); }
+        });
+    }
+
+    /** The model and HTML string go out of scope here, so only the DOM stays alive while the PDF is painted. */
+    private org.w3c.dom.Document page(Long id, String registration, String nic,
+            java.util.function.BiConsumer<String, Integer> progress) {
+        Context ctx = readOnly.execute(status -> model(id, registration, nic, progress));
+        progress.accept("Formatting your corrected answer sheet", 80);
+        return PdfHtml.dom(templates.process("report/student-report", ctx));
+    }
+
+    private Context model(Long id, String registration, String nic,
             java.util.function.BiConsumer<String, Integer> progress) {
         progress.accept("Checking your released result", 3);
         var result = students.resultBySubmission(id, registration, nic);
@@ -84,22 +106,6 @@ public class StudentReportPdfService {
         ctx.setVariable("nameImg", TextImages.render(result.studentName(), true, 12, new Color(15, 35, 65)));
         ctx.setVariable("examImg", TextImages.render(result.examName(), true, 18, new Color(15, 35, 65)));
         ctx.setVariable("schoolImg", TextImages.render(result.school(), false, 10, new Color(15, 35, 65)));
-        progress.accept("Formatting your corrected answer sheet", 80);
-        String html = templates.process("report/student-report", ctx);
-        try (var out = new ByteArrayOutputStream()) {
-            var builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            for (int weight : new int[]{400, 700}) {
-                String path = "report/fonts/Inter-" + weight + ".ttf";
-                builder.useFont(() -> { try { return new ClassPathResource(path).getInputStream(); }
-                    catch (java.io.IOException e) { throw new IllegalStateException(e); } }, "Inter", weight,
-                    com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder.FontStyle.NORMAL, true);
-            }
-            var parsed = Jsoup.parse(html); parsed.outputSettings().syntax(org.jsoup.nodes.Document.OutputSettings.Syntax.xml); builder.withW3cDocument(new W3CDom().fromJsoup(parsed), "/");
-            progress.accept("Writing your PDF", 90);
-            builder.toStream(out); builder.run();
-            progress.accept("Finishing your report", 98);
-            return new ExamReportPdfService.Pdf(out.toByteArray(), "PCA-Student-Report-" + id + ".pdf");
-        } catch (java.io.IOException e) { throw new IllegalStateException("Could not create your report", e); }
+        return ctx;
     }
 }
