@@ -404,3 +404,9 @@ body.exam-submit-busy{overflow:hidden}
 .result-export-pending{display:flex;align-items:center;justify-content:center;gap:14px;margin:28px 0 0;padding:20px;border:1px solid #a7f3d0;border-radius:18px;color:#065f46;background:#ecfdf5}.result-export-pending>i{font-size:30px}.result-export-pending strong,.result-export-pending span{display:block}.result-export-pending strong{font:800 16px Sora,Inter,sans-serif}.result-export-pending span{margin-top:4px;color:#047857;font-size:11px}
 .result-export-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:24px}.result-export-grid>div{padding:15px 17px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}.result-export-grid span,.result-export-grid strong{display:block}.result-export-grid span{color:#64748b;font-size:9px;font-weight:850;letter-spacing:.08em}.result-export-grid strong{margin-top:6px;font-size:13px;overflow-wrap:anywhere}.result-export-grid .result-export-success{color:#059669}
 .result-export-card footer{display:flex;justify-content:space-between;align-items:center;padding:18px 38px;color:#64748b;background:#eef2f7;font-size:10px}.result-export-card footer strong{color:#1d4ed8;font-size:11px;letter-spacing:.05em}
+
+/* Keep the score and its caption together in the centre of the result ring. */
+.result-detail-body .detail-score-ring{flex:0 0 112px}
+.result-detail-body .detail-score-ring>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}
+.result-detail-body .detail-score-ring strong{margin:0;font-size:20px;line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.result-detail-body .detail-score-ring small{margin:0;line-height:1.4}

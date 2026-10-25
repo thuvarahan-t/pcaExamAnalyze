@@ -27,7 +27,7 @@
         </div>
     </nav>
 </header>
-<main class="result-wrap">
+<main class="result-wrap"><div class="result-share-actions" th:if="${result.released}"><a class="result-share-button" data-student-pdf th:attr="data-start-url=@{/exam/results/{id}/report/start(id=${result.submissionId})},data-csrf-header=${_csrf.headerName},data-csrf-token=${_csrf.token}" th:href="@{/exam/results/{id}/report.pdf(id=${result.submissionId})}"><i class="bi bi-file-earmark-pdf-fill"></i> Download complete exam report (PDF)</a></div>
     <section class="surface result-hero">
         <div class="result-icon"><i class="bi bi-check2-circle"></i></div><h1>Paper submitted</h1><p th:text="${result.examName}"></p>
         <div class="score-ring" th:if="${result.released}" th:style="|--score:${result.percentage}%|"><div><strong th:text="|${result.score}/${result.totalQuestions}|"></strong><span th:text="|${#numbers.formatDecimal(result.percentage,1,0)}%|"></span></div></div>
@@ -85,5 +85,5 @@
 <script th:if="${result.questionImages}" th:src="@{/js/exam-zoom.js(v=3)}"></script><script th:if="${result.questionImages}" th:src="@{/js/exam-review.js(v=2)}"></script>
 <script>try{Object.keys(localStorage).forEach(function(k){if(k.indexOf("pca-mcq-session-")===0||k.indexOf("pca-mcq-pending-")===0)localStorage.removeItem(k)})}catch(e){}</script>
 <script th:src="@{/js/html2canvas.min.js(v=1)}"></script><script th:src="@{/js/result-share.js(v=4)}"></script>
-</body>
+<script th:src="@{/js/student-report-download.js(v=1)}"></script></body>
 </html>
