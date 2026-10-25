@@ -39,8 +39,7 @@ public class StudentPerformanceReportService {
                         int wrong, int blank, int free, String percentage, int bar, List<Answer> answers) {}
     public record Report(Label student, String registration, String generated, List<Paper> papers,
                          int total, int correct, int wrong, int blank, int free, String average, String combined,
-                         int assessed, int tagged, int untagged, List<Topic> topics, List<Topic> levels,
-                         List<Topic> contents, List<Topic> outcomes, List<Topic> priorities,
+                         int assessed, int tagged, int untagged, List<Topic> topics, List<Topic> priorities,
                          List<Topic> strengths, int weakCount, int midCount, int strongCount) {}
     private static final class Counter {
         final String name; int correct, wrong, blank;
@@ -79,8 +78,7 @@ public class StudentPerformanceReportService {
     @Transactional(readOnly = true)
     public Report build(List<Long> ids, String registration, String nic, BiConsumer<String, Integer> progress) {
         var selected = owned(ids, registration, nic);
-        Map<String, Counter> units = new LinkedHashMap<>(), levels = new LinkedHashMap<>(),
-                contents = new LinkedHashMap<>(), outcomes = new LinkedHashMap<>();
+        Map<String, Counter> units = new LinkedHashMap<>();
         List<Paper> papers = new ArrayList<>();
         int total = 0, correct = 0, wrong = 0, blank = 0, free = 0, tagged = 0, assessed = 0;
         double sumPercentages = 0;
@@ -101,19 +99,11 @@ public class StudentPerformanceReportService {
                 else if (state.equals("CORRECT")) paperCorrect++;
                 else if (state.equals("INCORRECT")) paperWrong++;
                 else paperBlank++;
-                Set<String> unitNames = new LinkedHashSet<>(), levelNames = new LinkedHashSet<>(),
-                        contentNames = new LinkedHashSet<>(), outcomeNames = new LinkedHashSet<>();
+                Set<String> unitNames = new LinkedHashSet<>();
                 for (var tag : tags.getOrDefault(q, List.of())) {
                     String unit = clean(tag.unitName());
                     if (unit.isEmpty()) continue;
                     unitNames.add(unit);
-                    String level = clean(tag.levelName());
-                    String competency = clean(tag.competency());
-                    String heading = unit + (level.isEmpty() ? "" : " / " + level)
-                            + (competency.isEmpty() ? "" : " / " + competency);
-                    if (!level.isEmpty() || !competency.isEmpty()) levelNames.add(heading);
-                    for (String content : tag.contents()) if (!clean(content).isEmpty()) contentNames.add(unit + " / " + clean(content));
-                    for (String outcome : tag.outcomes()) if (!clean(outcome).isEmpty()) outcomeNames.add(unit + " / " + clean(outcome));
                 }
                 // Older exams retain metadata without structured syllabus tags. Do not guess associations.
                 if (unitNames.isEmpty() && meta.containsKey(q)) {
@@ -123,8 +113,7 @@ public class StudentPerformanceReportService {
                     assessed++;
                     if (!unitNames.isEmpty()) tagged++;
                     String ref = "E" + paperNumber + " Q" + q;
-                    add(units, unitNames, state, ref); add(levels, levelNames, state, ref);
-                    add(contents, contentNames, state, ref); add(outcomes, outcomeNames, state, ref);
+                    add(units, unitNames, state, ref);
                 }
                 answers.add(new Answer(q, choice == null ? "-" : choice.toString(),
                         isFree ? "Free mark" : accepted.isEmpty() ? "Key not set" : accepted.toString().replaceAll("[\\[\\]]", ""),
@@ -147,7 +136,7 @@ public class StudentPerformanceReportService {
         return new Report(label(selected.getFirst().getStudentName(), 52, 16, true), registration,
                 McqAdminService.formatPublic(Instant.now()), papers, total, correct, wrong, blank, free,
                 pct(sumPercentages / papers.size()), pct(total == 0 ? 0 : correct * 100.0 / total),
-                assessed, tagged, assessed - tagged, topicRows, rows(levels), rows(contents), rows(outcomes), priorities,
+                assessed, tagged, assessed - tagged, topicRows, priorities,
                 strengths, count(topicRows, "Weak"), count(topicRows, "Needs practice"), count(topicRows, "Strong"));
     }
 
