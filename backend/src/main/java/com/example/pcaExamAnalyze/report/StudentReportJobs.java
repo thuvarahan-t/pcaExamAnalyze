@@ -16,6 +16,7 @@ public class StudentReportJobs {
         public final java.util.List<Long> submissionIds;
         private final String owner;
         private volatile long touched = System.currentTimeMillis();
+        private volatile long served;
         private String state = "RUNNING", stage = "Waiting to prepare your report", error = "";
         private int percentage = 1;
         private ExamReportPdfService.Pdf pdf;
@@ -28,7 +29,11 @@ public class StudentReportJobs {
         public synchronized Map<String, Object> status() {
             return Map.of("state", state, "stage", stage, "percentage", percentage, "error", error);
         }
-        public synchronized ExamReportPdfService.Pdf pdf() { return pdf; }
+        /** The finished PDF; the first call marks it served so its bytes can be released soon after. */
+        public synchronized ExamReportPdfService.Pdf pdf() {
+            if (pdf != null && served == 0) served = System.currentTimeMillis();
+            return pdf;
+        }
         synchronized boolean running() { return "RUNNING".equals(state); }
         synchronized void done(ExamReportPdfService.Pdf pdf) {
             this.pdf = pdf; state = "DONE"; stage = "Your report is ready"; percentage = 100;
@@ -92,9 +97,13 @@ public class StudentReportJobs {
         job.touched = System.currentTimeMillis();
         return job;
     }
+    /** Finished PDFs live on the heap: drop them 10 minutes after last use, or 2 minutes after the file was served. */
     private void purge() {
-        long limit = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(10);
-        jobs.values().removeIf(job -> !job.running() && job.touched < limit);
+        long now = System.currentTimeMillis();
+        long limit = now - TimeUnit.MINUTES.toMillis(10);
+        long servedLimit = now - TimeUnit.MINUTES.toMillis(2);
+        jobs.values().removeIf(job -> !job.running()
+                && (job.touched < limit || job.served != 0 && job.served < servedLimit));
     }
     @PreDestroy void close() { pool.shutdownNow(); }
 }

@@ -75,7 +75,7 @@ public class McqStudentExamService {
         McqExam exam = requirePublishedExam(slug);
         if (!isAvailable(exam)) throw new IllegalStateException("This examination is not open for answers yet");
         McqSubmission submission = submissions
-                .findFirstByExamIdAndRegistrationIdIgnoreCaseAndNicOrderByCreatedAtDesc(
+                .findFirstByExamIdAndRegistrationIdIgnoreCaseAndNicOrderByCreatedAtDescIdDesc(
                         exam.getId(), details.getRegistrationId(), details.getNic())
                 .orElseGet(McqSubmission::new);
         if (submission.getId() != null && submission.getStatus() == McqSubmissionStatus.SUBMITTED) return submission;
@@ -347,7 +347,7 @@ public class McqStudentExamService {
         }
         McqExam exam = requirePublishedExam(slug);
         McqSubmission submission = submissions
-                .findFirstByExamIdAndRegistrationIdIgnoreCaseAndNicOrderByCreatedAtDesc(
+                .findFirstByExamIdAndRegistrationIdIgnoreCaseAndNicOrderByCreatedAtDescIdDesc(
                         exam.getId(), normalizedRegistration, normalizedNic)
                 .orElseThrow(() -> new IllegalStateException(
                         "We could not find a matching result. Check the Registration ID and NIC number"));

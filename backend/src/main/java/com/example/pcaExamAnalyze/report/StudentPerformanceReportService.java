@@ -5,15 +5,12 @@ import com.example.pcaExamAnalyze.repo.McqSubmissionRepository;
 import com.example.pcaExamAnalyze.service.McqAdminService;
 import com.example.pcaExamAnalyze.service.McqExamQuestionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.context.Context;
-import org.springframework.core.io.ClassPathResource;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.W3CDom;
 import java.awt.Color;
-import java.io.ByteArrayOutputStream;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -25,9 +22,14 @@ public class StudentPerformanceReportService {
     private final McqSubmissionRepository submissions;
     private final McqExamQuestionService questions;
     private final SpringTemplateEngine templates;
+    private final PdfRenderGate gate;
+    private final TransactionTemplate readOnly;
     public StudentPerformanceReportService(McqSubmissionRepository submissions, McqExamQuestionService questions,
-                                           SpringTemplateEngine templates) {
-        this.submissions = submissions; this.questions = questions; this.templates = templates;
+                                           SpringTemplateEngine templates, PdfRenderGate gate,
+                                           PlatformTransactionManager transactions) {
+        this.submissions = submissions; this.questions = questions; this.templates = templates; this.gate = gate;
+        this.readOnly = new TransactionTemplate(transactions);
+        this.readOnly.setReadOnly(true);
     }
     public record Label(String text, List<ExamReport.Img> lines) {}
     /** Accuracy below this is a weak area; at or above {@link #STRONG} is a strength. */
@@ -176,24 +178,24 @@ public class StudentPerformanceReportService {
         return new Label(text, lines);
     }
 
-    @Transactional(readOnly = true)
+    /** Not transactional: {@link #build} runs in its own read-only transaction, so no connection is held while painting. */
     public ExamReportPdfService.Pdf render(List<Long> ids, String registration, String nic, BiConsumer<String,Integer> progress) {
-        var report = build(ids, registration, nic, progress);
+        return gate.run(() -> {
+            org.w3c.dom.Document dom = page(ids, registration, nic, progress);
+            progress.accept("Writing your performance PDF", 90);
+            try {
+                byte[] bytes = PdfHtml.write(dom, Map.of("Inter", new int[]{400, 700}));
+                progress.accept("Finishing your report", 98);
+                return new ExamReportPdfService.Pdf(bytes, "PCA-Performance-Report.pdf");
+            } catch (java.io.IOException ex) { throw new IllegalStateException("Could not create performance report", ex); }
+        });
+    }
+
+    /** The report and HTML string go out of scope here, so only the DOM stays alive while the PDF is painted. */
+    private org.w3c.dom.Document page(List<Long> ids, String registration, String nic, BiConsumer<String,Integer> progress) {
+        var report = readOnly.execute(status -> build(ids, registration, nic, progress));
         progress.accept("Formatting subject analysis", 78);
         var ctx = new Context(Locale.ENGLISH); ctx.setVariable("r", report);
-        String html = templates.process("report/student-performance", ctx);
-        try (var out = new ByteArrayOutputStream()) {
-            var builder = new PdfRendererBuilder(); builder.useFastMode();
-            for (int weight : new int[]{400,700}) {
-                String path = "report/fonts/Inter-" + weight + ".ttf";
-                builder.useFont(() -> { try { return new ClassPathResource(path).getInputStream(); }
-                    catch (java.io.IOException ex) { throw new IllegalStateException(ex); } }, "Inter", weight,
-                        com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder.FontStyle.NORMAL, true);
-            }
-            var parsed = Jsoup.parse(html); parsed.outputSettings().syntax(org.jsoup.nodes.Document.OutputSettings.Syntax.xml);
-            builder.withW3cDocument(new W3CDom().fromJsoup(parsed), "/"); builder.toStream(out);
-            progress.accept("Writing your performance PDF", 90); builder.run(); progress.accept("Finishing your report", 98);
-            return new ExamReportPdfService.Pdf(out.toByteArray(), "PCA-Performance-Report.pdf");
-        } catch (java.io.IOException ex) { throw new IllegalStateException("Could not create performance report", ex); }
+        return PdfHtml.dom(templates.process("report/student-performance", ctx));
     }
 }

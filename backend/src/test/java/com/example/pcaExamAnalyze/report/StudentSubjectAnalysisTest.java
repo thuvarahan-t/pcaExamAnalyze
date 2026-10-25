@@ -35,7 +35,8 @@ class StudentSubjectAnalysisTest {
         resolver.setCharacterEncoding("UTF-8");
         var templates = new SpringTemplateEngine();
         templates.setTemplateResolver(resolver);
-        var service = new StudentPerformanceReportService(submissions, questions, templates);
+        var service = new StudentPerformanceReportService(submissions, questions, templates, new PdfRenderGate(1, 60),
+                mock(org.springframework.transaction.PlatformTransactionManager.class));
 
         for (long id : List.of(1L, 2L)) {
             var exam = new McqExam();

@@ -8,8 +8,10 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Builds exam reports in the background so a slow report (large exam, slow database, many images) never
@@ -51,7 +53,9 @@ public class ExamReportJobs {
 
     private final ExamReportPdfService pdf;
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
-    private final ExecutorService pool = Executors.newFixedThreadPool(2, runnable -> {
+    /** Bounded queue: a full queue answers "busy" (see {@link #start}) instead of piling up work without limit. */
+    private final ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(8), runnable -> {
         Thread thread = new Thread(runnable, "exam-report");
         thread.setDaemon(true);
         return thread;
@@ -61,7 +65,10 @@ public class ExamReportJobs {
         this.pdf = pdf;
     }
 
-    /** Starts (or joins an already running) report job for the exam and returns its id. */
+    /**
+     * Starts (or joins an already running) report job for the exam and returns its id.
+     * @throws RejectedExecutionException when the report queue is full
+     */
     public String start(Long examId) {
         purge();
         for (Job existing : jobs.values()) {
@@ -69,7 +76,17 @@ public class ExamReportJobs {
         }
         Job job = new Job(UUID.randomUUID().toString(), examId);
         jobs.put(job.id, job);
-        pool.submit(() -> {
+        try {
+            submit(job, examId);
+        } catch (RejectedExecutionException ex) {
+            jobs.remove(job.id);
+            throw ex;
+        }
+        return job.id;
+    }
+
+    private void submit(Job job, Long examId) {
+        pool.execute(() -> {
             try {
                 ExamReportPdfService.Pdf result = pdf.render(examId, job::progress);
                 job.bytes = result.bytes();
@@ -79,12 +96,11 @@ public class ExamReportJobs {
                 job.percentage = 100;
             } catch (Throwable ex) {
                 log.error("Exam report for exam {} failed", examId, ex);
-                job.error = ex instanceof IllegalArgumentException ? ex.getMessage()
+                job.error = ex instanceof IllegalArgumentException || ex instanceof RejectedExecutionException ? ex.getMessage()
                         : "The report could not be created. Please try again; if it keeps failing, check the server log.";
                 job.state = State.FAILED;
             }
         });
-        return job.id;
     }
 
     public Job get(String id) {

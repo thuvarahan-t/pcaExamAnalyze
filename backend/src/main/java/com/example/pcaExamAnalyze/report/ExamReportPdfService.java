@@ -1,21 +1,15 @@
 package com.example.pcaExamAnalyze.report;
 
-import com.openhtmltopdf.extend.FSSupplier;
-import com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.W3CDom;
-import org.jsoup.nodes.Document;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +28,14 @@ public class ExamReportPdfService {
 
     private final SpringTemplateEngine templates;
     private final ExamReportService reports;
+    private final PdfRenderGate gate;
     private volatile String logo;
     private volatile String banner;
 
-    public ExamReportPdfService(SpringTemplateEngine templates, ExamReportService reports) {
+    public ExamReportPdfService(SpringTemplateEngine templates, ExamReportService reports, PdfRenderGate gate) {
         this.templates = templates;
         this.reports = reports;
+        this.gate = gate;
     }
 
     public record Pdf(byte[] bytes, String fileName) {}
@@ -49,48 +45,34 @@ public class ExamReportPdfService {
     }
 
     public Pdf render(Long examId, BiConsumer<String, Integer> progress) {
+        return gate.run(() -> write(examId, progress));
+    }
+
+    private Pdf write(Long examId, BiConsumer<String, Integer> progress) {
         long t0 = System.nanoTime();
-        ExamReport report = reports.build(examId, logo(), banner(), progress);
-        progress.accept("Designing the pages", 80);
+        Page page = page(examId, progress);
         long t1 = System.nanoTime();
-        Context ctx = new Context(Locale.ENGLISH);
-        ctx.setVariable("r", report);
-        String html = templates.process("report/exam-report", ctx);
-        long t2 = System.nanoTime();
-
-        Document parsed = Jsoup.parse(html);
-        parsed.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
-        org.w3c.dom.Document w3c = new W3CDom().fromJsoup(parsed);
-        long t3 = System.nanoTime();
-
         progress.accept("Writing the PDF", 90);
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            for (int w : INTER_WEIGHTS) font(builder, "Inter", w);
-            for (int w : SORA_WEIGHTS) font(builder, "Sora", w);
-            builder.withW3cDocument(w3c, "/");
-            builder.toStream(out);
-            builder.run();
-            long t4 = System.nanoTime();
-            log.info("Exam report {}: analysis {} ms, template {} ms, dom {} ms, pdf {} ms, {} KB",
-                    examId, (t1 - t0) / 1_000_000, (t2 - t1) / 1_000_000, (t3 - t2) / 1_000_000, (t4 - t3) / 1_000_000, out.size() / 1024);
-            return new Pdf(out.toByteArray(), fileName(report));
+        try {
+            byte[] bytes = PdfHtml.write(page.dom(), Map.of("Inter", INTER_WEIGHTS, "Sora", SORA_WEIGHTS));
+            long t2 = System.nanoTime();
+            log.info("Exam report {}: analysis and layout {} ms, pdf {} ms, {} KB",
+                    examId, (t1 - t0) / 1_000_000, (t2 - t1) / 1_000_000, bytes.length / 1024);
+            return new Pdf(bytes, page.fileName());
         } catch (IOException ex) {
             throw new IllegalStateException("Could not render the exam report", ex);
         }
     }
 
-    private static void font(PdfRendererBuilder builder, String family, int weight) {
-        String path = "report/fonts/" + family + "-" + weight + ".ttf";
-        FSSupplier<InputStream> supplier = () -> {
-            try {
-                return new ClassPathResource(path).getInputStream();
-            } catch (IOException ex) {
-                throw new IllegalStateException("Missing report font " + path, ex);
-            }
-        };
-        builder.useFont(supplier, family, weight, BaseRendererBuilder.FontStyle.NORMAL, true);
+    private record Page(org.w3c.dom.Document dom, String fileName) {}
+
+    /** The report model and HTML string go out of scope here, so only the DOM stays alive while the PDF is painted. */
+    private Page page(Long examId, BiConsumer<String, Integer> progress) {
+        ExamReport report = reports.build(examId, logo(), banner(), progress);
+        progress.accept("Designing the pages", 80);
+        Context ctx = new Context(Locale.ENGLISH);
+        ctx.setVariable("r", report);
+        return new Page(PdfHtml.dom(templates.process("report/exam-report", ctx)), fileName(report));
     }
 
     private static String fileName(ExamReport report) {
