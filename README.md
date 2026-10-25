@@ -76,3 +76,17 @@ Code: `report/` package (`ExamReportService` = analysis, `ExamReportPdfService` 
 `frontend/templates/report/exam-report.html`, fonts in `backend/src/main/resources/report/fonts`.
 A sample is in `docs/samples/sample-exam-report.pdf`.
 Tamil student names/schools are drawn as shaped images because openhtmltopdf cannot shape Tamil text.
+
+## Student exam PDF reports
+
+After results are released, students can choose **Download complete exam report (PDF)** on either result page. A progress dialog shows preparation and PDF transfer progress, then starts the download automatically after the complete PDF arrives. Failed downloads offer a retry. Background report jobs are scoped to the requesting browser session; release and student ownership are rechecked when polling or downloading. The report opens with a PCA-branded book-style cover and linked section navigation. The corrected MCQ answer sheet starts on page 2. A high-resolution answer-breakdown donut and subject accuracy bars follow, using the question syllabus tags; free marks are shown separately and untagged coverage is explicit. The report includes a question-by-question review with attached question/supporting images, their answer and accepted answers. Each exam report also includes the student's marks-based rank, submitted-paper count, highest marks, exam average, and the percentage of submitted papers answering each question correctly. Equal marks share a competition rank (1, 2, 2, 4); free marks are labelled separately. Free marks and multiple accepted answers are supported. Missing question images are clearly identified; the original paper link is included when available.
+
+The download verifies the current browser session against the submission Registration ID and NIC, requires a submitted paper and released results, and sends private no-store responses. PDF marks are recomputed from the current answer key.
+
+## Subject analysis report (several exams)
+
+On **My Results**, students choose **Create report**, pick released exams (Last 5 is preselected; Last 10, All released, or any mix up to 50), and download one PDF. Each question's syllabus tags (unit, level, content, outcome) group the answers by subject; every subject is marked Weak (below 50%), Needs practice (50–74%) or Strong (75%+), with the three weakest subjects as revision priorities, the strongest subjects, a score history and a per-question appendix. Free marks are left out of subject accuracy. Code: `report/StudentPerformanceReportService`, template `report/student-performance.html`, endpoints `/exam/results/analysis/*` (session-scoped jobs; ownership and release are rechecked on download).
+
+The individual report cover expresses the student's score and highest score as percentages. Rank remains a position out of submitted papers.
+
+Run `mvn -f backend/pom.xml verify` to build and run the regression suite. Tests use an isolated in-memory H2 database and a random HTTP port to check dashboard states, withheld scores, private report sessions, withdrawn-result access, PDF cover percentages, and the corrected sheet starting on page 2. Chart and background-job tests cover separate free marks and progress completion.

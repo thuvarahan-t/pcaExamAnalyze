@@ -374,8 +374,8 @@ public class McqStudentExamService {
         List<ResultPoint> graph = new ArrayList<>();
         for (int index = latestFive.size() - 1; index >= 0; index--) {
             ResultCard card = latestFive.get(index);
-            graph.add(new ResultPoint(card.shortName(), card.percentage(),
-                    Math.max(4, (int) Math.round(card.percentage()))));
+            graph.add(new ResultPoint(card.examName(), card.percentage(),
+                    Math.max(0, Math.min(100, (int) Math.round(card.percentage()))), card.submittedAt(), card.submissionId()));
         }
         String studentName = source.isEmpty() ? "Student" : source.getFirst().getStudentName();
         return new ResultDashboard(studentName, identity.registrationId(), identity.nic(), cards.size(),
@@ -609,7 +609,7 @@ public class McqStudentExamService {
                              String month, Integer year, String batch, String submittedAt,
                              Integer totalQuestions, boolean released, Integer score, Double percentage,
                              String paperUrl, String previewUrl, String thumbnailUrl) {}
-    public record ResultPoint(String label, Double percentage, int height) {}
+    public record ResultPoint(String label, Double percentage, int height, String submittedAt, Long submissionId) {}
     public record ResultDashboard(String studentName, String registrationId, String nic, int totalExams,
                                   int releasedResults, double averagePercentage, double latestFiveAverage,
                                   List<ResultCard> results, List<ResultPoint> graph, List<String> batches,

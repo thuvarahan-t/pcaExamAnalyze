@@ -36,6 +36,9 @@ import java.util.stream.IntStream;
 @Controller
 public class ExamPortalController {
 
+    private final com.example.pcaExamAnalyze.report.StudentReportPdfService studentReports;
+    private final com.example.pcaExamAnalyze.report.StudentReportJobs studentReportJobs;
+    private final com.example.pcaExamAnalyze.report.StudentPerformanceReportService performanceReports;
     private final McqAdminService mcqAdminService;
     private final McqStudentExamService studentExamService;
     private final com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages;
@@ -43,7 +46,12 @@ public class ExamPortalController {
 
     public ExamPortalController(McqAdminService mcqAdminService, McqStudentExamService studentExamService,
                                 com.example.pcaExamAnalyze.service.McqExamQuestionService questionImages,
-                                com.example.pcaExamAnalyze.service.McqAnswerWriter answerWriter) {
+                                com.example.pcaExamAnalyze.service.McqAnswerWriter answerWriter, com.example.pcaExamAnalyze.report.StudentReportPdfService studentReports,
+                                com.example.pcaExamAnalyze.report.StudentReportJobs studentReportJobs,
+                                com.example.pcaExamAnalyze.report.StudentPerformanceReportService performanceReports) {
+        this.performanceReports = performanceReports;
+        this.studentReportJobs = studentReportJobs;
+        this.studentReports = studentReports;
         this.questionImages = questionImages;
         this.answerWriter = answerWriter;
         this.mcqAdminService = mcqAdminService;
@@ -186,6 +194,137 @@ public class ExamPortalController {
         }
     }
 
+    @PostMapping("/exam/results/{submissionId}/report/start")
+    public ResponseEntity<?> startStudentReport(@PathVariable Long submissionId, HttpSession session) {
+        try {
+            ResultLookup identity = requireReportAccess(submissionId, session);
+            String job = studentReportJobs.start(session.getId(), submissionId, identity.registrationId(), identity.nic());
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("job", job));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore())
+                    .body(Map.of("message", "The report requires your own released result. Please open My Results again."));
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            return ResponseEntity.status(503).cacheControl(CacheControl.noStore())
+                    .body(Map.of("message", "Reports are busy. Please try again shortly."));
+        }
+    }
+
+    @GetMapping("/exam/results/{submissionId}/report/{jobId}/status")
+    public ResponseEntity<?> studentReportStatus(@PathVariable Long submissionId, @PathVariable String jobId,
+                                                HttpSession session) {
+        try {
+            requireReportAccess(submissionId, session);
+            var job = studentReportJobs.get(jobId, session.getId());
+            if (job == null || !job.submissionId.equals(submissionId))
+                return ResponseEntity.status(404).cacheControl(CacheControl.noStore()).build();
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(job.status());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        }
+    }
+
+    @GetMapping("/exam/results/{submissionId}/report/{jobId}/file")
+    public ResponseEntity<byte[]> studentReportFile(@PathVariable Long submissionId, @PathVariable String jobId,
+                                                   HttpSession session) {
+        try {
+            requireReportAccess(submissionId, session);
+            var job = studentReportJobs.get(jobId, session.getId());
+            if (job == null || !job.submissionId.equals(submissionId))
+                return ResponseEntity.status(404).cacheControl(CacheControl.noStore()).build();
+            var pdf = job.pdf();
+            if (pdf == null) return ResponseEntity.status(409).cacheControl(CacheControl.noStore()).build();
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                    .contentLength(pdf.bytes().length)
+                    .header("Content-Disposition", org.springframework.http.ContentDisposition.attachment()
+                            .filename(pdf.fileName()).build().toString()).body(pdf.bytes());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        }
+    }
+
+    /** Cross-exam subject analysis for the released results the student ticked on My Results. */
+    @PostMapping("/exam/results/analysis/start")
+    public ResponseEntity<?> startPerformanceReport(@RequestParam(name = "ids", required = false) List<Long> ids,
+                                                    HttpSession session) {
+        ResultLookup identity = savedResultLookup(session);
+        if (identity == null) return ResponseEntity.status(403).cacheControl(CacheControl.noStore())
+                .body(Map.of("message", "Please open My Results again to verify your details."));
+        try {
+            performanceReports.verify(ids, identity.registrationId(), identity.nic());
+            String job = studentReportJobs.startAnalysis(session.getId(), ids, identity.registrationId(), identity.nic());
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("job", job));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).body(Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).body(Map.of("message", ex.getMessage()));
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            return ResponseEntity.status(503).cacheControl(CacheControl.noStore())
+                    .body(Map.of("message", "Reports are busy. Please try again shortly."));
+        }
+    }
+
+    @GetMapping("/exam/results/analysis/{jobId}/status")
+    public ResponseEntity<?> performanceReportStatus(@PathVariable String jobId, HttpSession session) {
+        var job = performanceJob(jobId, session);
+        if (job == null) return ResponseEntity.status(404).cacheControl(CacheControl.noStore()).build();
+        ResultLookup identity = savedResultLookup(session);
+        try {
+            performanceReports.verify(job.submissionIds, identity.registrationId(), identity.nic());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(job.status());
+    }
+
+    @GetMapping("/exam/results/analysis/{jobId}/file")
+    public ResponseEntity<byte[]> performanceReportFile(@PathVariable String jobId, HttpSession session) {
+        var job = performanceJob(jobId, session);
+        if (job == null) return ResponseEntity.status(404).cacheControl(CacheControl.noStore()).build();
+        ResultLookup identity = savedResultLookup(session);
+        try {
+            performanceReports.verify(job.submissionIds, identity.registrationId(), identity.nic());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        }
+        var pdf = job.pdf();
+        if (pdf == null) return ResponseEntity.status(409).cacheControl(CacheControl.noStore()).build();
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                .contentLength(pdf.bytes().length)
+                .header("Content-Disposition", org.springframework.http.ContentDisposition.attachment()
+                        .filename(pdf.fileName()).build().toString()).body(pdf.bytes());
+    }
+
+    private com.example.pcaExamAnalyze.report.StudentReportJobs.Job performanceJob(String jobId, HttpSession session) {
+        if (savedResultLookup(session) == null) return null;
+        var job = studentReportJobs.get(jobId, session.getId());
+        return job == null || job.submissionId != -1L ? null : job;
+    }
+
+    private ResultLookup requireReportAccess(Long submissionId, HttpSession session) {
+        ResultLookup identity = savedResultLookup(session);
+        var details = savedDetails(session);
+        if (identity == null && details != null) identity = new ResultLookup(details.getRegistrationId(), details.getNic());
+        if (identity == null) throw new IllegalStateException("Student details are required");
+        if (!studentExamService.resultBySubmission(submissionId, identity.registrationId(), identity.nic()).released())
+            throw new IllegalStateException("Results are not released");
+        return identity;
+    }
+    @GetMapping("/exam/results/{submissionId}/report.pdf")
+    public ResponseEntity<byte[]> studentReport(@PathVariable Long submissionId, HttpSession session) {
+        var lookup = savedResultLookup(session);
+        var details = savedDetails(session);
+        if (lookup == null && details == null) return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        try {
+            var pdf = studentReports.render(submissionId,
+                    lookup != null ? lookup.registrationId() : details.getRegistrationId(),
+                    lookup != null ? lookup.nic() : details.getNic());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore())
+                    .header("Content-Disposition", org.springframework.http.ContentDisposition.attachment()
+                            .filename(pdf.fileName()).build().toString()).body(pdf.bytes());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.status(403).cacheControl(CacheControl.noStore()).build();
+        }
+    }
     @PostMapping("/exam/details")
     public String saveStudentDetails(
             @Valid @ModelAttribute("studentDetails") ExamStudentDetailsForm form,
