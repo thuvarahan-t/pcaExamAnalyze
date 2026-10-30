@@ -309,19 +309,28 @@ public class McqStudentExamService {
     }
 
     /**
-     * Background sweep: submits every in-progress paper whose time ran out, so papers are
-     * finalized even when the student closed the browser before the timer reached zero.
+     * Scheduler reads only light metadata and processes a bounded number of papers per
+     * sweep; it never holds one transaction open while finalizing many students.
      */
+    @Transactional(readOnly = true)
+    public List<Long> overdueSubmissionIds(int limit) {
+        Instant now = Instant.now();
+        return submissions.findTimedPaperCandidates().stream()
+                .filter(row -> !now.isBefore(row.getStartedAt().plusSeconds(
+                        row.getDurationMinutes().longValue() * 60 + SUBMIT_GRACE_SECONDS)))
+                .limit(Math.max(1, limit))
+                .map(McqSubmissionRepository.TimedPaperCandidate::getId)
+                .toList();
+    }
+
+    /** Each invocation is a separate transaction, invoked through the Spring proxy by the scheduler. */
     @Transactional
-    public int autoSubmitOverdue() {
-        int count = 0;
-        for (McqSubmission submission : submissions.findTimedInProgress()) {
-            if (overdue(submission)) {
-                finalizeSubmission(submission);
-                count++;
-            }
-        }
-        return count;
+    public boolean autoSubmitOverdueById(Long submissionId) {
+        McqSubmission submission = submissions.findByIdForUpdate(submissionId).orElse(null);
+        if (submission == null || submission.getStatus() != McqSubmissionStatus.IN_PROGRESS
+                || !overdue(submission)) return false;
+        finalizeSubmission(submission);
+        return true;
     }
 
     private void finalizeSubmission(McqSubmission submission) {
