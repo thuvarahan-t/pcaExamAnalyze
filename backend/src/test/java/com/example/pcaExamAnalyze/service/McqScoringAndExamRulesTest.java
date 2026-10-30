@@ -91,7 +91,7 @@ class McqScoringAndExamRulesTest {
 
     @Test void keysAreUpdatedIndividuallyWithoutDeletingUnrelatedKeys() {
         var e = exam(4);
-        e.setCorrectOptionsFor(1, List.of(2, 2, 99, null, 3));
+        e.setCorrectOptionsFor(1, Arrays.asList(2, 2, 99, null, 3));
         e.setCorrectOptionsFor(2, List.of(5));
         assertEquals("2,3", e.getAcceptedAnswerKeys().get(1));
         e.setCorrectOptionsFor(1, Arrays.asList(null, -1, 6));
