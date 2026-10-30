@@ -2,6 +2,7 @@ package com.example.pcaExamAnalyze.service;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -24,16 +25,20 @@ public class McqAnswerWriter {
     static final long ANSWER_GRACE_SECONDS = 20;
 
     private static final String POSTGRES_UPSERT = """
+            WITH eligible AS MATERIALIZED (
+                SELECT s.id
+                FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
+                WHERE s.id = ?
+                  AND s.status = 'IN_PROGRESS'
+                  AND e.manual_close = false
+                  AND ?::int BETWEEN 1 AND e.total_questions
+                  AND ?::int BETWEEN 1 AND e.options_per_question
+                  AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
+                       OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now())
+                FOR UPDATE OF s
+            )
             INSERT INTO mcq_submission_answers (submission_id, question_number, selected_option)
-            SELECT s.id, ?::int, ?::int
-            FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
-            WHERE s.id = ?
-              AND s.status = 'IN_PROGRESS'
-              AND e.manual_close = false
-              AND ?::int BETWEEN 1 AND e.total_questions
-              AND ?::int BETWEEN 1 AND e.options_per_question
-              AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
-                   OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now())
+            SELECT id, ?::int, ?::int FROM eligible
             ON CONFLICT (submission_id, question_number) DO UPDATE SET selected_option = EXCLUDED.selected_option
             """;
 
@@ -47,6 +52,7 @@ public class McqAnswerWriter {
                   AND e.manual_close = false
                   AND (e.duration_minutes IS NULL OR e.duration_minutes <= 0 OR s.started_at IS NULL
                        OR s.started_at + ((e.duration_minutes * 60 + ?) * INTERVAL '1 second') > now())
+                FOR UPDATE OF s
             ), deleted AS (
                 DELETE FROM mcq_submission_answers a
                 WHERE a.submission_id = ? AND a.question_number = ?
@@ -58,13 +64,17 @@ public class McqAnswerWriter {
 
     /** Time per question only ever grows (GREATEST), so a late or repeated request cannot lower it. */
     private static final String POSTGRES_TIME_UPSERT = """
+            WITH eligible AS MATERIALIZED (
+                SELECT s.id
+                FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
+                WHERE s.id = ?
+                  AND s.status = 'IN_PROGRESS'
+                  AND e.manual_close = false
+                  AND ?::int BETWEEN 1 AND e.total_questions
+                FOR UPDATE OF s
+            )
             INSERT INTO mcq_submission_question_times (submission_id, question_number, seconds_spent)
-            SELECT s.id, ?::int, ?::int
-            FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id
-            WHERE s.id = ?
-              AND s.status = 'IN_PROGRESS'
-              AND e.manual_close = false
-              AND ?::int BETWEEN 1 AND e.total_questions
+            SELECT id, ?::int, ?::int FROM eligible
             ON CONFLICT (submission_id, question_number) DO UPDATE
               SET seconds_spent = GREATEST(mcq_submission_question_times.seconds_spent, EXCLUDED.seconds_spent)
             """;
@@ -87,21 +97,23 @@ public class McqAnswerWriter {
     }
 
     /** Stores one answer. Returns false when the paper no longer accepts it (submitted, time over, invalid). */
+    @Transactional
     public boolean save(long submissionId, int question, int option) {
         if (postgres) {
-            return jdbc.update(POSTGRES_UPSERT, question, option, submissionId, question, option,
-                    ANSWER_GRACE_SECONDS) > 0;
+            return jdbc.update(POSTGRES_UPSERT, submissionId, question, option,
+                    ANSWER_GRACE_SECONDS, question, option) > 0;
         }
         return saveFallback(submissionId, question, option);
     }
 
     /** Stores time spent per question (seconds, cumulative). Best effort: values are bounded and only grow. */
+    @Transactional
     public void saveTimes(long submissionId, Map<Integer, Integer> seconds) {
         if (seconds == null || seconds.isEmpty()) return;
         var rows = new java.util.ArrayList<Object[]>();
         seconds.forEach((question, value) -> {
             if (question == null || value == null || question < 1) return;
-            rows.add(new Object[]{question, Math.max(0, Math.min(value, 6 * 60 * 60)), submissionId, question});
+            rows.add(new Object[]{submissionId, question, question, Math.max(0, Math.min(value, 6 * 60 * 60))});
         });
         if (rows.isEmpty()) return;
         if (postgres) {
@@ -109,8 +121,8 @@ public class McqAnswerWriter {
             return;
         }
         for (Object[] row : rows) {
-            int question = (Integer) row[0];
-            int value = (Integer) row[1];
+            int question = (Integer) row[1];
+            int value = (Integer) row[3];
             if (acceptingFallback(submissionId, question, 1) == null) continue;
             int updated = jdbc.update("UPDATE mcq_submission_question_times SET seconds_spent = ? "
                     + "WHERE submission_id = ? AND question_number = ? AND seconds_spent < ?",
@@ -125,6 +137,7 @@ public class McqAnswerWriter {
     }
 
     /** Removes an answer (the student cleared it). Idempotent; ignored once the paper is closed. */
+    @Transactional
     public boolean clear(long submissionId, int question) {
         if (postgres) {
             Boolean accepted = jdbc.queryForObject(POSTGRES_CLEAR, Boolean.class,
@@ -159,6 +172,7 @@ public class McqAnswerWriter {
                     SELECT s.status AS status, s.started_at AS started_at, e.duration_minutes AS minutes,
                            e.total_questions AS total, e.options_per_question AS options
                     FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id WHERE s.id = ?
+                    FOR UPDATE OF s
                     """, submissionId);
         } catch (org.springframework.dao.EmptyResultDataAccessException missing) {
             return null;
