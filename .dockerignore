@@ -1,0 +1,21 @@
+# Exclude everything, then include only the files needed by the Maven build.
+**
+!Dockerfile
+!.dockerignore
+!backend/
+!backend/pom.xml
+!backend/src/
+!backend/src/**
+!frontend/
+!frontend/templates/
+!frontend/templates/**
+!frontend/static/
+!frontend/static/**
+
+# Never include local secrets, even inside an included directory.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
