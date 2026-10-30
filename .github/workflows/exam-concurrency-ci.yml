@@ -60,6 +60,17 @@ jobs:
               missed = int(node.attrib['missed'])
               total = covered + missed
               print(f'{kind} coverage: {covered}/{total} = {100 * covered / total:.2f}%' if total else f'{kind} coverage: n/a')
+          rows = []
+          for pkg in root.findall('package'):
+              for cls in pkg.findall('class'):
+                  counters = {e.attrib['type']: e.attrib for e in cls.findall('counter')}
+                  line = counters.get('LINE', {'covered': '0', 'missed': '0'})
+                  branch = counters.get('BRANCH', {'covered': '0', 'missed': '0'})
+                  ml, mb = int(line['missed']), int(branch['missed'])
+                  rows.append((ml, mb, cls.attrib['name']))
+          print('Top classes with uncovered lines (missed lines, missed branches, name):')
+          for ml, mb, name in sorted(rows, reverse=True)[:35]:
+              print(f'{ml:4} lines {mb:4} branches {name}')
           PY
       - name: Upload test and coverage reports even on failure
         if: always()
