@@ -47,19 +47,26 @@ public class StudentReportJobs {
     private final StudentReportPdfService reports;
     private final StudentPerformanceReportService performance;
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
-    private final ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(16), task -> {
+    private final ThreadPoolExecutor pool = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(4), task -> {
                 Thread thread = new Thread(task, "student-pdf"); thread.setDaemon(true); return thread;
             });
+    private final ScheduledExecutorService cleanup = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = new Thread(task, "student-pdf-cleanup");
+        thread.setDaemon(true);
+        return thread;
+    });
     public StudentReportJobs(StudentReportPdfService reports, StudentPerformanceReportService performance) {
         this.reports = reports; this.performance = performance;
+        // Clean up completed PDFs even when no more HTTP requests arrive.
+        cleanup.scheduleWithFixedDelay(this::purge, 30, 30, TimeUnit.SECONDS);
     }
     public synchronized String startAnalysis(String owner, java.util.List<Long> ids, String registration, String nic) {
         purge();
         var selection = ids.stream().distinct().sorted().toList();
         for (Job job : jobs.values())
             if (job.owner.equals(owner) && job.submissionId == -1L && job.submissionIds.equals(selection) && job.running()) return job.id;
-        if (jobs.size() >= 40) throw new RejectedExecutionException("Reports are busy. Please try again shortly.");
+        if (jobs.size() >= 16) throw new RejectedExecutionException("Reports are busy. Please try again shortly.");
         Job job = new Job(owner, selection); jobs.put(job.id, job);
         try {
             pool.execute(() -> {
@@ -76,7 +83,7 @@ public class StudentReportJobs {
         purge();
         for (Job job : jobs.values())
             if (job.owner.equals(owner) && job.submissionId.equals(id) && job.running()) return job.id;
-        if (jobs.size() >= 40) throw new RejectedExecutionException("Reports are busy. Please try again shortly.");
+        if (jobs.size() >= 16) throw new RejectedExecutionException("Reports are busy. Please try again shortly.");
         Job job = new Job(owner, id);
         jobs.put(job.id, job);
         try {
@@ -97,13 +104,13 @@ public class StudentReportJobs {
         job.touched = System.currentTimeMillis();
         return job;
     }
-    /** Finished PDFs live on the heap: drop them 10 minutes after last use, or 2 minutes after the file was served. */
+    /** Release finished PDF buffers soon after delivery and expire unused PDFs. */
     private void purge() {
         long now = System.currentTimeMillis();
-        long limit = now - TimeUnit.MINUTES.toMillis(10);
-        long servedLimit = now - TimeUnit.MINUTES.toMillis(2);
+        long limit = now - TimeUnit.MINUTES.toMillis(5);
+        long servedLimit = now - TimeUnit.SECONDS.toMillis(30);
         jobs.values().removeIf(job -> !job.running()
                 && (job.touched < limit || job.served != 0 && job.served < servedLimit));
     }
-    @PreDestroy void close() { pool.shutdownNow(); }
+    @PreDestroy void close() { cleanup.shutdownNow(); pool.shutdownNow(); }
 }

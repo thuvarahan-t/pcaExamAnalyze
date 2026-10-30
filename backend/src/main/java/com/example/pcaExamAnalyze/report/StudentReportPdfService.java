@@ -65,7 +65,7 @@ public class StudentReportPdfService {
         if (!result.released()) throw new IllegalStateException("The PDF is available after the teacher releases the result");
         var submission = submissions.findStudentSessionById(id).orElseThrow();
         var exam = submission.getExam();
-        var analysis = reports.build(exam.getId(), "", "", progress);
+        var analysis = reports.buildForStudent(exam.getId(), "", "", progress);
         var rows = result.answers();
         int score = (int) rows.stream().filter(a -> a.state().equals("CORRECT") || a.state().equals("FREE_MARK")).count();
         // Competition ranking: equal marks share a rank (1, 2, 2, 4), without time/name tie-breaks.
