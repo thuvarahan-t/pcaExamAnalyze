@@ -95,6 +95,18 @@ public interface McqSubmissionRepository extends JpaRepository<McqSubmission, Lo
     @Query("select s from McqSubmission s where s.id = :id")
     java.util.Optional<McqSubmission> findByIdForUpdate(@Param("id") Long id);
 
+    /** Cheap scheduler projection: avoid loading 1,300+ managed submissions and answer maps. */
+    interface TimedPaperCandidate {
+        Long getId();
+        java.time.Instant getStartedAt();
+        Integer getDurationMinutes();
+    }
+
+    @Query("select s.id as id, s.startedAt as startedAt, e.durationMinutes as durationMinutes " +
+           "from McqSubmission s join s.exam e where s.status = com.example.pcaExamAnalyze.domain.McqSubmissionStatus.IN_PROGRESS " +
+           "and s.startedAt is not null and e.durationMinutes is not null and e.durationMinutes > 0 order by s.id")
+    List<TimedPaperCandidate> findTimedPaperCandidates();
+
     /** In-progress papers of exams with a time limit; the caller checks which are past their deadline. */
     @EntityGraph(attributePaths = {"exam"})
     @Query("select s from McqSubmission s where s.status = com.example.pcaExamAnalyze.domain.McqSubmissionStatus.IN_PROGRESS "
