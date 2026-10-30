@@ -20,11 +20,19 @@ public class McqAutoSubmitJob {
         this.studentExams = studentExams;
     }
 
-    @Scheduled(initialDelay = 30_000, fixedDelay = 60_000)
+    @Scheduled(initialDelay = 30_000, fixedDelay = 30_000)
     public void submitOverduePapers() {
         try {
-            int count = studentExams.autoSubmitOverdue();
-            if (count > 0) log.info("Auto-submitted {} MCQ paper(s) whose time ran out", count);
+            int count = 0;
+            for (Long submissionId : studentExams.overdueSubmissionIds(100)) {
+                try {
+                    if (studentExams.autoSubmitOverdueById(submissionId)) count++;
+                } catch (RuntimeException ex) {
+                    // A conflict or corrupt single submission must not block other students.
+                    log.warn("Could not auto-submit MCQ paper {}: {}", submissionId, ex.getMessage());
+                }
+            }
+            if (count > 0) log.info("Auto-submitted {} overdue MCQ paper(s)", count);
         } catch (RuntimeException ex) {
             log.warn("MCQ auto-submit sweep failed: {}", ex.getMessage());
         }
