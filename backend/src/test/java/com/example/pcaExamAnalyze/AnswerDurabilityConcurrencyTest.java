@@ -63,7 +63,7 @@ class AnswerDurabilityConcurrencyTest {
         return tx.execute(status -> {
             var s = new McqSubmission();
             s.setExam(exam);
-            s.setReceiptNumber("DUR-" + registration + "-" + UUID.randomUUID());
+            s.setReceiptNumber("DUR-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20));
             s.setRegistrationId(registration);
             s.setNic(NIC);
             s.setStudentName("Durability Student");
