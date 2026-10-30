@@ -80,8 +80,11 @@ public class McqStudentExamService {
                 .orElseGet(McqSubmission::new);
         if (submission.getId() != null && submission.getStatus() == McqSubmissionStatus.SUBMITTED) return submission;
         if (submission.getId() != null && overdue(submission)) {
-            // The paper's time ran out while the student was away: it is submitted as it stands.
-            finalizeSubmission(submission);
+            // An autosave may still be in flight: lock before touching status/answers.
+            submission = submissions.findByIdForUpdate(submission.getId()).orElseThrow();
+            if (submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && overdue(submission)) {
+                finalizeSubmission(submission);
+            }
             return submission;
         }
         if (submission.getId() == null) {
@@ -98,7 +101,8 @@ public class McqStudentExamService {
 
     @Transactional
     public Workspace workspace(Long submissionId, ExamStudentDetailsForm details) {
-        McqSubmission submission = requireOwned(submissionId, details);
+        // A page refresh can auto-finalize an expired paper; lock before loading answers.
+        McqSubmission submission = requireOwnedForWrite(submissionId, details);
         McqExam exam = submission.getExam();
         if (submission.getStatus() == McqSubmissionStatus.IN_PROGRESS && exam.isManualClose()) {
             throw new IllegalStateException("This examination is currently closed by the teacher");
