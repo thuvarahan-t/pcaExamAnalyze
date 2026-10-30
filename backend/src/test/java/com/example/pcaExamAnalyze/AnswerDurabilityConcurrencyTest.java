@@ -174,6 +174,55 @@ class AnswerDurabilityConcurrencyTest {
         } finally { pool.shutdownNow(); }
     }
 
+    @Test void overdueSweeperFinalizesEachPaperOnceWithoutTouchingActiveStudents() {
+        var timedExam = tx.execute(status -> {
+            var e = new McqExam();
+            e.setName("Timed 50 MCQ Sweep Regression");
+            e.setSlug("timed-durability-" + UUID.randomUUID());
+            e.setExamMonth("October");
+            e.setExamYear(2026);
+            e.setPaperDriveUrl("");
+            e.setOpenAt(Instant.now().minusSeconds(3600));
+            e.setCloseAt(Instant.now().plusSeconds(3600));
+            e.setResultReleaseAt(Instant.now().plusSeconds(3600));
+            e.setDurationMinutes(1);
+            e.setTotalQuestions(50);
+            e.setPublicationState(McqExamPublicationState.PUBLISHED);
+            for (int q = 1; q <= 50; q++) e.getAnswerKey().put(q, 1);
+            return ctx.getBean(McqExamRepository.class).save(e);
+        });
+        long overdueId = timedPaper(timedExam, "DUR-EXPIRED", Instant.now().minusSeconds(400));
+        long activeId = timedPaper(timedExam, "DUR-ACTIVE", Instant.now());
+        var candidates = service.overdueSubmissionIds(100);
+        assertTrue(candidates.contains(overdueId));
+        assertFalse(candidates.contains(activeId));
+        assertTrue(service.autoSubmitOverdueById(overdueId));
+        assertFalse(service.autoSubmitOverdueById(overdueId));
+        tx.executeWithoutResult(status -> {
+            assertEquals(McqSubmissionStatus.SUBMITTED, submissions.findById(overdueId).orElseThrow().getStatus());
+            assertEquals(McqSubmissionStatus.IN_PROGRESS, submissions.findById(activeId).orElseThrow().getStatus());
+        });
+    }
+
+    private static long timedPaper(McqExam e, String registration, Instant started) {
+        return tx.execute(status -> {
+            var s = new McqSubmission();
+            s.setExam(e);
+            s.setReceiptNumber("TIMED-" + UUID.randomUUID().toString().substring(0, 24));
+            s.setStudentName("Timed Student");
+            s.setRegistrationId(registration);
+            s.setNic(NIC);
+            s.setEmail("timed@example.test");
+            s.setBatch("2027 A/L");
+            s.setSchool("Test School");
+            s.setStream("Physical Science");
+            s.setDistrict("Jaffna");
+            s.setStartedAt(started);
+            s.setStatus(McqSubmissionStatus.IN_PROGRESS);
+            return submissions.save(s).getId();
+        });
+    }
+
     @Test void confirmedClearIsNotResurrectedByFinalSubmit() {
         long id = create("DUR-CLEAR");
         assertTrue(writer.save(id, 1, 2));
