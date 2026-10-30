@@ -1,0 +1,57 @@
+name: Exam submission reliability and coverage
+
+on:
+  push:
+    branches:
+      - 'fix/exam-submission-concurrency-*'
+      - test
+  pull_request:
+    branches:
+      - test
+
+jobs:
+  java-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pca
+          POSTGRES_PASSWORD: pca
+          POSTGRES_DB: pca_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pca -d pca_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/pca_test
+      DB_USERNAME: pca
+      DB_PASSWORD: pca
+      PCA_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/pca_test
+      PCA_TEST_POSTGRES_USER: pca
+      PCA_TEST_POSTGRES_PASSWORD: pca
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Run complete Maven regression suite against H2 and PostgreSQL
+        run: ./mvnw -B -ntp verify
+        working-directory: backend
+      - name: Upload test and coverage reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-regression-and-jacoco
+          if-no-files-found: warn
+          path: |
+            backend/target/surefire-reports/
+            backend/target/site/jacoco/
+            backend/target/jacoco.exec
