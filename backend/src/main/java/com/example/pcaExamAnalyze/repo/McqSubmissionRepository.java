@@ -4,6 +4,8 @@ import com.example.pcaExamAnalyze.domain.McqSubmission;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -82,6 +84,16 @@ public interface McqSubmissionRepository extends JpaRepository<McqSubmission, Lo
     @EntityGraph(attributePaths = {"exam", "answers"})
     @Query("select s from McqSubmission s where s.id = :id")
     java.util.Optional<McqSubmission> findStudentSessionById(@Param("id") Long id);
+
+    /**
+     * Serializes a student's final submission with its individual answer autosaves.
+     * Lock the parent row FIRST, and only then load the mutable answer collection.
+     * Do not join-fetch a collection in this FOR UPDATE query (PostgreSQL disallows
+     * locking the nullable side of an outer join).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from McqSubmission s where s.id = :id")
+    java.util.Optional<McqSubmission> findByIdForUpdate(@Param("id") Long id);
 
     /** In-progress papers of exams with a time limit; the caller checks which are past their deadline. */
     @EntityGraph(attributePaths = {"exam"})
