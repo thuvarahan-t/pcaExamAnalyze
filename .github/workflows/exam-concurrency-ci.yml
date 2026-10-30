@@ -44,6 +44,23 @@ jobs:
       - name: Run complete Maven regression suite against H2 and PostgreSQL
         run: bash ./mvnw -B -ntp verify
         working-directory: backend
+      - name: Print measured JaCoCo line and branch coverage
+        if: success()
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = ET.parse(Path('backend/target/site/jacoco/jacoco.xml')).getroot()
+          for kind in ('LINE', 'BRANCH'):
+              node = next((x for x in root.findall('counter') if x.attrib.get('type') == kind), None)
+              if node is None:
+                  print(f'{kind} coverage: not available')
+                  continue
+              covered = int(node.attrib['covered'])
+              missed = int(node.attrib['missed'])
+              total = covered + missed
+              print(f'{kind} coverage: {covered}/{total} = {100 * covered / total:.2f}%' if total else f'{kind} coverage: n/a')
+          PY
       - name: Upload test and coverage reports even on failure
         if: always()
         uses: actions/upload-artifact@v4
