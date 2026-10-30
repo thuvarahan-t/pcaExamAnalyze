@@ -3,7 +3,6 @@ name: Exam submission reliability and coverage
 on:
   push:
     branches:
-      - 'fix/exam-submission-concurrency-*'
       - test
   pull_request:
     branches:
