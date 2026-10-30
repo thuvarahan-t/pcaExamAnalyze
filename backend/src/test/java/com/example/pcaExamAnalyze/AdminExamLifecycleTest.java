@@ -129,7 +129,7 @@ class AdminExamLifecycleTest {
         assertEquals(McqExamPublicationState.PUBLISHED, exam.getPublicationState());
         assertTrue(admin.publicExamRows().stream().anyMatch(e -> e.id().equals(exam.getId())));
         assertEquals(4, admin.formFor(exam.getId()).getAnswers().size());
-        assertEquals(4, admin.optionNumbers().size() + 1);
+        assertEquals(5, admin.optionNumbers().size());
         assertTrue(admin.questionNumbers().size() >= 4);
         admin.setExamClosed(exam.getId(), true);
         assertTrue(admin.requireExam(exam.getId()).isManualClose());
