@@ -151,7 +151,7 @@ public class McqStudentExamService {
 
     @Transactional
     public SaveStatus saveAnswer(Long submissionId, int question, Integer option, ExamStudentDetailsForm details) {
-        McqSubmission submission = requireOwned(submissionId, details);
+        McqSubmission submission = requireOwnedForWrite(submissionId, details);
         if (submission.getStatus() != McqSubmissionStatus.IN_PROGRESS) {
             throw new IllegalStateException("This paper has already been submitted");
         }
@@ -180,7 +180,7 @@ public class McqStudentExamService {
     @Transactional
     public SaveStatus saveAnswers(Long submissionId, Map<Integer, Integer> answers,
                                   Map<Integer, Integer> questionTimes, ExamStudentDetailsForm details) {
-        McqSubmission submission = requireOwned(submissionId, details);
+        McqSubmission submission = requireOwnedForWrite(submissionId, details);
         if (submission.getStatus() != McqSubmissionStatus.IN_PROGRESS) {
             throw new IllegalStateException("This paper has already been submitted");
         }
@@ -245,7 +245,7 @@ public class McqStudentExamService {
     public SubmitResult finish(Long submissionId, ExamStudentDetailsForm details,
                                Map<Integer, Integer> finalAnswers, Map<Integer, Integer> questionTimes,
                                int expectedAnswers) {
-        McqSubmission submission = requireOwned(submissionId, details);
+        McqSubmission submission = requireOwnedForWrite(submissionId, details);
         McqExam exam = submission.getExam();
         int before = submission.getAnswers().size();
         if (submission.getStatus() == McqSubmissionStatus.SUBMITTED) {
@@ -302,7 +302,7 @@ public class McqStudentExamService {
     /** Submits the paper if its time (plus the grace period) is over. Returns true when it did. */
     @Transactional
     public boolean autoSubmitIfOverdue(Long submissionId, ExamStudentDetailsForm details) {
-        McqSubmission submission = requireOwned(submissionId, details);
+        McqSubmission submission = requireOwnedForWrite(submissionId, details);
         if (submission.getStatus() != McqSubmissionStatus.IN_PROGRESS || !overdue(submission)) return false;
         finalizeSubmission(submission);
         return true;
@@ -469,6 +469,23 @@ public class McqStudentExamService {
         if (!exam.isResultsPublished() || !exam.usesQuestionImages()
                 || question < 1 || question > exam.getTotalQuestions()) return Optional.empty();
         return questionImages.findImage(exam.getId(), question);
+    }
+
+    /**
+     * Lock the parent submission row before reading or updating its answers.
+     * The PostgreSQL autosave UPSERT locks this same row; therefore a final
+     * submission can never commit against an in-flight autosave or allow a new
+     * autosave to sneak in after finalization.
+     */
+    private McqSubmission requireOwnedForWrite(Long id, ExamStudentDetailsForm details) {
+        if (details == null) throw new IllegalStateException("Your saved student details are required");
+        McqSubmission submission = submissions.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Exam session not found"));
+        if (!submission.getRegistrationId().equalsIgnoreCase(details.getRegistrationId())
+                || !submission.getNic().equals(details.getNic())) {
+            throw new IllegalStateException("This exam session does not belong to the saved student details");
+        }
+        return submission;
     }
 
     private McqSubmission requireOwned(Long id, ExamStudentDetailsForm details) {
