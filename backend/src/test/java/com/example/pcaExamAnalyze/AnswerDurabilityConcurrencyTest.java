@@ -174,6 +174,22 @@ class AnswerDurabilityConcurrencyTest {
         } finally { pool.shutdownNow(); }
     }
 
+    @Test void confirmedClearIsNotResurrectedByFinalSubmit() {
+        long id = create("DUR-CLEAR");
+        assertTrue(writer.save(id, 1, 2));
+        assertTrue(writer.clear(id, 1));
+        assertTrue(writer.save(id, 2, 1));
+        var selected = Map.of(2, 1);
+        assertEquals(1, service.finish(id, details("DUR-CLEAR"), selected, Map.of(), 1).savedAnswers());
+        tx.executeWithoutResult(status -> {
+            var paper = submissions.findStudentSessionById(id).orElseThrow();
+            assertFalse(paper.getAnswers().containsKey(1));
+            assertEquals(selected, paper.getAnswers());
+            assertEquals(49, paper.getUnansweredCount());
+            assertEquals(1, paper.getScore());
+        });
+    }
+
     @Test void rejectedInvalidAnswerAndUnknownStudentDoNotCorruptPaper() {
         long id = create("DUR-INVALID");
         assertFalse(writer.save(id, 0, 1));
