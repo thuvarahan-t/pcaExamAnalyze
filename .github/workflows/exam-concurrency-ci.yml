@@ -1,0 +1,84 @@
+name: Exam submission reliability and coverage
+
+on:
+  push:
+    branches:
+      - test
+  pull_request:
+    branches:
+      - test
+
+jobs:
+  java-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pca
+          POSTGRES_PASSWORD: pca
+          POSTGRES_DB: pca_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pca -d pca_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/pca_test
+      DB_USERNAME: pca
+      DB_PASSWORD: pca
+      PCA_TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/pca_test
+      PCA_TEST_POSTGRES_USER: pca
+      PCA_TEST_POSTGRES_PASSWORD: pca
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Run complete Maven regression suite against H2 and PostgreSQL
+        run: bash ./mvnw -B -ntp verify
+        working-directory: backend
+      - name: Print measured JaCoCo line and branch coverage
+        if: success()
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = ET.parse(Path('backend/target/site/jacoco/jacoco.xml')).getroot()
+          for kind in ('LINE', 'BRANCH'):
+              node = next((x for x in root.findall('counter') if x.attrib.get('type') == kind), None)
+              if node is None:
+                  print(f'{kind} coverage: not available')
+                  continue
+              covered = int(node.attrib['covered'])
+              missed = int(node.attrib['missed'])
+              total = covered + missed
+              print(f'{kind} coverage: {covered}/{total} = {100 * covered / total:.2f}%' if total else f'{kind} coverage: n/a')
+          rows = []
+          for pkg in root.findall('package'):
+              for cls in pkg.findall('class'):
+                  counters = {e.attrib['type']: e.attrib for e in cls.findall('counter')}
+                  line = counters.get('LINE', {'covered': '0', 'missed': '0'})
+                  branch = counters.get('BRANCH', {'covered': '0', 'missed': '0'})
+                  ml, mb = int(line['missed']), int(branch['missed'])
+                  rows.append((ml, mb, cls.attrib['name']))
+          print('Top classes with uncovered lines (missed lines, missed branches, name):')
+          for ml, mb, name in sorted(rows, reverse=True)[:35]:
+              print(f'{ml:4} lines {mb:4} branches {name}')
+          PY
+      - name: Upload test and coverage reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-regression-and-jacoco
+          if-no-files-found: warn
+          path: |
+            backend/target/surefire-reports/
+            backend/target/site/jacoco/
+            backend/target/jacoco.exec
