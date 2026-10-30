@@ -132,7 +132,7 @@ class QuestionStorageContractsTest {
         var saved = service.save(exam(), 1, edit(), png(), false);
         assertNull(saved.getData());
         assertTrue(saved.getStorageKey().startsWith("mcq/exam-5/q1-"));
-        verify(storage).put(eq(saved.getStorageKey()), aryEq(new byte[]{1,2,3}), eq("image/png"));
+        verify(storage).put(eq(saved.getStorageKey()), org.mockito.AdditionalMatchers.aryEq(new byte[]{1,2,3}), eq("image/png"));
         var stored = new McqExamQuestion();
         stored.setExam(exam());
         stored.setQuestionNumber(3);
