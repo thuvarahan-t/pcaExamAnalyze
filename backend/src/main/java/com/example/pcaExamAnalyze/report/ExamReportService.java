@@ -75,6 +75,17 @@ public class ExamReportService {
 
     @Transactional(readOnly = true)
     public ExamReport build(Long examId, String logo, String banner, BiConsumer<String, Integer> progress) {
+        return buildInternal(examId, logo, banner, progress, true);
+    }
+
+    /** Student PDFs need aggregate ranking numbers, not rasterized labels for the entire class. */
+    @Transactional(readOnly = true)
+    public ExamReport buildForStudent(Long examId, String logo, String banner, BiConsumer<String, Integer> progress) {
+        return buildInternal(examId, logo, banner, progress, false);
+    }
+
+    private ExamReport buildInternal(Long examId, String logo, String banner,
+            BiConsumer<String, Integer> progress, boolean renderRosterImages) {
         progress.accept("Analysing the results", 8);
         McqExam exam = exams.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
         int total = exam.getTotalQuestions();
@@ -205,7 +216,8 @@ public class ExamReportService {
         Map<Integer, String> mainUris = new ConcurrentHashMap<>();
         Map<Integer, List<String>> subUris = new ConcurrentHashMap<>();
         AtomicInteger preparedImages = new AtomicInteger();
-        IntStream.rangeClosed(1, total).parallel().forEach(q -> {
+        // Serial decoding avoids simultaneous full-size physics question bitmaps on small hosts.
+        IntStream.rangeClosed(1, total).forEach(q -> {
             byte[] bytes = rawImages.get(q);
             if (bytes == null && rawKeys.containsKey(q)) bytes = questionService.imageBytesByKey(rawKeys.get(q)[0]).orElse(null);
             String uri = bytes == null ? null : ReportImages.toDataUri(bytes, 1500);
@@ -326,15 +338,17 @@ public class ExamReportService {
 
         // ---------------------------------------------------------------- ranking
         List<ExamReport.StudentRow> ranking = new ArrayList<>();
+        // Scores are already in descending order: equal scores share a competition rank.
+        int rank = 1, previousScore = -1;
         for (int i = 0; i < n; i++) {
             Scored x = scored.get(i);
-            int rank = 1;
-            for (Scored y : scored) if (y.correct() > x.correct()) rank++;
+            if (i == 0 || x.correct() != previousScore) rank = i + 1;
+            previousScore = x.correct();
             McqSubmission s = x.s();
             ranking.add(new ExamReport.StudentRow(rank, s.getStudentName(), s.getRegistrationId(), canonicalDistrict(s.getDistrict()),
                     s.getBatch(), s.getSchool(), x.correct(), x.wrong(), x.blank(), x.correct() + " / " + total, p1(x.pct()),
                     x.seconds() == null ? "-" : clock(x.seconds()), s.getSubmittedAt() == null ? "-" : SHORT.format(s.getSubmittedAt()), x.grade(),
-                    TextImages.render(s.getStudentName(), true, 8.3, new java.awt.Color(0x0f172a))));
+                    renderRosterImages ? TextImages.render(s.getStudentName(), true, 8.3, new java.awt.Color(0x0f172a)) : null));
         }
 
         // ---------------------------------------------------------------- insights, details, warnings
