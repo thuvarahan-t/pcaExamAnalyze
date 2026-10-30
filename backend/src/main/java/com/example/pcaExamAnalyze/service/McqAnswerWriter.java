@@ -168,11 +168,14 @@ public class McqAnswerWriter {
     private Boolean acceptingFallback(long submissionId, int question, int option) {
         Map<String, Object> row;
         try {
+            // H2 tests/dev: use a simple parent lock before reading mutable state.
+            // save/clear/saveTimes run in transactions, so the lock survives the write.
+            if (jdbc.queryForList("SELECT id FROM mcq_submissions WHERE id = ? FOR UPDATE",
+                    Long.class, submissionId).isEmpty()) return null;
             row = jdbc.queryForMap("""
                     SELECT s.status AS status, s.started_at AS started_at, e.duration_minutes AS minutes,
                            e.total_questions AS total, e.options_per_question AS options
                     FROM mcq_submissions s JOIN mcq_exams e ON e.id = s.exam_id WHERE s.id = ?
-                    FOR UPDATE OF s
                     """, submissionId);
         } catch (org.springframework.dao.EmptyResultDataAccessException missing) {
             return null;
