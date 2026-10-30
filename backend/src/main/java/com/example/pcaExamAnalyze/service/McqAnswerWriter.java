@@ -38,7 +38,7 @@ public class McqAnswerWriter {
                 FOR UPDATE OF s
             )
             INSERT INTO mcq_submission_answers (submission_id, question_number, selected_option)
-            SELECT id, ?::int, ?::int FROM eligible
+            SELECT id, ?::int, ?::int FROM eligible WHERE true
             ON CONFLICT (submission_id, question_number) DO UPDATE SET selected_option = EXCLUDED.selected_option
             """;
 
