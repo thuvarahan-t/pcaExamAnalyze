@@ -1,0 +1,39 @@
+/* Offers share the standard admin shell, controls and tables. */
+.offer-student-search { position:relative; margin:16px 0 20px; }
+.offer-student-search>label { display:block; margin-bottom:6px; color:var(--admin-ink); font-size:12px; font-weight:700; }
+.offer-search-status { margin:6px 0 0; color:var(--admin-muted); font-size:11px; }
+.offer-admin-page .admin-page-head { justify-content:space-between; flex-wrap:wrap; }
+.offer-admin-page .admin-page-head>div { min-width:0; }
+.offer-admin-page .eyebrow { color:var(--admin-blue); margin-bottom:5px; }
+.offer-admin-page .admin-panel { margin-bottom:22px; }
+.offer-admin-page .admin-panel h2 { font-family:Sora,sans-serif; font-size:15px; }
+.offer-admin-page .admin-panel>p { color:var(--admin-muted); font-size:11px; }
+.offer-admin-page .admin-field label { display:block; margin:0 0 6px; color:var(--admin-ink); font-size:12px; font-weight:700; }
+.offer-admin-page .admin-field small { display:block; margin-top:5px; color:var(--admin-muted); }
+.offer-admin-page .admin-field .error { display:block; margin-top:5px; }
+.offer-admin-page .admin-field input[type=checkbox] { accent-color:var(--admin-blue); }
+.offer-admin-page .admin-pack-card { border-radius:19px; padding:18px; }
+.offer-admin-page .admin-pack-card>a>img { max-height:270px; }
+.offer-admin-page .admin-pack-card h2 { font-family:Sora,sans-serif; font-size:15px; min-height:2.8em; }
+.offer-admin-page .admin-pack-card .admin-actions { padding-top:8px; }
+.offer-admin-page .admin-pack-card .btn { min-height:34px; padding:7px 10px; font-size:11px; }
+.offer-admin-page .publication-tag { color:#1d4ed8; background:#dbeafe; }
+.offer-admin-page .publication-tag.draft { color:#876019; background:#fff3d8; }
+.offer-admin-page .editor-layout { grid-template-columns:minmax(0,1fr) 280px; }
+.offer-admin-page .editor-preview { position:sticky; top:24px; }
+.offer-admin-page .capacity-summary { padding:16px 20px; margin-bottom:22px; }
+.offer-admin-page .capacity-summary strong { color:var(--admin-blue); }
+.offer-admin-page .admin-table { min-width:620px; }
+.offer-admin-page .pkg-empty { background:rgba(255,255,255,.4); border-color:rgba(37,99,235,.1); }
+@media(max-width:1200px) {
+    .offer-admin-page .admin-card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .offer-admin-page .campaign-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .offer-admin-page .campaign-save { padding-top:0; }
+    .offer-admin-page .editor-layout { grid-template-columns:minmax(0,1fr); }
+    .offer-admin-page .editor-preview { position:static; max-width:360px; }
+}
+@media(max-width:680px) {
+    .offer-admin-page .admin-card-grid,.offer-admin-page .campaign-fields { grid-template-columns:minmax(0,1fr); }
+    .offer-admin-page .admin-page-head>.btn { width:100%; }
+    .offer-admin-page .capacity-summary strong { font-size:28px; }
+}
