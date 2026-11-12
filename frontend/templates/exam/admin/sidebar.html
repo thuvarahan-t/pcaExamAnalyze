@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en"><body>
+    <aside th:fragment="sidebar(activePage)" class="admin-sidebar" id="adminSidebar">
+        <div class="admin-sidebar-top">
+            <a class="admin-brand" th:href="@{/exam/admin}">
+                <img th:src="@{/img/logo.png}" alt="PCA logo">
+                <span><strong>PCA Admin</strong><small>MCQ Exam System</small></span>
+            </a>
+            <button class="admin-menu-toggle" id="adminMenuToggle" type="button" aria-controls="adminSidebarMenu" aria-expanded="false" aria-label="Open menu"><i class="bi bi-list"></i></button>
+        </div>
+        <div class="admin-sidebar-menu" id="adminSidebarMenu">
+
+        <div class="admin-menu-label">Workspace</div>
+        <a class="admin-nav-link" th:classappend="${activePage == 'dashboard'} ? ' active'" th:href="@{/exam/admin}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+        <a class="admin-nav-link" th:classappend="${activePage == 'exam-form'} ? ' active'" th:href="@{/exam/admin/exams/new}"><i class="bi bi-plus-square-fill"></i> Add Exam</a>
+        <a class="admin-nav-link" th:classappend="${activePage == 'exams'} ? ' active'" th:href="@{/exam/admin/exams}"><i class="bi bi-journal-text"></i> Manage Exams</a>
+        <a class="admin-nav-link" th:classappend="${activePage == 'submissions'} ? ' active'" th:href="@{/exam/admin/submissions}"><i class="bi bi-people-fill"></i> Submissions</a>
+        <a class="admin-nav-link" th:classappend="${activePage == 'syllabus'} ? ' active'" th:href="@{/exam/admin/syllabus}"><i class="bi bi-book-half"></i> Syllabus</a>
+
+        <a class="admin-nav-link" th:classappend="${activePage == 'offers'} ? ' active'" th:href="@{/exam/admin/packages}"><i class="bi bi-gift-fill"></i> Offer</a>
+
+        <div class="admin-sidebar-foot">
+            <div class="admin-user"><strong th:text="${currentUserName}">PCA Teacher</strong><small>Environment teacher account</small></div>
+            <a class="admin-exit" th:href="@{/exam}"><i class="bi bi-arrow-left-circle"></i> Student Exam Portal</a>
+            <form class="admin-logout-form" th:action="@{/logout}" method="post"><button class="admin-logout" type="submit"><i class="bi bi-box-arrow-right"></i> Log out</button></form>
+        </div>
+        </div>
+    </aside>
+</body></html>
