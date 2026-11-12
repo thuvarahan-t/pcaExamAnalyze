@@ -497,15 +497,15 @@ input:focus,textarea:focus,select:focus {
 .availability {
     margin:14px 0;
     padding:12px 14px;
-    border:1px solid #21505b;
+    border:1px solid #d8e8e5;
     border-radius:12px;
-    background:linear-gradient(125deg,#102b46,#12534f);
-    color:#fff;
-    box-shadow:0 7px 18px #102b4612
+    background:linear-gradient(125deg,#f4faf8,#edf6f5);
+    color:var(--ink);
+    box-shadow:none
 }
 .availability-heading {
     display:block;
-    color:#b6ded5;
+    color:#64827c;
     font-size:9px;
     font-weight:700;
     letter-spacing:.11em;
@@ -529,7 +529,7 @@ input:focus,textarea:focus,select:focus {
     flex-wrap:wrap
 }
 .availability-line strong {
-    color:#fff;
+    color:#153c43;
     font-family:Sora,Inter,sans-serif;
     font-size:38px;
     line-height:1.1;
@@ -538,21 +538,21 @@ input:focus,textarea:focus,select:focus {
     font-variant-numeric:tabular-nums
 }
 .purchase-capacity {
-    color:#c2ddd9;
+    color:#67827e;
     font-size:21px;
     font-weight:600;
     white-space:nowrap
 }
 .purchase-caption {
     display:block;
-    color:#c2ddd9;
+    color:#67827e;
     font-size:11px;
     margin-top:4px
 }
 .seats-left {
-    color:#ffdf94;
-    background:#f9cd7014;
-    border:1px solid #f9cd7040;
+    color:#58786f;
+    background:#e2efea;
+    border:1px solid transparent;
     border-radius:7px;
     padding:7px 9px;
     font-size:11px;
@@ -563,7 +563,7 @@ input:focus,textarea:focus,select:focus {
 }
 .purchase-progress {
     height:8px;
-    background:#ffffff26;
+    background:#dce9e5;
     border-radius:4px;
     margin-top:10px;
     overflow:hidden
@@ -571,7 +571,7 @@ input:focus,textarea:focus,select:focus {
 .purchase-progress>span {
     display:block;
     height:100%;
-    background:linear-gradient(90deg,#64d9ba,#f9cd70);
+    background:linear-gradient(90deg,#78b9a8,#a5cabc);
     border-radius:4px;
     transition:width .4s
 }
