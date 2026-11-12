@@ -84,6 +84,7 @@ function studentPage({ mobile = false, purchased = 0 } = {}) {
 
 test('mobile poster click opens registration directly; desktop retains separate poster preview', async () => {
     const mobile = studentPage({ mobile: true });
+    assert.equal(mobile.registerButton.firstElementChild.textContent, 'Get this package');
     assert.equal(mobile.previewButton.disabled, true);
     await mobile.imageButton.fire('click');
     assert.equal(mobile.ids.registrationDialog.open, true);
