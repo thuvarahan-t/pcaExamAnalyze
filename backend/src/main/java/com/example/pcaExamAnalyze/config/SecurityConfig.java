@@ -43,6 +43,7 @@ public class SecurityConfig {
                         "/", "/login",
                         "/exam", "/exam/", "/exam/time", "/exam/p/**", "/exam/details", "/exam/details/clear",
                         "/exam/session/**", "/exam/admin-login", "/exam/result", "/exam/results/**",
+                        "/exam/packages", "/exam/packages/**",
                         "/css/**", "/js/**", "/img/**", "/fonts/**", "/favicon.ico",
                         "/webjars/**", "/h2-console/**"
                 ).permitAll()
