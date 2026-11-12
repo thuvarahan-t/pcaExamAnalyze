@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#102b46"><title>Class Packages · Physics Cube Academy</title>
+    <meta name="_csrf" th:content="${_csrf.token}"><meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <link rel="icon" th:href="@{/img/favicon-circle.png}">
+    <link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=16)}">
+    <script defer th:src="@{/js/class-packages.js(v=10)}"></script>
+</head>
+<body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
+<header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
+    <a class="pkg-brand" th:href="@{/exam}"><img th:src="@{/img/logo.png}" alt=""><span>PHYSICS CUBE<small>ACADEMY</small></span></a>
+    <div class="pkg-nav-links"><a th:href="@{/exam}">Exam portal</a><a class="current" th:href="@{/exam/packages}" aria-current="page">Class packages</a><a th:href="@{/exam/result}">My results <span aria-hidden="true">↗</span></a></div>
+</nav></header>
+<main>
+    <section class="pkg-hero">
+        <div class="pkg-container hero-layout">
+            <div class="hero-copy"><span class="eyebrow"><span class="live-dot"></span> PHYSICS CUBE STUDY COLLECTION</span>
+                <h1 th:text="${campaign.title == 'Your next step starts here.' or campaign.title == 'Offer ends in' ? 'PCA Mega Offer Packages' : campaign.title}">PCA Mega Offer Packages</h1>
+                <p>A little more understanding. A lot more confidence.</p>
+                <a class="hero-explore" href="#collection">Find your study pack <span aria-hidden="true">↓</span></a>
+            </div>
+            <div class="countdown-panel">
+                <div class="countdown-heading"><span class="eyebrow">LIMITED TIME. BIG POSSIBILITIES.</span><span class="offer-badge">SPECIAL OFFER</span></div>
+                <h2 id="countdownTitle">Your offer ends in</h2>
+                <div class="countdown" role="timer" aria-label="Time remaining for the offer">
+                    <div><strong id="countDays">--</strong><span>DAYS</span></div><b aria-hidden="true">:</b>
+                    <div><strong id="countHours">--</strong><span>HOURS</span></div><b aria-hidden="true">:</b>
+                    <div><strong id="countMinutes">--</strong><span>MINS</span></div><b aria-hidden="true">:</b>
+                    <div><strong id="countSeconds">--</strong><span>SECS</span></div>
+                </div>
+                <div class="deadline-note">Offer closes <time id="offerDeadline" th:datetime="${campaign.endsAt}" th:text="${#temporals.format(campaign.endsAt.atZone(T(com.example.pcaExamAnalyze.service.ClassPackageService).ZONE), 'dd MMM yyyy, hh:mm a')}"></time> · Sri Lanka</div>
+                <noscript><p>Enable JavaScript for the live countdown and WhatsApp registration.</p></noscript>
+            </div>
+        </div>
+    </section>
+    <section class="pkg-container collection" id="collection" aria-label="Available offer packages">
+        <p class="status-note" id="refreshStatus" role="status"></p>
+        <div class="package-grid" th:if="${!#lists.isEmpty(packages)}">
+            <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
+                <div class="poster-area">
+                    <div class="poster-labels"><span class="category-label" th:text="${pack.category}"></span><span class="discount-label" th:if="${pack.discount() > 0}" th:text="|${pack.discount()}% OFF|"></span></div>
+                    <button type="button" class="poster-button" data-register th:attr="aria-label=|Register for ${pack.name}|">
+                        <img th:src="@{/exam/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="|${pack.name} promotional poster|" width="1254" height="1254" loading="lazy">
+                        <span class="poster-hint">Register via WhatsApp <span aria-hidden="true">↗</span></span>
+                    </button>
+                </div>
+                <div class="package-content"><h3 th:text="${pack.name}"></h3>
+                    <div class="price-line"><div><span class="price-caption">SPECIAL OFFER</span><div class="price"><span>Rs.</span><strong th:text="${#numbers.formatDecimal(pack.offerPrice, 1, 'COMMA', 0, 'POINT')}"></strong></div></div><div class="was-price"><span>Regular price</span><del th:text="|Rs. ${#numbers.formatDecimal(pack.originalPrice, 1, 'COMMA', 0, 'POINT')}|"></del></div></div>
+                    <div class="availability"><span class="availability-heading">CONFIRMED PURCHASES</span><div class="availability-line"><div class="purchase-total"><div><strong class="purchased-count" th:text="${pack.purchased}"></strong><span class="purchase-capacity" th:text="| / ${pack.capacity}|"></span></div><span class="purchase-caption">students purchased</span></div><span class="seats-left" th:text="|${pack.remaining()} places left|"></span></div>
+                        <div class="purchase-progress" role="progressbar" th:attr="aria-valuenow=${pack.purchased},aria-valuemax=${pack.capacity},aria-label=|Confirmed purchases for ${pack.name}|" aria-valuemin="0"><span th:style="|width: ${pack.progress()}%|"></span></div>
+                    </div>
+                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Register via WhatsApp'}"></span><span aria-hidden="true">↗</span></button>
+                    <button class="poster-preview-link" type="button" data-preview>View full poster</button>
+                </div>
+            </article>
+        </div>
+        <div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
+    </section>
+</main>
+<footer class="pkg-container pkg-footer"><span>© Physics Cube Academy</span><span>Small steps. Stronger understanding.</span></footer>
+<nav class="package-mobile-nav" aria-label="Quick navigation">
+    <a class="package-nav-item" th:href="@{/exam/details}"><span class="package-nav-icon"><i class="bi bi-person-vcard-fill" aria-hidden="true"></i></span><span>My Details</span></a>
+    <a class="package-nav-item package-nav-home" th:href="@{/exam}"><span class="package-nav-icon"><i class="bi bi-house-door-fill" aria-hidden="true"></i></span><span>Home</span></a>
+    <a class="package-nav-item" th:href="@{/exam/result}"><span class="package-nav-icon"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span><span>My Result</span></a>
+</nav>
+
+<dialog class="registration-dialog" id="registrationDialog" aria-labelledby="registrationTitle">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <button class="dialog-close" type="button" data-close aria-label="Close registration">×</button>
+    <div class="dialog-eyebrow">YOUR PHYSICS JOURNEY</div><h2 id="registrationTitle" tabindex="-1">Let’s get you started.</h2><p class="dialog-subtitle">Send your details to our team on WhatsApp.</p>
+    <div class="selected-package"><img id="selectedPoster" alt=""><div><small>YOUR SELECTED PACK</small><strong id="selectedPackage"></strong><span id="selectedPrice"></span></div></div>
+    <form id="enquiryForm"><label for="packageName">Full name</label><input id="packageName" name="name" th:value="${details.name}" required minlength="3" maxlength="150" autocomplete="name" placeholder="Enter your full name">
+        <label for="packageRegistration">Registration ID</label><input id="packageRegistration" name="registrationId" th:value="${details.registrationId}" required pattern="[A-Za-z0-9-]{3,30}" maxlength="30" autocomplete="off" placeholder="e.g. 261107" title="3–30 letters, numbers or hyphens">
+        <p class="field-hint">Saved details are filled in for you. You can edit them here.</p><p class="form-error" id="enquiryError" role="alert"></p>
+        <button class="pkg-btn whatsapp" type="submit" id="prepareEnquiry">Send message in WhatsApp <span aria-hidden="true">↗</span></button>
+        <p class="field-hint">WhatsApp opens with your message filled in. Tap Send there to contact our team.</p>
+    </form>
+</dialog>
+<dialog class="poster-dialog" id="posterDialog" aria-label="Full package poster"><button class="dialog-close" type="button" data-close aria-label="Close poster">×</button><img id="fullPoster" alt=""><div class="poster-dialog-actions"><strong id="previewPackageName"></strong><button class="pkg-btn whatsapp" id="previewRegister" type="button">Register via WhatsApp ↗</button></div></dialog>
+</body></html>
