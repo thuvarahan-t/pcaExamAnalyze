@@ -47,6 +47,24 @@ cd backend
 Only the admin/teacher logs in (username + password, seeded from `.env`). Students take
 exams without an account.
 
+## Class packages
+
+Students browse `/exam/packages`, see the live campaign countdown and confirmed purchases
+out of each package's capacity, and click a poster to prepare a WhatsApp enquiry. Existing
+student details prefill the editable form. Sending an enquiry does not confirm a purchase.
+
+Teachers use **Class Packages** in the admin menu (`/exam/admin/packages`) to change the
+deadline and WhatsApp number, create/edit packages, upload JPEG/PNG posters, publish/hide
+offers, and add or remove confirmed purchases by registration ID. Names can be taken from
+existing exam records. Duplicate registrations within a package and over-capacity purchases
+are rejected. Public pages never expose the purchaser list.
+
+The supplied three posters seed once on first startup with zero purchases and 111 places
+per package. Packages, campaign settings, uploaded posters and confirmed purchases live in
+the existing database and survive redeploys. The default campaign closes on 22 November
+2026 at 23:59:59 Sri Lanka time; change it in the admin settings for later campaigns.
+See [the implementation plan and verification checklist](docs/class-packages-plan.md).
+
 ---
 
 ## Tech notes

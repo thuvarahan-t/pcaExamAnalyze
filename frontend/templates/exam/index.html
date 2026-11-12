@@ -214,16 +214,18 @@
     {"prerender":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}],
      "prefetch":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}]}
     </script>
-    <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=24)}">
+    <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=26)}">
 </head>
 <body>
 <header class="topbar">
     <nav class="nav" aria-label="Exam portal navigation">
         <a class="brand" th:href="@{/exam}"><img th:src="@{/img/favicon-circle.png(v=2)}" width="42" height="42" alt="PCA logo"><span class="brand-text">PCA MCQ Exam System<small>Physics Cube Academy</small></span></a>
         <div class="nav-right">
+            <a class="mobile-offer" th:href="@{/exam/packages}" aria-label="View PCA offers" title="PCA offers"><i class="bi bi-gift-fill" aria-hidden="true"></i><span class="offer-dot" aria-hidden="true"></span></a>
             <div class="student-greeting" th:if="${savedStudentName != null}"><span class="greet-avatar" aria-hidden="true" th:text="${#strings.toUpperCase(#strings.substring(savedStudentName,0,1))}">S</span><span class="greet-text"><span>Hi,</span><strong th:text="${savedStudentName}">Student</strong></span></div>
             <span data-lang-slot></span>
-            <div class="nav-actions">
+            <div class="nav-actions" style="flex-wrap:wrap">
+                <a class="back offer-nav" th:href="@{/exam/packages}" aria-label="View PCA offers"><i class="bi bi-gift-fill" aria-hidden="true"></i><span>Offer</span><span class="offer-dot" aria-hidden="true"></span></a>
                 <a class="back primary details-nav" th:href="@{/exam/details}"><span class="saved-dot" th:if="${hasSavedStudentDetails}" aria-label="Details saved"></span><i class="bi bi-person-vcard-fill" aria-hidden="true"></i><span>My Details</span></a>
                 <a class="back result-nav" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i><span>My Result</span></a>
                 <a class="back icon-nav admin" th:href="@{/exam/admin-login}" aria-label="Admin login" title="Admin login"><i class="bi bi-person-lock" aria-hidden="true"></i></a>

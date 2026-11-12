@@ -13,6 +13,8 @@ import java.util.Set;
 
 public interface McqSubmissionRepository extends JpaRepository<McqSubmission, Long> {
 
+    java.util.Optional<McqSubmission> findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(String registrationId);
+
     long countByExamId(Long examId);
 
     interface ExamCount { Long getExamId(); long getTotal(); }
