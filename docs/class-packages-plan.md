@@ -82,6 +82,9 @@ Implementation and automated verification are complete. No external WhatsApp mes
 - Removing a confirmed purchase uses the existing styled admin confirmation popup (Cancel / Remove), followed by the updated list without a success notification.
 - Final review removed the unused registered-student autocomplete endpoint, query and styles. Only confirmed-list filtering is retained.
 - Live catalog review: changing a package name, category, price or poster disables an open stale enquiry and refreshes the catalog after the dialog closes. A normal count-only update continues without reloading.
+- The package CTA reads **Get this package** and uses a gentle green glow and occasional shine sweep, with hover/tap feedback. Full/expired actions do not animate; reduced-motion preferences disable animation.
+- Purchase-count panels use a light mint background, muted progress bar and no shadow, keeping the large count readable while the animated Get this package button remains the primary action.
+- The page background uses a deeper blue-grey/teal shade and slightly stronger card shadows so the light glass cards stand out clearly.
 - Final local regression run: 99 Maven tests reported, 98 passed and the real-PostgreSQL test skipped because no local PostgreSQL/Docker server is available. Seven Node interaction tests passed, covering image registration, WhatsApp submission, full/expired offers, count refresh, edited offers, stale responses and confirmed-student filtering.
 - CI now runs on pull requests to `main` as well as `test`, including the frontend interaction suite and the existing H2/PostgreSQL Maven verification jobs.
 - Removed the three instructional steps and purchase footnote at the user's request.

@@ -56,7 +56,7 @@
     const available = card => card && card.dataset.unpublished !== 'true' && card.dataset.updated !== 'true' && !expired()
         && Number(card.dataset.purchased) < Number(card.dataset.capacity);
     const stateLabel = card => card.dataset.unpublished === 'true' ? 'No longer available' : card.dataset.updated === 'true' ? 'Offer updated' : expired() ? 'Offer ended'
-        : Number(card.dataset.purchased) >= Number(card.dataset.capacity) ? 'Fully booked' : 'Register via WhatsApp';
+        : Number(card.dataset.purchased) >= Number(card.dataset.capacity) ? 'Fully booked' : 'Get this package';
 
     function tick() {
         const remaining = Math.max(0, Math.ceil((endsAt - now()) / 1000));

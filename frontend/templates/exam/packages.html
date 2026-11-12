@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=16)}">
-    <script defer th:src="@{/js/class-packages.js(v=10)}"></script>
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=19)}">
+    <script defer th:src="@{/js/class-packages.js(v=11)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
@@ -47,7 +47,7 @@
                     <div class="poster-labels"><span class="category-label" th:text="${pack.category}"></span><span class="discount-label" th:if="${pack.discount() > 0}" th:text="|${pack.discount()}% OFF|"></span></div>
                     <button type="button" class="poster-button" data-register th:attr="aria-label=|Register for ${pack.name}|">
                         <img th:src="@{/exam/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="|${pack.name} promotional poster|" width="1254" height="1254" loading="lazy">
-                        <span class="poster-hint">Register via WhatsApp <span aria-hidden="true">↗</span></span>
+                        <span class="poster-hint">Get this package <span aria-hidden="true">↗</span></span>
                     </button>
                 </div>
                 <div class="package-content"><h3 th:text="${pack.name}"></h3>
@@ -55,7 +55,7 @@
                     <div class="availability"><span class="availability-heading">CONFIRMED PURCHASES</span><div class="availability-line"><div class="purchase-total"><div><strong class="purchased-count" th:text="${pack.purchased}"></strong><span class="purchase-capacity" th:text="| / ${pack.capacity}|"></span></div><span class="purchase-caption">students purchased</span></div><span class="seats-left" th:text="|${pack.remaining()} places left|"></span></div>
                         <div class="purchase-progress" role="progressbar" th:attr="aria-valuenow=${pack.purchased},aria-valuemax=${pack.capacity},aria-label=|Confirmed purchases for ${pack.name}|" aria-valuemin="0"><span th:style="|width: ${pack.progress()}%|"></span></div>
                     </div>
-                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Register via WhatsApp'}"></span><span aria-hidden="true">↗</span></button>
+                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Get this package'}"></span><span aria-hidden="true">↗</span></button>
                     <button class="poster-preview-link" type="button" data-preview>View full poster</button>
                 </div>
             </article>
@@ -82,5 +82,5 @@
         <p class="field-hint">WhatsApp opens with your message filled in. Tap Send there to contact our team.</p>
     </form>
 </dialog>
-<dialog class="poster-dialog" id="posterDialog" aria-label="Full package poster"><button class="dialog-close" type="button" data-close aria-label="Close poster">×</button><img id="fullPoster" alt=""><div class="poster-dialog-actions"><strong id="previewPackageName"></strong><button class="pkg-btn whatsapp" id="previewRegister" type="button">Register via WhatsApp ↗</button></div></dialog>
+<dialog class="poster-dialog" id="posterDialog" aria-label="Full package poster"><button class="dialog-close" type="button" data-close aria-label="Close poster">×</button><img id="fullPoster" alt=""><div class="poster-dialog-actions"><strong id="previewPackageName"></strong><button class="pkg-btn whatsapp" id="previewRegister" type="button">Get this package ↗</button></div></dialog>
 </body></html>
