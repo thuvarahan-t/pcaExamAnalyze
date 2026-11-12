@@ -1481,6 +1481,50 @@ input:focus,textarea:focus,select:focus {
     from { opacity:0; transform:translateY(8px); }
     to { opacity:1; transform:translateY(0); }
 }
+/* The package action stays prominent without animating unavailable offers. */
+.packages-page .register-button:not(:disabled) {
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    border-color:#ffffff60;
+    background:linear-gradient(115deg,#087f78,#079d88 60%,#0a8b84);
+    color:#fff;
+    font-size:13px;
+    font-weight:800;
+    box-shadow:0 5px 16px #087f782b;
+    animation:packageActionGlow 3.4s ease-in-out infinite;
+    transition:transform .2s,filter .2s
+}
+.packages-page .register-button>span {
+    position:relative;
+    z-index:1
+}
+.packages-page .register-button:not(:disabled)::after {
+    content:"";
+    position:absolute;
+    inset:-30% auto -30% -60%;
+    width:45%;
+    background:linear-gradient(105deg,transparent,#ffffff32,transparent);
+    transform:skewX(-18deg);
+    pointer-events:none;
+    animation:packageActionShine 4.8s ease-in-out infinite
+}
+.packages-page .register-button:not(:disabled):hover {
+    transform:translateY(-2px);
+    filter:brightness(1.08)
+}
+.packages-page .register-button:not(:disabled):active {
+    transform:scale(.98)
+}
+@keyframes packageActionGlow {
+    0%,100% { box-shadow:0 5px 16px #087f782b,0 0 0 0 #29c9a626; }
+    50% { box-shadow:0 7px 22px #087f7840,0 0 0 4px #29c9a600; }
+}
+@keyframes packageActionShine {
+    0%,35% { left:-60%; opacity:0; }
+    45% { opacity:1; }
+    70%,100% { left:130%; opacity:0; }
+}
 @media(prefers-reduced-motion:reduce) {
     html {
         scroll-behavior:auto
