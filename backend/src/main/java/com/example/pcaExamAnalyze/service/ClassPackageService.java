@@ -56,6 +56,46 @@ public class ClassPackageService {
                 p.getOriginalPrice(), p.getOfferPrice(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
                 p.getDisplayOrder(), p.isPublished(), p.getPosterVersion())).toList();
     }
+    /** Public purchase feed: newest first, name and package only (registration IDs stay private). */
+    public record RecentPurchase(Long id, String name, String school, String district, String packageName, Instant confirmedAt) {}
+    public static final int RECENT_LIMIT = 30;
+    public List<RecentPurchase> recentPurchases() {
+        return purchases.recent(org.springframework.data.domain.PageRequest.of(0, RECENT_LIMIT)).stream()
+            .map(ClassPackageService::toRecent).toList();
+    }
+    private static RecentPurchase toRecent(PackagePurchaseRepository.RecentPurchase r) {
+        return new RecentPurchase(r.getId(), maskName(r.getStudentName()), nz(r.getSchool()), nz(r.getDistrict()),
+            r.getPackageName(), r.getConfirmedAt());
+    }
+    /** One page of the public "Recent purchases" popup; pass the last item's time + id to get the next page. */
+    public record PurchasePage(List<RecentPurchase> items, boolean hasMore) {}
+    public static final int PAGE_SIZE = 20;
+    public PurchasePage purchasePage(Instant beforeAt, Long beforeId, int size) {
+        int n = Math.max(1, Math.min(50, size));
+        var page = org.springframework.data.domain.PageRequest.of(0, n + 1);
+        var rows = beforeAt == null || beforeId == null ? purchases.recent(page) : purchases.recentBefore(beforeAt, beforeId, page);
+        return new PurchasePage(rows.stream().limit(n).map(ClassPackageService::toRecent).toList(), rows.size() > n);
+    }
+    /**
+     * Hides most of each word of a public name: up to 7 letters keeps the first and last letter
+     * ("Kavya" -> "K***a"); longer words keep the first two and last two ("Thuvarahan" -> "Th******an").
+     */
+    public static String maskName(String name) {
+        if (name == null) return "";
+        StringBuilder out = new StringBuilder();
+        for (String word : name.strip().split("\s+")) {
+            if (word.isEmpty()) continue;
+            if (!out.isEmpty()) out.append(' ');
+            int[] cp = word.codePoints().toArray();
+            int keep = cp.length > 7 ? 2 : 1;
+            if (cp.length <= 2) { out.append(word); continue; }
+            out.appendCodePoint(cp[0]); if (keep == 2) out.appendCodePoint(cp[1]);
+            out.append("*".repeat(cp.length - 2 * keep));
+            if (keep == 2) out.appendCodePoint(cp[cp.length - 2]);
+            out.appendCodePoint(cp[cp.length - 1]);
+        }
+        return out.toString();
+    }
     public List<PackagePurchase> purchaseList(Long id) { get(id); return purchases.findByClassPackageIdOrderByConfirmedAtDescIdDesc(id); }
     public PackagePoster poster(Long id, boolean admin) {
         if (admin) get(id); else publicPackage(id);
