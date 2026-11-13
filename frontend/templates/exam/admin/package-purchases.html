@@ -3,11 +3,39 @@
 <div class="admin-page-head"><div><a class="eyebrow teal" th:href="@{/exam/admin/packages}">← ALL PACKAGES</a><h1 th:text="${pack.name}"></h1></div><a class="btn" th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}">Edit package</a></div>
 <th:block th:replace="~{exam/admin/package-layout :: flash}"></th:block>
 <div class="glass-card capacity-summary"><strong th:text="|${#lists.size(purchases)} / ${pack.capacity}|"></strong><span>confirmed purchases</span></div>
-<section class="glass-card admin-panel"><h2>Add confirmed purchase</h2>
+<section class="glass-card admin-panel purchase-form-card"><h2>Add confirmed purchase</h2>
 <form th:action="@{/exam/admin/packages/{id}/purchases(id=${pack.id})}" method="post"><div class="admin-form-grid">
 <div class="admin-field"><label for="purchaseRegistration">Registration ID</label><input class="form-input" id="purchaseRegistration" name="registrationId" th:value="${enteredRegistration}" required pattern="[A-Za-z0-9-]{3,30}" maxlength="30" placeholder="e.g. 261107"></div>
-<div class="admin-field"><label for="purchaseName">Student name</label><input class="form-input" id="purchaseName" name="name" th:value="${enteredName}" maxlength="150" placeholder="Name (auto-filled if available)"></div></div>
+<div class="admin-field"><label for="purchaseName">Student name</label><input class="form-input" id="purchaseName" name="name" th:value="${enteredName}" maxlength="150" placeholder="Name (auto-filled if available)"></div>
+<div class="admin-field"><label for="purchaseSchool">School</label><input class="form-input" id="purchaseSchool" name="school" th:value="${enteredSchool}" maxlength="150" placeholder="School (auto-filled if available)"></div>
+<div class="admin-field district-field"><label for="district-trigger">District</label>
+<input type="hidden" id="district" name="district" th:value="${enteredDistrict}">
+<div class="gselect" id="district-select">
+  <button type="button" class="gselect-trigger form-input" id="district-trigger" aria-haspopup="listbox" aria-expanded="false">
+    <span id="district-trigger-text" class="gselect-placeholder" data-placeholder="Auto-fill if available">Auto-fill if available</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+  <div class="gselect-panel" id="district-panel" hidden>
+    <div class="gselect-body">
+      <div class="gselect-left">
+        <div class="gselect-search-wrap"><i class="bi bi-search" aria-hidden="true"></i><input type="text" id="district-search" class="gselect-search" placeholder="Search district..." autocomplete="off"></div>
+        <ul class="gselect-list" id="district-list" role="listbox">
+          <li class="gselect-option gselect-clear" data-value="" role="option">Auto-fill if available</li>
+          <li th:each="d : ${districts}" th:attr="data-value=${d}" th:text="${d}" class="gselect-option" role="option"></li>
+        </ul>
+      </div>
+      <div class="gselect-map">
+        <div class="map-title"><i class="bi bi-map" aria-hidden="true"></i> Sri Lanka - click district</div>
+        <div id="district-name" class="map-label">Tap the district on the map</div>
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+</div></div></div>
 <div class="admin-form-buttons"><button class="btn primary" type="submit" th:disabled="${#lists.size(purchases) >= pack.capacity}">Confirm purchase</button></div><p class="error" th:if="${#lists.size(purchases) >= pack.capacity}">This package is full. Increase capacity to record more purchases.</p></form></section>
-<section class="glass-card admin-panel"><h2>Confirmed students</h2><div class="offer-student-search" th:if="${!#lists.isEmpty(purchases)}"><label for="purchaseFilter">Search confirmed students</label><input class="form-input" id="purchaseFilter" type="search" placeholder="Name or registration ID"><p class="offer-search-status" id="purchaseFilterStatus" role="status"></p></div><div class="table-wrap" th:if="${!#lists.isEmpty(purchases)}"><table class="admin-table"><thead><tr><th>REGISTRATION ID</th><th>STUDENT NAME</th><th>CONFIRMED · SRI LANKA</th><th></th></tr></thead><tbody><tr th:each="purchase : ${purchases}" data-purchase-row><td><strong th:text="${purchase.registrationId}"></strong></td><td th:text="${purchase.studentName}"></td><td th:text="${#temporals.format(purchase.confirmedAt.atZone(zone), 'dd MMM yyyy, hh:mm a')}"></td><td><form th:action="@{/exam/admin/packages/{id}/purchases/{purchaseId}/remove(id=${pack.id},purchaseId=${purchase.id})}" method="post" data-confirm-title="Remove confirmed purchase?" data-confirm-action="Remove" data-confirm-type="danger" th:attr="data-confirm=|Remove the confirmed purchase for ${purchase.registrationId}?|"><button class="btn danger" type="submit" th:attr="data-student=${purchase.registrationId}">Remove</button></form></td></tr></tbody></table></div>
+<section class="glass-card admin-panel"><h2>Confirmed students</h2><div class="offer-student-search" th:if="${!#lists.isEmpty(purchases)}"><label for="purchaseFilter">Search confirmed students</label><input class="form-input" id="purchaseFilter" type="search" placeholder="Name or registration ID"><p class="offer-search-status" id="purchaseFilterStatus" role="status"></p></div><div class="table-wrap" th:if="${!#lists.isEmpty(purchases)}"><table class="admin-table"><thead><tr><th>REGISTRATION ID</th><th>STUDENT NAME</th><th>SCHOOL</th><th>DISTRICT</th><th>CONFIRMED · SRI LANKA</th><th></th></tr></thead><tbody><tr th:each="purchase : ${purchases}" data-purchase-row><td><strong th:text="${purchase.registrationId}"></strong></td><td th:text="${purchase.studentName}"></td><td th:text="${purchase.school ?: '—'}"></td><td th:text="${purchase.district ?: '—'}"></td><td th:text="${#temporals.format(purchase.confirmedAt.atZone(zone), 'dd MMM yyyy, hh:mm a')}"></td><td><form th:action="@{/exam/admin/packages/{id}/purchases/{purchaseId}/remove(id=${pack.id},purchaseId=${purchase.id})}" method="post" data-confirm-title="Remove confirmed purchase?" data-confirm-action="Remove" data-confirm-type="danger" th:attr="data-confirm=|Remove the confirmed purchase for ${purchase.registrationId}?|"><button class="btn danger" type="submit" th:attr="data-student=${purchase.registrationId}">Remove</button></form></td></tr></tbody></table></div>
 <div class="pkg-empty" th:if="${#lists.isEmpty(purchases)}"><h3>No confirmed purchases yet.</h3><p>Add the first registration ID after confirming payment.</p></div></section>
-</main></div></body></html>
+</main></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script th:src="@{/js/sl-district-map.js}"></script>
+<script th:src="@{/js/district-map-init.js(v=5)}"></script>
+</body></html>
