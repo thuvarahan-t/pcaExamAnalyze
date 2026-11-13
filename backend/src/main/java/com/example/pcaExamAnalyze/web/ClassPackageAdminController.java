@@ -59,15 +59,18 @@ public class ClassPackageAdminController {
     public String purchases(@PathVariable Long id, Model model, jakarta.servlet.http.HttpServletResponse response) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         model.addAttribute("pack", service.get(id)); model.addAttribute("purchases", service.purchaseList(id));
+        model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
         model.addAttribute("zone", ClassPackageService.ZONE); return "exam/admin/package-purchases";
     }
     @PostMapping("/{id}/purchases")
     public String addPurchase(@PathVariable Long id, @RequestParam String registrationId,
-            @RequestParam(defaultValue = "") String name, RedirectAttributes redirect) {
-        try { service.addPurchase(id, registrationId, name); redirect.addFlashAttribute("success", "Confirmed purchase added. Student count updated."); }
+            @RequestParam(defaultValue = "") String name, @RequestParam(defaultValue = "") String school,
+            @RequestParam(defaultValue = "") String district, RedirectAttributes redirect) {
+        try { service.addPurchase(id, registrationId, name, school, district); redirect.addFlashAttribute("success", "Confirmed purchase added. Student count updated."); }
         catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage()); redirect.addFlashAttribute("enteredRegistration", registrationId);
             redirect.addFlashAttribute("enteredName", name);
+            redirect.addFlashAttribute("enteredSchool", school); redirect.addFlashAttribute("enteredDistrict", district);
         }
         return "redirect:/exam/admin/packages/" + id + "/purchases";
     }
