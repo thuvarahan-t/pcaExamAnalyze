@@ -50,7 +50,7 @@ public class ExamReportService {
     private static final DateTimeFormatter SHORT = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a", Locale.ENGLISH).withZone(ZONE);
 
     /** Sri Lanka's 25 districts (same list the student form uses). */
-    static final List<String> DISTRICTS = List.of(
+    public static final List<String> DISTRICTS = List.of(
             "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya", "Galle", "Matara", "Hambantota",
             "Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee",
             "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla", "Monaragala", "Ratnapura", "Kegalle");
