@@ -56,6 +56,46 @@ public class ClassPackageService {
                 p.getOriginalPrice(), p.getOfferPrice(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
                 p.getDisplayOrder(), p.isPublished(), p.getPosterVersion())).toList();
     }
+    /** Public purchase feed: newest first, name and package only (registration IDs stay private). */
+    public record RecentPurchase(Long id, String name, String school, String district, String packageName, Instant confirmedAt) {}
+    public static final int RECENT_LIMIT = 30;
+    public List<RecentPurchase> recentPurchases() {
+        return purchases.recent(org.springframework.data.domain.PageRequest.of(0, RECENT_LIMIT)).stream()
+            .map(ClassPackageService::toRecent).toList();
+    }
+    private static RecentPurchase toRecent(PackagePurchaseRepository.RecentPurchase r) {
+        return new RecentPurchase(r.getId(), maskName(r.getStudentName()), nz(r.getSchool()), nz(r.getDistrict()),
+            r.getPackageName(), r.getConfirmedAt());
+    }
+    /** One page of the public "Recent purchases" popup; pass the last item's time + id to get the next page. */
+    public record PurchasePage(List<RecentPurchase> items, boolean hasMore) {}
+    public static final int PAGE_SIZE = 20;
+    public PurchasePage purchasePage(Instant beforeAt, Long beforeId, int size) {
+        int n = Math.max(1, Math.min(50, size));
+        var page = org.springframework.data.domain.PageRequest.of(0, n + 1);
+        var rows = beforeAt == null || beforeId == null ? purchases.recent(page) : purchases.recentBefore(beforeAt, beforeId, page);
+        return new PurchasePage(rows.stream().limit(n).map(ClassPackageService::toRecent).toList(), rows.size() > n);
+    }
+    /**
+     * Hides most of each word of a public name: up to 7 letters keeps the first and last letter
+     * ("Kavya" -> "K***a"); longer words keep the first two and last two ("Thuvarahan" -> "Th******an").
+     */
+    public static String maskName(String name) {
+        if (name == null) return "";
+        StringBuilder out = new StringBuilder();
+        for (String word : name.strip().split("\s+")) {
+            if (word.isEmpty()) continue;
+            if (!out.isEmpty()) out.append(' ');
+            int[] cp = word.codePoints().toArray();
+            int keep = cp.length > 7 ? 2 : 1;
+            if (cp.length <= 2) { out.append(word); continue; }
+            out.appendCodePoint(cp[0]); if (keep == 2) out.appendCodePoint(cp[1]);
+            out.append("*".repeat(cp.length - 2 * keep));
+            if (keep == 2) out.appendCodePoint(cp[cp.length - 2]);
+            out.appendCodePoint(cp[cp.length - 1]);
+        }
+        return out.toString();
+    }
     public List<PackagePurchase> purchaseList(Long id) { get(id); return purchases.findByClassPackageIdOrderByConfirmedAtDescIdDesc(id); }
     public PackagePoster poster(Long id, boolean admin) {
         if (admin) get(id); else publicPackage(id);
@@ -110,15 +150,22 @@ public class ClassPackageService {
     @Transactional
     public void toggle(Long id) { var p = locked(id); p.setPublished(!p.isPublished()); }
     @Transactional
-    public void addPurchase(Long id, String registrationId, String name) {
+    public void addPurchase(Long id, String registrationId, String name) { addPurchase(id, registrationId, name, "", ""); }
+    @Transactional
+    public void addPurchase(Long id, String registrationId, String name, String school, String district) {
         ClassPackage p = locked(id);
         String reg = registrationId(registrationId);
         if (purchases.existsByClassPackageIdAndRegistrationId(id, reg)) throw new IllegalArgumentException("This registration ID is already confirmed for this package.");
         if (purchases.countByClassPackageId(id) >= p.getCapacity()) throw new IllegalArgumentException("Package capacity reached. Increase capacity before adding another purchase.");
-        if (name == null || name.isBlank()) name = submissions.findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(reg)
-                .map(McqSubmission::getStudentName).orElse("");
+        // Blank fields are filled from the student's latest exam submission when one exists.
+        var exam = (isBlank(name) || isBlank(school) || isBlank(district))
+            ? submissions.findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(reg) : Optional.<McqSubmission>empty();
+        if (isBlank(name)) name = exam.map(McqSubmission::getStudentName).orElse("");
+        String schoolValue = isBlank(school) ? lenient(exam.map(McqSubmission::getSchool).orElse(""), ClassPackageService::school) : school(school);
+        String districtValue = isBlank(district) ? lenient(exam.map(McqSubmission::getDistrict).orElse(""), ClassPackageService::district) : district(district);
         var purchase = new PackagePurchase(); purchase.setClassPackage(p); purchase.setRegistrationId(reg);
-        purchase.setStudentName(studentName(name)); purchases.saveAndFlush(purchase);
+        purchase.setStudentName(studentName(name)); purchase.setSchool(schoolValue); purchase.setDistrict(districtValue);
+        purchases.saveAndFlush(purchase);
     }
     @Transactional
     public void removePurchase(Long packageId, Long purchaseId) {
@@ -126,6 +173,28 @@ public class ClassPackageService {
         var purchase = purchases.findByIdAndClassPackageId(purchaseId, packageId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         purchases.delete(purchase);
+    }
+    /** Auto-filled values from old exam records are skipped instead of blocking the purchase. */
+    private static String lenient(String value, java.util.function.UnaryOperator<String> check) {
+        try { return check.apply(value); } catch (IllegalArgumentException e) { return null; }
+    }
+    private static boolean isBlank(String v) { return v == null || v.isBlank(); }
+    private static String nz(String v) { return v == null ? "" : v; }
+    /** Optional school name; null when blank. */
+    public static String school(String value) {
+        String school = value == null ? "" : value.strip().replaceAll("\\s+", " ");
+        if (school.isEmpty()) return null;
+        if (school.length() > 150 || !school.matches("[\\p{L}\\p{M}\\p{N} .,’'()&/-]+"))
+            throw new IllegalArgumentException("Enter a valid school name (up to 150 characters).");
+        return school;
+    }
+    /** Optional district; must be one of Sri Lanka's 25 districts. */
+    public static String district(String value) {
+        String district = value == null ? "" : value.strip();
+        if (district.isEmpty()) return null;
+        return com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS.stream()
+            .filter(known -> known.equalsIgnoreCase(district)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Choose a district from the list."));
     }
     public static String registrationId(String value) {
         String reg = value == null ? "" : value.strip().toUpperCase(Locale.ROOT);

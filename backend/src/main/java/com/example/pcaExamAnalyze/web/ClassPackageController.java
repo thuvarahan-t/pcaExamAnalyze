@@ -31,12 +31,26 @@ public class ClassPackageController {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         model.addAttribute("campaign", service.campaign()); model.addAttribute("packages", service.cards(false));
         model.addAttribute("serverNow", Instant.now()); model.addAttribute("details", details(request));
+        model.addAttribute("recent", service.recentPurchases());
         return "exam/packages";
     }
     @GetMapping("/status") @ResponseBody
     public ResponseEntity<?> status() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of(
-            "serverNow", Instant.now(), "endsAt", service.campaign().getEndsAt(), "packages", service.cards(false)));
+            "serverNow", Instant.now(), "endsAt", service.campaign().getEndsAt(), "packages", service.cards(false),
+            "recent", service.recentPurchases()));
+    }
+    @GetMapping("/purchases") @ResponseBody
+    public ResponseEntity<?> purchases(@RequestParam(required = false) String beforeAt,
+            @RequestParam(required = false) Long beforeId, @RequestParam(defaultValue = "20") int size) {
+        Instant at = null;
+        if (beforeAt != null && !beforeAt.isBlank()) {
+            try { at = Instant.parse(beforeAt); }
+            catch (java.time.format.DateTimeParseException e) {
+                return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).body(Map.of("error", "Invalid cursor."));
+            }
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.purchasePage(at, beforeId, size));
     }
     @GetMapping("/{id}/poster")
     public ResponseEntity<byte[]> poster(@PathVariable Long id) {

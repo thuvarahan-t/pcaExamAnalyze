@@ -14,5 +14,7 @@ public class PackagePurchase {
     @JoinColumn(name = "package_id", nullable = false) private ClassPackage classPackage;
     @Column(name = "registration_id", nullable = false, length = 30) private String registrationId;
     @Column(nullable = false, length = 150) private String studentName;
+    @Column(length = 150) private String school;
+    @Column(length = 50) private String district;
     @Column(nullable = false) private Instant confirmedAt = Instant.now();
 }

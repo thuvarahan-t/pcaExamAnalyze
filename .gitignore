@@ -40,3 +40,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Terraform local working files and state
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+/infra/terraform-learning/generated/

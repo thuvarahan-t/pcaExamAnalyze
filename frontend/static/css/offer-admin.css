@@ -37,3 +37,39 @@
     .offer-admin-page .admin-page-head>.btn { width:100%; }
     .offer-admin-page .capacity-summary strong { font-size:28px; }
 }
+
+/* District picker on the purchase form: same list + Sri Lanka map as the student details form, light admin theme. */
+.offer-admin-page .purchase-form-card { position:relative; z-index:3; }
+.offer-admin-page .gselect { position:relative; min-width:0; }
+.offer-admin-page .gselect-trigger { display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; text-align:left; font:inherit; }
+.offer-admin-page .gselect-trigger .bi-chevron-down { color:var(--admin-muted); transition:transform .2s; }
+.offer-admin-page .gselect.open .gselect-trigger { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.offer-admin-page .gselect.open .gselect-trigger .bi-chevron-down { transform:rotate(180deg); }
+.offer-admin-page .gselect-placeholder { color:var(--admin-muted); }
+.offer-admin-page .gselect-panel { position:absolute; z-index:40; left:0; top:calc(100% + 7px); width:min(560px,calc(100vw - 32px)); padding:10px; border:1px solid rgba(255,255,255,.95); border-radius:18px; background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(241,246,255,.96)); box-shadow:0 24px 50px rgba(15,23,42,.18),inset 0 1px 0 #fff; }
+.offer-admin-page .gselect-panel.align-right { left:auto; right:0; }
+.offer-admin-page .gselect-body { display:flex; gap:12px; }
+.offer-admin-page .gselect-left { flex:1 1 0; min-width:0; display:flex; flex-direction:column; }
+.offer-admin-page .gselect-search-wrap { position:relative; margin-bottom:7px; }
+.offer-admin-page .gselect-search-wrap .bi { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--admin-muted); font-size:14px; }
+.offer-admin-page .gselect-search { width:100%; padding:9px 10px 9px 31px; border:1.5px solid rgba(100,116,139,.22); border-radius:10px; color:var(--admin-ink); background:#fff; font:inherit; font-size:13px; outline:none; }
+.offer-admin-page .gselect-search:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.offer-admin-page .gselect-list { list-style:none; margin:0; padding:0; max-height:340px; overflow-y:auto; }
+.offer-admin-page .gselect-option { display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:9px; cursor:pointer; color:var(--admin-ink); font-size:13px; transition:background .15s; }
+.offer-admin-page .gselect-option::before { content:""; width:11px; height:11px; flex:0 0 auto; border-radius:50%; background:var(--dot,#cbd5e1); box-shadow:0 0 0 2px #fff,0 3px 8px rgba(15,23,42,.14); }
+.offer-admin-page .gselect-option:hover,.offer-admin-page .gselect-option.hover-match { background:rgba(37,99,235,.08); }
+.offer-admin-page .gselect-option.active { font-weight:800; color:#be185d; background:rgba(231,91,153,.12); }
+.offer-admin-page .gselect-option.is-hidden { display:none; }
+.offer-admin-page .gselect-clear { color:var(--admin-muted); font-style:italic; border-bottom:1px dashed rgba(100,116,139,.2); border-radius:9px 9px 0 0; margin-bottom:3px; }
+.offer-admin-page .gselect-clear::before { background:transparent; box-shadow:inset 0 0 0 1.5px #cbd5e1; }
+.offer-admin-page .gselect-map { position:relative; flex:0 0 230px; min-width:0; padding:10px 10px 14px; overflow:hidden; border:1px solid rgba(37,99,235,.12); border-radius:16px; background:radial-gradient(circle at 50% 22%,rgba(14,179,254,.10),transparent 50%),#f6f9ff; }
+.offer-admin-page .map-title { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:6px; color:var(--admin-muted); font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.offer-admin-page .map-label { position:absolute; right:8px; bottom:8px; z-index:2; max-width:calc(100% - 16px); padding:6px 12px; overflow:hidden; border-radius:999px; color:#fff; background:linear-gradient(135deg,#f24b99,#d81b72); box-shadow:0 10px 22px rgba(216,27,114,.28); font-size:11px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.offer-admin-page #map { width:100%; padding:0 4px 18px; }
+.offer-admin-page #map svg { filter:drop-shadow(0 10px 14px rgba(15,23,42,.16)); }
+.offer-admin-page #map svg path { cursor:pointer; outline:none; transition:stroke-width .14s,fill-opacity .14s; }
+@media(max-width:820px) {
+    .offer-admin-page .gselect-panel { width:100%; }
+    .offer-admin-page .gselect-body { display:block; }
+    .offer-admin-page .gselect-map { display:none; }
+}

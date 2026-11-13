@@ -154,3 +154,33 @@ test('confirmed students filter by either name or registration ID without changi
     filter.value = ''; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [false, false]);
     assert.equal(rows.length, 2);
 });
+
+test('recent purchases cycle newest to oldest and a newly added purchase is shown next', async () => {
+    const feedScript = await readFile(new URL('../static/js/offer-feed.js', import.meta.url), 'utf8');
+    const ids = Object.fromEntries(['buyFeed', 'buyFeedItem', 'buyFeedAvatar', 'buyFeedName', 'buyFeedPack', 'buyFeedTime', 'buyFeedFrom']
+        .map(id => [id, new Element()]));
+    ids.buyFeedAvatar.style.setProperty = () => {}; ids.buyFeedItem.animate = undefined;
+    const seed = [['3', 'Kavya', 'Theory Study Pack', '2026-11-12T10:00:00Z'], ['2', 'Nilan', 'Self Study Pack', '2026-11-12T09:00:00Z']]
+        .map(([id, name, pack, at]) => Object.assign(new Element(), { dataset: { id, name, pack, at } }));
+    const page = new Element(); page.dataset = { serverNow: '2026-11-12T10:30:00Z' };
+    const document = new Element(); document.getElementById = id => ids[id] ?? null;
+    document.selectors.set('.packages-page', page); document.lists.set('#buyFeedSeed li', seed);
+    const window = new Element(); window.matchMedia = () => ({ matches: false });
+    const intervals = [];
+    vm.runInContext(feedScript, vm.createContext({ document, window, Date, Math, Number, Set,
+        setInterval: callback => intervals.push(callback), clearInterval() {} }));
+    const shown = () => ids.buyFeedName.textContent + ' / ' + ids.buyFeedPack.textContent;
+    assert.equal(shown(), 'Kavya / Theory Study Pack');
+    assert.equal(ids.buyFeedTime.textContent, '30 mins ago');
+    intervals.at(-1)(); assert.equal(shown(), 'Nilan / Self Study Pack');
+    intervals.at(-1)(); assert.equal(shown(), 'Kavya / Theory Study Pack');
+    window.PcaOfferFeed.update([
+        { id: 4, name: 'Thuvarahan', school: 'Jaffna Hindu College', district: 'Jaffna', packageName: 'Practical Study Pack', confirmedAt: '2026-11-12T10:30:00Z' },
+        { id: 3, name: 'Kavya', packageName: 'Theory Study Pack', confirmedAt: '2026-11-12T10:00:00Z' },
+        { id: 2, name: 'Nilan', packageName: 'Self Study Pack', confirmedAt: '2026-11-12T09:00:00Z' }], '2026-11-12T10:30:00Z');
+    assert.equal(shown(), 'Thuvarahan / Practical Study Pack');
+    assert.equal(ids.buyFeedTime.textContent, 'just now');
+    assert.equal(ids.buyFeedFrom.textContent, ' from Jaffna Hindu College, Jaffna');
+    intervals.at(-1)(); assert.equal(shown(), 'Kavya / Theory Study Pack'); assert.equal(ids.buyFeedFrom.textContent, '');
+    window.PcaOfferFeed.update([], '2026-11-12T10:30:00Z'); assert.equal(ids.buyFeed.hidden, true);
+});

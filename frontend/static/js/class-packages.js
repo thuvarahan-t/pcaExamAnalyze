@@ -165,6 +165,7 @@
             serverBase = Date.parse(status.serverNow); monotonicBase = performance.now(); endsAt = Date.parse(status.endsAt);
             const deadline = document.getElementById('offerDeadline'); deadline.dateTime = status.endsAt;
             deadline.textContent = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Colombo' }).format(new Date(endsAt));
+            if (window.PcaOfferFeed && Array.isArray(status.recent)) window.PcaOfferFeed.update(status.recent, status.serverNow);
             const visible = new Map(status.packages.map(pack => [String(pack.id), pack]));
             cards.forEach(card => {
                 const pack = visible.get(card.dataset.packageId);

@@ -134,8 +134,9 @@
 
         function setDistrict(name) {
             hidden.value = name;
-            triggerText.textContent = name;
-            triggerText.classList.remove('gselect-placeholder');
+            // An empty value (admin "auto-fill" option) shows the placeholder again.
+            triggerText.textContent = name || triggerText.getAttribute('data-placeholder') || 'Select your district';
+            triggerText.classList.toggle('gselect-placeholder', !name);
             if (label) { label.textContent = labelFor(name); }
             options.forEach(function (li) {
                 var isActive = li.getAttribute('data-value') === name;
