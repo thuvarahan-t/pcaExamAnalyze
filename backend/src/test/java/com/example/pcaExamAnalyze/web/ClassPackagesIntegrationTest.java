@@ -60,14 +60,49 @@ class ClassPackagesIntegrationTest {
         var c = client(); var login = get(c, "/exam/admin-login");
         assertEquals(302, post(c, "/login", token(login), "username=packages-admin&password=" + enc("PackagesTest123!")).statusCode()); return c;
     }
-    @Test void publicCatalogAndAdminTemplatesRenderAndKeepPurchasersPrivate() throws Exception {
+    @Test void purchaseListPagesWithCursorWithoutDuplicatesOrRegistrationIds() throws Exception {
+        Long id = fixture(111);
+        for (int i = 1; i <= 5; i++) service.addPurchase(id, "PAGE-00" + i, "Paging Student");
+        var first = service.purchasePage(null, null, 2);
+        assertEquals(2, first.items().size()); assertTrue(first.hasMore());
+        var last = first.items().get(1);
+        var second = service.purchasePage(last.confirmedAt(), last.id(), 2);
+        assertEquals(2, second.items().size());
+        var seen = new HashSet<Long>(); first.items().forEach(r -> seen.add(r.id()));
+        second.items().forEach(r -> assertTrue(seen.add(r.id()), "page overlap"));
+        assertTrue(second.items().get(0).confirmedAt().compareTo(last.confirmedAt()) <= 0);
+        assertEquals(1, service.purchasePage(null, null, 0).items().size()); // size is clamped to 1..50
+        var student = client();
+        var http = get(student, "/exam/packages/purchases?size=3");
+        assertEquals(200, http.statusCode()); assertTrue(http.body().contains("\"hasMore\":true"));
+        assertTrue(http.body().contains("P****g S*****t")); assertFalse(http.body().contains("PAGE-00"));
+        assertFalse(http.body().contains("Paging Student"));
+        assertEquals(200, get(student, "/exam/packages/purchases?size=3&beforeAt=" + enc(last.confirmedAt().toString()) + "&beforeId=" + last.id()).statusCode());
+        assertEquals(400, get(student, "/exam/packages/purchases?beforeAt=yesterday&beforeId=1").statusCode());
+        var page = Jsoup.parse(get(student, "/exam/packages").body());
+        assertNotNull(page.selectFirst("#purchasesDialog[data-url]")); assertNotNull(page.selectFirst("#buyFeed[role=button]"));
+    }
+    @Test void recentPurchaseNamesAreMaskedByLength() {
+        assertEquals("K***a", ClassPackageService.maskName("Kavya"));
+        assertEquals("T*****n", ClassPackageService.maskName("Thuvran"));
+        assertEquals("Th****an", ClassPackageService.maskName("Thuvahan"));
+        assertEquals("Th******an", ClassPackageService.maskName("Thuvarahan"));
+        assertEquals("Th******an K***r", ClassPackageService.maskName("  Thuvarahan   Kumar "));
+        assertEquals("K. A*i", ClassPackageService.maskName("K. Ani"));
+    }
+    @Test void publicCatalogShowsMaskedRecentPurchaseNamesAndKeepsRegistrationIdsPrivate() throws Exception {
         Long id = fixture(111); service.addPurchase(id, "PRIVATE-001", "Private Student");
         var student = client(); var page = get(student, "/exam/packages");
         assertEquals(200, page.statusCode()); assertTrue(page.headers().firstValue("cache-control").orElse("").contains("no-store"));
         var doc = Jsoup.parse(page.body()); assertTrue(doc.select(".package-card").size() >= 4);
-        assertNotNull(doc.selectFirst("#registrationDialog")); assertFalse(doc.text().contains("PRIVATE-001"));
+        assertNotNull(doc.selectFirst("#registrationDialog")); assertFalse(page.body().contains("PRIVATE-001"));
+        assertFalse(page.body().contains("Private Student"));
+        var seed = doc.selectFirst("#buyFeedSeed li[data-name=\"P*****e S*****t\"]"); assertNotNull(seed);
+        assertEquals(service.get(id).getName(), seed.attr("data-pack")); assertFalse(doc.selectFirst("#buyFeed").hasAttr("hidden"));
         var status = get(student, "/exam/packages/status"); assertEquals(200, status.statusCode());
-        assertFalse(status.body().contains("Private Student")); assertFalse(status.body().contains("PRIVATE-001"));
+        assertTrue(status.body().contains("\"recent\"")); assertTrue(status.body().contains("P*****e S*****t"));
+        assertFalse(status.body().contains("Private Student"));
+        assertFalse(status.body().contains("PRIVATE-001"));
         assertTrue(get(student, "/exam/admin/packages").statusCode() >= 300);
         var admin = admin();
         for (String path : List.of("/exam/admin/packages", "/exam/admin/packages/new", "/exam/admin/packages/" + id + "/edit", "/exam/admin/packages/" + id + "/purchases", "/exam/admin"))
@@ -155,6 +190,16 @@ class ClassPackagesIntegrationTest {
         var admin = admin(); String csrf = token(get(admin, "/exam/admin/packages"));
         assertEquals(302, post(admin, "/exam/admin/packages/" + id + "/purchases", csrf, "registrationId=HTTP-01&name=Http+Student").statusCode());
         assertEquals(1, service.purchaseList(id).size());
+        assertEquals(302, post(admin, "/exam/admin/packages/" + id + "/purchases", csrf,
+            "registrationId=HTTP-02&name=Kavya+Student&school=Jaffna+Hindu+College&district=jaffna").statusCode());
+        var placed = service.purchaseList(id).stream().filter(p -> p.getRegistrationId().equals("HTTP-02")).findFirst().orElseThrow();
+        assertEquals("Jaffna Hindu College", placed.getSchool()); assertEquals("Jaffna", placed.getDistrict());
+        var feed = get(c, "/exam/packages/status").body();
+        assertTrue(feed.contains("Jaffna Hindu College")); assertTrue(feed.contains("K***a S*****t"));
+        var purchasesPage = get(admin, "/exam/admin/packages/" + id + "/purchases").body();
+        assertTrue(purchasesPage.contains("Jaffna Hindu College")); assertTrue(purchasesPage.contains("id=\"district-select\"")); assertTrue(purchasesPage.contains("id=\"map\""));
+        post(admin, "/exam/admin/packages/" + id + "/purchases", csrf, "registrationId=HTTP-03&name=Other+Student&district=Atlantis");
+        assertEquals(2, service.purchaseList(id).size());
         var invalid = post(admin, "/exam/admin/packages/campaign", csrf, "title=Test&endsAt=bad&whatsappNumber=abc");
         assertEquals(200, invalid.statusCode()); assertTrue(invalid.body().contains("Use international digits"));
         assertEquals(302, post(admin, "/exam/admin/packages/" + id + "/toggle", csrf, "").statusCode());
