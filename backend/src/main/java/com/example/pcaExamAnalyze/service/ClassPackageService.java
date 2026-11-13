@@ -110,15 +110,22 @@ public class ClassPackageService {
     @Transactional
     public void toggle(Long id) { var p = locked(id); p.setPublished(!p.isPublished()); }
     @Transactional
-    public void addPurchase(Long id, String registrationId, String name) {
+    public void addPurchase(Long id, String registrationId, String name) { addPurchase(id, registrationId, name, "", ""); }
+    @Transactional
+    public void addPurchase(Long id, String registrationId, String name, String school, String district) {
         ClassPackage p = locked(id);
         String reg = registrationId(registrationId);
         if (purchases.existsByClassPackageIdAndRegistrationId(id, reg)) throw new IllegalArgumentException("This registration ID is already confirmed for this package.");
         if (purchases.countByClassPackageId(id) >= p.getCapacity()) throw new IllegalArgumentException("Package capacity reached. Increase capacity before adding another purchase.");
-        if (name == null || name.isBlank()) name = submissions.findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(reg)
-                .map(McqSubmission::getStudentName).orElse("");
+        // Blank fields are filled from the student's latest exam submission when one exists.
+        var exam = (isBlank(name) || isBlank(school) || isBlank(district))
+            ? submissions.findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(reg) : Optional.<McqSubmission>empty();
+        if (isBlank(name)) name = exam.map(McqSubmission::getStudentName).orElse("");
+        String schoolValue = isBlank(school) ? lenient(exam.map(McqSubmission::getSchool).orElse(""), ClassPackageService::school) : school(school);
+        String districtValue = isBlank(district) ? lenient(exam.map(McqSubmission::getDistrict).orElse(""), ClassPackageService::district) : district(district);
         var purchase = new PackagePurchase(); purchase.setClassPackage(p); purchase.setRegistrationId(reg);
-        purchase.setStudentName(studentName(name)); purchases.saveAndFlush(purchase);
+        purchase.setStudentName(studentName(name)); purchase.setSchool(schoolValue); purchase.setDistrict(districtValue);
+        purchases.saveAndFlush(purchase);
     }
     @Transactional
     public void removePurchase(Long packageId, Long purchaseId) {
@@ -126,6 +133,28 @@ public class ClassPackageService {
         var purchase = purchases.findByIdAndClassPackageId(purchaseId, packageId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         purchases.delete(purchase);
+    }
+    /** Auto-filled values from old exam records are skipped instead of blocking the purchase. */
+    private static String lenient(String value, java.util.function.UnaryOperator<String> check) {
+        try { return check.apply(value); } catch (IllegalArgumentException e) { return null; }
+    }
+    private static boolean isBlank(String v) { return v == null || v.isBlank(); }
+    private static String nz(String v) { return v == null ? "" : v; }
+    /** Optional school name; null when blank. */
+    public static String school(String value) {
+        String school = value == null ? "" : value.strip().replaceAll("\\s+", " ");
+        if (school.isEmpty()) return null;
+        if (school.length() > 150 || !school.matches("[\\p{L}\\p{M}\\p{N} .,’'()&/-]+"))
+            throw new IllegalArgumentException("Enter a valid school name (up to 150 characters).");
+        return school;
+    }
+    /** Optional district; must be one of Sri Lanka's 25 districts. */
+    public static String district(String value) {
+        String district = value == null ? "" : value.strip();
+        if (district.isEmpty()) return null;
+        return com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS.stream()
+            .filter(known -> known.equalsIgnoreCase(district)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Choose a district from the list."));
     }
     public static String registrationId(String value) {
         String reg = value == null ? "" : value.strip().toUpperCase(Locale.ROOT);
