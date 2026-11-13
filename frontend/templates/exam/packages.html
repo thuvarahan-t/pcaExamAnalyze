@@ -9,8 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=19)}">
-    <script defer th:src="@{/js/class-packages.js(v=11)}"></script>
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=27)}">
+    <script defer th:src="@{/js/offer-feed.js(v=3)}"></script>
+    <script defer th:src="@{/js/class-packages.js(v=12)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
@@ -40,6 +41,20 @@
         </div>
     </section>
     <section class="pkg-container collection" id="collection" aria-label="Available offer packages">
+        <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="purchasesDialog" aria-label="Recent package purchases. Open the full list">
+            <span class="buy-feed-label"><span class="buy-feed-dot" aria-hidden="true"></span>Recent purchases</span>
+            <div class="buy-feed-viewport" aria-live="off">
+                <div class="buy-feed-item" id="buyFeedItem">
+                    <span class="buy-avatar" id="buyFeedAvatar" aria-hidden="true"></span>
+                    <p class="buy-text"><strong id="buyFeedName"></strong><span class="buy-from" id="buyFeedFrom"></span> purchased <b id="buyFeedPack"></b></p>
+                    <time class="buy-time" id="buyFeedTime"></time>
+                </div>
+            </div>
+            <span class="buy-feed-more" aria-hidden="true">View all <i class="bi bi-chevron-right"></i></span>
+            <ul hidden id="buyFeedSeed">
+                <li th:each="r : ${recent}" th:attr="data-id=${r.id},data-name=${r.name},data-school=${r.school},data-district=${r.district},data-pack=${r.packageName},data-at=${r.confirmedAt}"></li>
+            </ul>
+        </div>
         <p class="status-note" id="refreshStatus" role="status"></p>
         <div class="package-grid" th:if="${!#lists.isEmpty(packages)}">
             <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
@@ -81,6 +96,20 @@
         <button class="pkg-btn whatsapp" type="submit" id="prepareEnquiry">Send message in WhatsApp <span aria-hidden="true">↗</span></button>
         <p class="field-hint">WhatsApp opens with your message filled in. Tap Send there to contact our team.</p>
     </form>
+</dialog>
+<dialog class="registration-dialog purchases-dialog" id="purchasesDialog" aria-labelledby="purchasesTitle" th:attr="data-url=@{/exam/packages/purchases}">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <button class="dialog-close" type="button" data-close aria-label="Close recent purchases">×</button>
+    <div class="purchases-head">
+        <div class="dialog-eyebrow"><span class="buy-feed-dot" aria-hidden="true"></span> LIVE UPDATES</div>
+        <h2 id="purchasesTitle" tabindex="-1">Recent purchases</h2>
+        <p class="dialog-subtitle">Students who have joined our offer packages, newest first.</p>
+    </div>
+    <ul class="purchase-list" id="purchaseList"></ul>
+    <div class="purchase-list-foot">
+        <p class="purchase-list-status" id="purchaseListStatus" role="status"></p>
+        <button class="pkg-btn load-more" id="purchaseLoadMore" type="button" hidden>Load more</button>
+    </div>
 </dialog>
 <dialog class="poster-dialog" id="posterDialog" aria-label="Full package poster"><button class="dialog-close" type="button" data-close aria-label="Close poster">×</button><img id="fullPoster" alt=""><div class="poster-dialog-actions"><strong id="previewPackageName"></strong><button class="pkg-btn whatsapp" id="previewRegister" type="button">Get this package ↗</button></div></dialog>
 </body></html>
