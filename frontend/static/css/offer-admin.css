@@ -73,3 +73,7 @@
     .offer-admin-page .gselect-body { display:block; }
     .offer-admin-page .gselect-map { display:none; }
 }
+.offer-admin-page .student-pagination { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:16px; margin-top:20px; }
+.offer-admin-page .student-pagination[hidden] { display:none; }
+.offer-admin-page .student-pagination button:disabled { opacity:.45; cursor:default; }
+.offer-admin-page .admin-table tr[hidden] { display:none; }
