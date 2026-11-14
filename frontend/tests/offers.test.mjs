@@ -155,6 +155,53 @@ test('confirmed students filter by either name or registration ID without changi
     assert.equal(rows.length, 2);
 });
 
+test('student lists page independently in groups of ten and search across all pages', async () => {
+    const document = new Element();
+    const ids = {};
+    const lists = {};
+    for (const [name, prefix, selector] of [
+        ['purchases', 'purchase', '[data-purchase-row]'],
+        ['interested', 'interest', '[data-interest-row]']
+    ]) {
+        ids[prefix + 'Filter'] = new Element();
+        ids[prefix + 'FilterStatus'] = new Element();
+        const rows = Array.from({ length: 23 }, (_, index) => Object.assign(new Element(), {
+            cells: [new Element('REG-' + index), new Element('Student ' + index)]
+        }));
+        const pagination = new Element(), previous = new Element(), next = new Element(), status = new Element();
+        pagination.selectors.set('[data-page-previous]', previous);
+        pagination.selectors.set('[data-page-next]', next);
+        pagination.selectors.set('[data-page-status]', status);
+        document.selectors.set('[data-student-pagination="' + name + '"]', pagination);
+        document.lists.set(selector, rows);
+        lists[name] = { rows, previous, next, status, pagination };
+    }
+    document.getElementById = id => ids[id] ?? null;
+    vm.runInNewContext(adminScript, { document });
+    const visible = list => list.rows.filter(row => !row.hidden);
+    assert.equal(visible(lists.purchases).length, 10);
+    assert.equal(visible(lists.interested).length, 10);
+    assert.equal(lists.purchases.previous.disabled, true);
+    await lists.purchases.next.fire('click');
+    assert.equal(visible(lists.purchases)[0].cells[0].textContent, 'REG-10');
+    assert.equal(lists.interested.status.textContent, 'Page 1 of 3');
+    await lists.purchases.next.fire('click');
+    assert.equal(visible(lists.purchases).length, 3);
+    assert.equal(lists.purchases.next.disabled, true);
+    ids.purchaseFilter.value = 'REG-22'; await ids.purchaseFilter.fire('input');
+    assert.equal(visible(lists.purchases).length, 1);
+    assert.equal(lists.purchases.status.textContent, 'Page 1 of 1');
+    ids.purchaseFilter.value = 'missing'; await ids.purchaseFilter.fire('input');
+    assert.equal(visible(lists.purchases).length, 0);
+    assert.equal(lists.purchases.pagination.hidden, true);
+    ids.purchaseFilter.value = ''; await ids.purchaseFilter.fire('input');
+    assert.equal(visible(lists.purchases).length, 10);
+    await lists.interested.next.fire('click');
+    assert.equal(lists.interested.status.textContent, 'Page 2 of 3');
+    await lists.interested.previous.fire('click');
+    assert.equal(lists.interested.status.textContent, 'Page 1 of 3');
+});
+
 test('recent purchases cycle newest to oldest and a newly added purchase is shown next', async () => {
     const feedScript = await readFile(new URL('../static/js/offer-feed.js', import.meta.url), 'utf8');
     const ids = Object.fromEntries(['buyFeed', 'buyFeedItem', 'buyFeedAvatar', 'buyFeedName', 'buyFeedPack', 'buyFeedTime', 'buyFeedFrom']

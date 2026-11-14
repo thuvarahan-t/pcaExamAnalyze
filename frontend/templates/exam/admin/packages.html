@@ -12,7 +12,7 @@
 <span class="publication-tag" th:classappend="${!pack.published} ? 'draft'" th:text="${pack.published ? 'PUBLISHED' : 'DRAFT / HIDDEN'}"></span>
 <a th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}"><img th:src="@{/exam/admin/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="${pack.name}" loading="lazy"></a><h2 th:text="${pack.name}"></h2>
 <p><strong th:text="|${pack.purchased} / ${pack.capacity} confirmed|"></strong><br><span th:text="|Rs. ${#numbers.formatDecimal(pack.offerPrice, 1, 'COMMA', 0, 'POINT')}|"></span></p>
-<div class="admin-actions"><a class="btn primary" th:href="@{/exam/admin/packages/{id}/purchases(id=${pack.id})}">Purchases</a><a class="btn" th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}">Edit</a>
+<div class="admin-actions"><a class="btn primary" th:href="@{/exam/admin/packages/{id}/purchases(id=${pack.id})}">Interested / Purchases</a><a class="btn" th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}">Edit</a>
 <form th:action="@{/exam/admin/packages/{id}/toggle(id=${pack.id})}" method="post"><button class="btn" type="submit" th:text="${pack.published ? 'Hide' : 'Publish'}"></button></form></div>
 </article></div><div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h2>Your first package starts here.</h2><p>Create a package and upload a poster to get started.</p></div>
 </main></div></body></html>

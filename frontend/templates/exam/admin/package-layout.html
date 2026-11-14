@@ -6,10 +6,10 @@
 <link rel="icon" th:href="@{/img/favicon-circle.png}"><link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<link rel="stylesheet" th:href="@{/css/class-packages.css(v=16)}"><link rel="stylesheet" th:href="@{/css/exam-admin.css(v=23)}"><link rel="stylesheet" th:href="@{/css/offer-admin.css(v=3)}">
+<link rel="stylesheet" th:href="@{/css/class-packages.css(v=16)}"><link rel="stylesheet" th:href="@{/css/exam-admin.css(v=23)}"><link rel="stylesheet" th:href="@{/css/offer-admin.css(v=4)}">
 <link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=1)}">
 <script defer th:src="@{/js/exam-dialog.js(v=1)}"></script>
-<script defer th:src="@{/js/package-admin.js(v=5)}"></script>
+<script defer th:src="@{/js/package-admin.js(v=6)}"></script>
 </head><body>
 <aside th:fragment="nav" th:replace="~{exam/admin/sidebar :: sidebar('offers')}"></aside>
 <th:block th:fragment="flash"><div class="flash success" role="status" th:if="${success}" th:text="${success}"></div><div class="flash error" role="alert" th:if="${error}" th:text="${error}"></div></th:block>
