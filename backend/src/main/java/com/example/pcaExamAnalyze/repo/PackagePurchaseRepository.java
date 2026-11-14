@@ -5,6 +5,7 @@ import java.util.*;
 public interface PackagePurchaseRepository extends JpaRepository<PackagePurchase, Long> {
     long countByClassPackageId(Long id);
     boolean existsByClassPackageIdAndRegistrationId(Long id, String registrationId);
+    Optional<PackagePurchase> findByClassPackageIdAndRegistrationId(Long id, String registrationId);
     Optional<PackagePurchase> findByIdAndClassPackageId(Long id, Long packageId);
     List<PackagePurchase> findByClassPackageIdOrderByConfirmedAtDescIdDesc(Long id);
     interface PackageCount { Long getPackageId(); long getTotal(); }
