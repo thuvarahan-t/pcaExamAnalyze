@@ -24,11 +24,12 @@ public class ClassPackageService {
     private final PackagePosterRepository posters;
     private final PackagePurchaseRepository purchases;
     private final McqSubmissionRepository submissions;
+    private final PackageInterestRepository interests;
 
     public ClassPackageService(ClassPackageRepository packages, PackageCampaignRepository campaigns,
-            PackagePosterRepository posters, PackagePurchaseRepository purchases, McqSubmissionRepository submissions) {
+            PackagePosterRepository posters, PackagePurchaseRepository purchases, McqSubmissionRepository submissions, PackageInterestRepository interests) {
         this.packages = packages; this.campaigns = campaigns; this.posters = posters;
-        this.purchases = purchases; this.submissions = submissions;
+        this.purchases = purchases; this.submissions = submissions; this.interests = interests;
     }
 
     public PackageCampaign campaign() { return campaigns.findById(1L).orElseThrow(); }
@@ -105,6 +106,29 @@ public class ClassPackageService {
         ClassPackage p = publicPackage(id);
         if (!Instant.now().isBefore(campaign().getEndsAt())) throw new IllegalArgumentException("This offer has ended.");
         if (purchases.countByClassPackageId(id) >= p.getCapacity()) throw new IllegalArgumentException("This package is fully booked.");
+    }
+    @Transactional
+    public void recordInterest(Long id, String name, String registration) {
+        ClassPackage pack = locked(id);
+        assertEnquiryAllowed(id);
+        String reg = registrationId(registration);
+        String validName = studentName(name);
+        var interest = interests.findByClassPackageIdAndRegistrationId(id, reg).orElseGet(PackageInterest::new);
+        interest.setClassPackage(pack);
+        interest.setRegistrationId(reg);
+        interest.setStudentName(validName);
+        interest.setLastInterestedAt(Instant.now());
+        interests.saveAndFlush(interest);
+    }
+    public record InterestedStudent(String registrationId, String studentName, Instant firstInterestedAt,
+                                    Instant lastInterestedAt, Instant purchasedAt) {}
+    public List<InterestedStudent> interestedStudents(Long id) {
+        get(id);
+        Map<String, Instant> confirmed = new HashMap<>();
+        purchaseList(id).forEach(p -> confirmed.put(registrationId(p.getRegistrationId()), p.getConfirmedAt()));
+        return interests.findByClassPackageIdOrderByLastInterestedAtDescIdDesc(id).stream()
+            .map(i -> new InterestedStudent(i.getRegistrationId(), i.getStudentName(), i.getFirstInterestedAt(),
+                i.getLastInterestedAt(), confirmed.get(i.getRegistrationId()))).toList();
     }
     public ClassPackageForm form(Long id) {
         ClassPackage p = get(id);
