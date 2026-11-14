@@ -116,7 +116,8 @@ public class ClassPackageService {
         var interest = interests.findByClassPackageIdAndRegistrationId(id, reg).orElseGet(PackageInterest::new);
         interest.setClassPackage(pack);
         interest.setRegistrationId(reg);
-        interest.setStudentName(validName);
+        interest.setStudentName(purchases.findByClassPackageIdAndRegistrationId(id, reg)
+            .map(PackagePurchase::getStudentName).orElse(validName));
         interest.setLastInterestedAt(Instant.now());
         interests.saveAndFlush(interest);
     }
@@ -124,11 +125,15 @@ public class ClassPackageService {
                                     Instant lastInterestedAt, Instant purchasedAt) {}
     public List<InterestedStudent> interestedStudents(Long id) {
         get(id);
-        Map<String, Instant> confirmed = new HashMap<>();
-        purchaseList(id).forEach(p -> confirmed.put(registrationId(p.getRegistrationId()), p.getConfirmedAt()));
+        Map<String, PackagePurchase> confirmed = new HashMap<>();
+        purchaseList(id).forEach(p -> confirmed.put(registrationId(p.getRegistrationId()), p));
         return interests.findByClassPackageIdOrderByLastInterestedAtDescIdDesc(id).stream()
-            .map(i -> new InterestedStudent(i.getRegistrationId(), i.getStudentName(), i.getFirstInterestedAt(),
-                i.getLastInterestedAt(), confirmed.get(i.getRegistrationId()))).toList();
+            .map(i -> {
+                var purchase = confirmed.get(i.getRegistrationId());
+                return new InterestedStudent(i.getRegistrationId(),
+                    purchase == null ? i.getStudentName() : purchase.getStudentName(), i.getFirstInterestedAt(),
+                    i.getLastInterestedAt(), purchase == null ? null : purchase.getConfirmedAt());
+            }).toList();
     }
     public ClassPackageForm form(Long id) {
         ClassPackage p = get(id);
@@ -190,6 +195,8 @@ public class ClassPackageService {
         var purchase = new PackagePurchase(); purchase.setClassPackage(p); purchase.setRegistrationId(reg);
         purchase.setStudentName(studentName(name)); purchase.setSchool(schoolValue); purchase.setDistrict(districtValue);
         purchases.saveAndFlush(purchase);
+        interests.findByClassPackageIdAndRegistrationId(id, reg)
+            .ifPresent(interest -> interest.setStudentName(purchase.getStudentName()));
     }
     @Transactional
     public void removePurchase(Long packageId, Long purchaseId) {
