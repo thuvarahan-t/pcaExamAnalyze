@@ -59,6 +59,7 @@ public class ClassPackageAdminController {
     public String purchases(@PathVariable Long id, Model model, jakarta.servlet.http.HttpServletResponse response) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         model.addAttribute("pack", service.get(id)); model.addAttribute("purchases", service.purchaseList(id));
+        model.addAttribute("interested", service.interestedStudents(id));
         model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
         model.addAttribute("zone", ClassPackageService.ZONE); return "exam/admin/package-purchases";
     }
