@@ -189,7 +189,7 @@ public class ClassPackageService {
         // Blank fields are filled from the student's latest exam submission when one exists.
         var exam = (isBlank(name) || isBlank(school) || isBlank(district))
             ? submissions.findFirstByRegistrationIdIgnoreCaseOrderByCreatedAtDesc(reg) : Optional.<McqSubmission>empty();
-        if (isBlank(name)) name = exam.map(McqSubmission::getStudentName).orElse("");
+        if (isBlank(name)) name = interests.findByClassPackageIdAndRegistrationId(id, reg).map(PackageInterest::getStudentName).orElseGet(() -> exam.map(McqSubmission::getStudentName).orElse(""));
         String schoolValue = isBlank(school) ? lenient(exam.map(McqSubmission::getSchool).orElse(""), ClassPackageService::school) : school(school);
         String districtValue = isBlank(district) ? lenient(exam.map(McqSubmission::getDistrict).orElse(""), ClassPackageService::district) : district(district);
         var purchase = new PackagePurchase(); purchase.setClassPackage(p); purchase.setRegistrationId(reg);
