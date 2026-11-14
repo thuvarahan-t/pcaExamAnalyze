@@ -62,8 +62,9 @@ public class ClassPackageController {
     public ResponseEntity<?> enquiry(@PathVariable Long id, @RequestParam String name,
             @RequestParam String registrationId, HttpServletRequest request, HttpServletResponse response) {
         try {
-            service.assertEnquiryAllowed(id);
+
             var details = new Details(ClassPackageService.studentName(name), ClassPackageService.registrationId(registrationId));
+            service.recordInterest(id, details.name(), details.registrationId());
             request.getSession().setAttribute(DETAILS_KEY, details);
             String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 (details.name() + "\u001f" + details.registrationId()).getBytes(StandardCharsets.UTF_8));
