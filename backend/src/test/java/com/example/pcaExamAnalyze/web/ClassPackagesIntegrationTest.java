@@ -139,6 +139,41 @@ class ClassPackagesIntegrationTest {
         assertEquals("PACKAGE-102", Jsoup.parse(get(c, "/exam/packages").body()).selectFirst("#packageRegistration").val());
         assertFalse(cookies.getCookieStore().getCookies().stream().filter(v -> v.getName().equals(cookie.getName())).anyMatch(v -> !v.getValue().equals(cookie.getValue())));
     }
+    @Test void whatsappInterestPersistsDeduplicatesAndTracksPurchaseChanges() throws Exception {
+        Long id = fixture(111);
+        var student = client();
+        String csrf = token(get(student, "/exam/packages"));
+        assertEquals(200, post(student, "/exam/packages/" + id + "/enquiry", csrf,
+            "name=Interested+Student&registrationId=interest-101").statusCode());
+        var first = service.interestedStudents(id).getFirst();
+        assertEquals("INTEREST-101", first.registrationId());
+        assertNull(first.purchasedAt());
+        service.recordInterest(id, "Updated Student", " INTEREST-101 ");
+        assertEquals(1, service.interestedStudents(id).size());
+        assertEquals(first.firstInterestedAt(), service.interestedStudents(id).getFirst().firstInterestedAt());
+        service.addPurchase(id, "interest-101", "");
+        assertEquals("Updated Student", service.purchaseList(id).getFirst().getStudentName());
+        assertNotNull(service.interestedStudents(id).getFirst().purchasedAt());
+        service.removePurchase(id, service.purchaseList(id).getFirst().getId());
+        service.addPurchase(id, "interest-101", "Admin Student");
+        service.recordInterest(id, "Conflicting Student", "interest-101");
+        assertEquals("Admin Student", service.interestedStudents(id).getFirst().studentName());
+        assertEquals("Admin Student", ctx.getBean(PackageInterestRepository.class)
+            .findByClassPackageIdAndRegistrationId(id, "INTEREST-101").orElseThrow().getStudentName());
+        var page = get(admin(), "/exam/admin/packages/" + id + "/purchases");
+        assertEquals(200, page.statusCode());
+        assertTrue(page.body().contains("Purchased"));
+        assertTrue(page.body().contains("Admin Student"));
+        assertTrue(page.body().indexOf("id=\"confirmedStudents\"") < page.body().indexOf("id=\"interestedStudents\""));
+        assertTrue(page.body().contains("data-student-pagination=\"purchases\""));
+        assertTrue(page.body().contains("data-student-pagination=\"interested\""));
+        Long other = fixture(111);
+        service.recordInterest(other, "Other Student", "INTEREST-101");
+        assertNull(service.interestedStudents(other).getFirst().purchasedAt());
+        service.removePurchase(id, service.purchaseList(id).getFirst().getId());
+        assertNull(service.interestedStudents(id).getFirst().purchasedAt());
+        assertEquals(1, service.interestedStudents(id).size());
+    }
     @Test void confirmedPurchasesNormalizeDeduplicateAndEnforceCapacity() throws Exception {
         Long id = fixture(1); service.addPurchase(id, " reg-001 ", "First Student");
         assertEquals("REG-001", service.purchaseList(id).getFirst().getRegistrationId());
