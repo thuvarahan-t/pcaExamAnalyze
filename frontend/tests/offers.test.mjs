@@ -202,32 +202,61 @@ test('student lists page independently in groups of ten and search across all pa
     assert.equal(lists.interested.status.textContent, 'Page 1 of 3');
 });
 
-test('recent purchases cycle newest to oldest and a newly added purchase is shown next', async () => {
+test('recent purchases scroll through three visible rows and return to the top', async () => {
     const feedScript = await readFile(new URL('../static/js/offer-feed.js', import.meta.url), 'utf8');
-    const ids = Object.fromEntries(['buyFeed', 'buyFeedItem', 'buyFeedAvatar', 'buyFeedName', 'buyFeedPack', 'buyFeedTime', 'buyFeedFrom']
-        .map(id => [id, new Element()]));
-    ids.buyFeedAvatar.style.setProperty = () => {}; ids.buyFeedItem.animate = undefined;
-    const seed = [['3', 'Kavya', 'Theory Study Pack', '2026-11-12T10:00:00Z'], ['2', 'Nilan', 'Self Study Pack', '2026-11-12T09:00:00Z']]
-        .map(([id, name, pack, at]) => Object.assign(new Element(), { dataset: { id, name, pack, at } }));
-    const page = new Element(); page.dataset = { serverNow: '2026-11-12T10:30:00Z' };
-    const document = new Element(); document.getElementById = id => ids[id] ?? null;
-    document.selectors.set('.packages-page', page); document.lists.set('#buyFeedSeed li', seed);
-    const window = new Element(); window.matchMedia = () => ({ matches: false });
+    const feed = new Element();
+    const viewport = Object.assign(new Element(), {
+        clientHeight: 150, scrollTop: 0,
+        replaceChildren(...children) { this.children = children; },
+        scrollTo({ top }) { this.scrollTop = top; },
+        querySelectorAll() { return this.children.map(row => row.querySelector('time')); }
+    });
+    Object.defineProperty(viewport, 'scrollHeight', { get: () => viewport.children.length * 50 });
+    const template = { content: { firstElementChild: { cloneNode() {
+        const row = Object.assign(new Element(), { offsetHeight: 50 });
+        for (const selector of ['strong', '.buy-from', 'b', 'time', '.buy-avatar']) {
+            row.selectors.set(selector, new Element());
+        }
+        row.querySelector('.buy-avatar').style.setProperty = () => {};
+        return row;
+    } } } };
+    const seed = ['Kavya', 'Nilan', 'Uma', 'Arun', 'Priya'].map((name, index) => Object.assign(new Element(), {
+        dataset: { id: String(5 - index), name, pack: 'Theory Study Pack', at: '2026-11-12T10:00:00Z' }
+    }));
+    const document = new Element();
+    document.getElementById = id => ({ buyFeed: feed, buyFeedViewport: viewport, buyFeedTemplate: template })[id];
+    document.lists.set('#buyFeedSeed li', seed);
+    const window = new Element();
+    const motion = { matches: false };
+    window.matchMedia = () => motion;
+    let now = Date.parse('2026-11-12T10:30:00Z');
     const intervals = [];
-    vm.runInContext(feedScript, vm.createContext({ document, window, Date, Math, Number, Set,
-        setInterval: callback => intervals.push(callback), clearInterval() {} }));
-    const shown = () => ids.buyFeedName.textContent + ' / ' + ids.buyFeedPack.textContent;
-    assert.equal(shown(), 'Kavya / Theory Study Pack');
-    assert.equal(ids.buyFeedTime.textContent, '30 mins ago');
-    intervals.at(-1)(); assert.equal(shown(), 'Nilan / Self Study Pack');
-    intervals.at(-1)(); assert.equal(shown(), 'Kavya / Theory Study Pack');
-    window.PcaOfferFeed.update([
-        { id: 4, name: 'Thuvarahan', school: 'Jaffna Hindu College', district: 'Jaffna', packageName: 'Practical Study Pack', confirmedAt: '2026-11-12T10:30:00Z' },
-        { id: 3, name: 'Kavya', packageName: 'Theory Study Pack', confirmedAt: '2026-11-12T10:00:00Z' },
-        { id: 2, name: 'Nilan', packageName: 'Self Study Pack', confirmedAt: '2026-11-12T09:00:00Z' }], '2026-11-12T10:30:00Z');
-    assert.equal(shown(), 'Thuvarahan / Practical Study Pack');
-    assert.equal(ids.buyFeedTime.textContent, 'just now');
-    assert.equal(ids.buyFeedFrom.textContent, ' from Jaffna Hindu College, Jaffna');
-    intervals.at(-1)(); assert.equal(shown(), 'Kavya / Theory Study Pack'); assert.equal(ids.buyFeedFrom.textContent, '');
-    window.PcaOfferFeed.update([], '2026-11-12T10:30:00Z'); assert.equal(ids.buyFeed.hidden, true);
+    vm.runInContext(feedScript, vm.createContext({ document, window, Date: { now: () => now, parse: Date.parse },
+        setInterval: (callback, delay) => {
+            assert.equal(delay, 1000);
+            intervals.push(callback);
+        } }));
+    const tick = () => intervals[0]();
+    const names = () => viewport.children.map(row => row.querySelector('strong').textContent);
+    assert.deepEqual(names().slice(0, 3), ['Kavya', 'Nilan', 'Uma']);
+    assert.equal(viewport.firstElementChild.querySelector('time').textContent, '30 mins ago');
+    tick(); assert.equal(viewport.scrollTop, 50);
+    tick(); assert.equal(viewport.scrollTop, 100);
+    tick(); assert.equal(viewport.scrollTop, 0);
+
+    await viewport.fire('wheel');
+    viewport.scrollTop = 50;
+    tick(); assert.equal(viewport.scrollTop, 50);
+    now += 4500;
+    tick(); assert.equal(viewport.scrollTop, 100);
+    motion.matches = true;
+    tick(); assert.equal(viewport.scrollTop, 100);
+
+    window.PcaOfferFeed.update([{ id: 6, name: 'New buyer', school: 'Example school', district: 'Jaffna',
+        packageName: 'Practical Study Pack', confirmedAt: '2026-11-12T10:30:00Z' }], '2026-11-12T10:30:00Z');
+    assert.equal(viewport.scrollTop, 0);
+    assert.deepEqual(names(), ['New buyer']);
+    assert.equal(viewport.firstElementChild.querySelector('.buy-from').textContent, ' from Example school, Jaffna');
+    window.PcaOfferFeed.update([], '2026-11-12T10:30:00Z');
+    assert.equal(feed.hidden, true);
 });

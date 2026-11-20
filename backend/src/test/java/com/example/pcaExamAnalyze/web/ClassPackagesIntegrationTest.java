@@ -80,7 +80,9 @@ class ClassPackagesIntegrationTest {
         assertEquals(200, get(student, "/exam/packages/purchases?size=3&beforeAt=" + enc(last.confirmedAt().toString()) + "&beforeId=" + last.id()).statusCode());
         assertEquals(400, get(student, "/exam/packages/purchases?beforeAt=yesterday&beforeId=1").statusCode());
         var page = Jsoup.parse(get(student, "/exam/packages").body());
-        assertNotNull(page.selectFirst("#purchasesDialog[data-url]")); assertNotNull(page.selectFirst("#buyFeed[role=button]"));
+        assertNotNull(page.selectFirst("#purchasesDialog[data-url]"));
+        assertNotNull(page.selectFirst("button#buyFeedMore[aria-controls=purchasesDialog]"));
+        assertNotNull(page.selectFirst("#buyFeedViewport[tabindex=0]"));
     }
     @Test void recentPurchaseNamesAreMaskedByLength() {
         assertEquals("K***a", ClassPackageService.maskName("Kavya"));

@@ -1,28 +1,21 @@
-// Recent-purchase notification bar on the offer page.
-// Shows one confirmed purchase at a time, newest -> oldest, then starts again.
-// A purchase the admin adds is shown next, as soon as the status poll brings it in.
 (() => {
     'use strict';
     const feed = document.getElementById('buyFeed');
     if (!feed) return;
-    const item = document.getElementById('buyFeedItem');
-    const avatar = document.getElementById('buyFeedAvatar');
-    const nameEl = document.getElementById('buyFeedName');
-    const packEl = document.getElementById('buyFeedPack');
-    const fromEl = document.getElementById('buyFeedFrom');
-    const timeEl = document.getElementById('buyFeedTime');
+    const viewport = document.getElementById('buyFeedViewport');
+    const template = document.getElementById('buyFeedTemplate');
+    const viewAll = document.getElementById('buyFeedMore');
     const page = document.querySelector('.packages-page');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const STEP_MS = 4500;
+    const STEP_MS = 1000;
+    const INPUT_PAUSE_MS = 4500;
 
     let clockOffset = page ? (Date.parse(page.dataset.serverNow) || Date.now()) - Date.now() : 0;
     let list = [...document.querySelectorAll('#buyFeedSeed li')].map(li => ({
         id: Number(li.dataset.id), name: li.dataset.name,
         school: li.dataset.school || '', district: li.dataset.district || '', packageName: li.dataset.pack, confirmedAt: li.dataset.at }));
-    let index = -1;
-    let shownId = null;
-    let timer = 0;
-    let paused = false;
+    let resumeAt = 0;
+    let touching = false;
 
     function ago(iso) {
         const seconds = Math.max(0, Math.round((Date.now() + clockOffset - Date.parse(iso)) / 1000));
@@ -39,57 +32,60 @@
         for (const ch of text) h = (h * 31 + ch.codePointAt(0)) % 360;
         return h;
     }
-    function render(entry, animate) {
-        const write = () => {
-            nameEl.textContent = entry.name;
-            packEl.textContent = entry.packageName;
-            // "from Jaffna Hindu College, Jaffna" - either part may be missing.
+    function render() {
+        feed.hidden = !list.length;
+        viewport.replaceChildren(...list.map(entry => {
+            const item = template.content.firstElementChild.cloneNode(true);
+            const avatar = item.querySelector('.buy-avatar');
             const place = [entry.school, entry.district].filter(Boolean).join(', ');
-            if (fromEl) fromEl.textContent = place ? ' from ' + place : '';
-            timeEl.textContent = ago(entry.confirmedAt);
-            timeEl.dateTime = entry.confirmedAt;
+            item.querySelector('strong').textContent = entry.name;
+            item.querySelector('.buy-from').textContent = place ? ' from ' + place : '';
+            item.querySelector('b').textContent = entry.packageName;
+            const time = item.querySelector('time');
+            time.dateTime = entry.confirmedAt;
+            time.textContent = ago(entry.confirmedAt);
             avatar.textContent = (entry.name.trim()[0] || '?').toUpperCase();
             avatar.style.setProperty('--h', hue(entry.name));
-            shownId = entry.id;
-        };
-        if (!animate || reducedMotion.matches || !item.animate) { write(); return; }
-        item.animate([{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-10px)' }],
-            { duration: 220, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
-            write();
-            item.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }],
-                { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
-        };
-    }
-    function next(animate = true) {
-        if (!list.length) { feed.hidden = true; shownId = null; return; }
-        feed.hidden = false;
-        index = (index + 1) % list.length;
-        render(list[index], animate && shownId !== null);
-    }
-    function schedule() {
-        clearInterval(timer);
-        timer = setInterval(() => { if (!paused && !document.hidden) next(); }, STEP_MS);
+            return item;
+        }));
     }
 
     window.PcaOfferFeed = {
-        // Called by class-packages.js with the latest list from /exam/packages/status (newest first).
+        // The status endpoint returns the recent purchases in newest-first order.
         update(recent, serverNow) {
             if (serverNow) clockOffset = Date.parse(serverNow) - Date.now();
             const known = new Set(list.map(entry => entry.id));
-            const fresh = recent.filter(entry => !known.has(entry.id));
-            list = recent.slice();
-            if (fresh.length) {
-                // Jump to the newest purchase straight away and continue down the list from there.
-                index = -1; next(); schedule(); return;
+            const hasNewPurchase = recent.some(entry => !known.has(entry.id));
+            const changed = recent.length !== list.length || recent.some((entry, index) => {
+                const previous = list[index];
+                return Object.keys(entry).some(key => entry[key] !== previous[key]);
+            });
+            list = recent;
+            if (changed) {
+                const top = viewport.scrollTop;
+                render();
+                viewport.scrollTop = hasNewPurchase ? 0 : top;
+                if (hasNewPurchase) pauseAfterInput();
+            } else {
+                viewport.querySelectorAll('time').forEach(time => { time.textContent = ago(time.dateTime); });
             }
-            const at = list.findIndex(entry => entry.id === shownId);
-            if (at >= 0) { index = at; timeEl.textContent = ago(list[at].confirmedAt); }
-            else { index = -1; next(); }
         }
     };
 
-    feed.addEventListener('pointerenter', event => { if (event.pointerType === 'mouse') paused = true; });
-    feed.addEventListener('pointerleave', () => { paused = false; });
+    function pauseAfterInput() {
+        resumeAt = Date.now() + INPUT_PAUSE_MS;
+    }
+
+    viewport.addEventListener('wheel', pauseAfterInput, { passive: true });
+    viewport.addEventListener('keydown', pauseAfterInput);
+    viewport.addEventListener('pointerdown', () => { touching = true; pauseAfterInput(); });
+    for (const event of ['pointerup', 'pointercancel']) {
+        window.addEventListener(event, () => {
+            if (touching) pauseAfterInput();
+            touching = false;
+        });
+    }
+    viewport.addEventListener('touchmove', pauseAfterInput, { passive: true });
 
     // ---- Popup: full scrollable list of purchases, 20 at a time with "Load more". ----
     const dialog = document.getElementById('purchasesDialog');
@@ -161,17 +157,13 @@
     function openList() {
         if (!dialog || dialog.open) return;
         cursor = null; loading = false; moreBtn.hidden = true;
-        paused = true;
         dialog.showModal();
         rows.scrollTop = 0;
         document.getElementById('purchasesTitle').focus({ preventScroll: true });
         loadPage();
     }
     if (dialog) {
-        feed.addEventListener('click', openList);
-        feed.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openList(); }
-        });
+        viewAll.addEventListener('click', openList);
         moreBtn.addEventListener('click', loadPage);
         dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
         dialog.addEventListener('click', event => {
@@ -179,9 +171,16 @@
             const box = dialog.getBoundingClientRect();
             if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
         });
-        dialog.addEventListener('close', () => { loadVersion++; loading = false; paused = false; });
+        dialog.addEventListener('close', () => { loadVersion++; loading = false; pauseAfterInput(); });
     }
 
-    next(false);
-    schedule();
+    render();
+    setInterval(() => {
+        if (reducedMotion.matches || document.hidden || dialog?.open || touching || Date.now() < resumeAt) return;
+        const bottom = viewport.scrollHeight - viewport.clientHeight;
+        if (bottom <= 0) return;
+        const rowHeight = viewport.firstElementChild.offsetHeight;
+        const nextTop = (Math.floor((viewport.scrollTop + 1) / rowHeight) + 1) * rowHeight;
+        viewport.scrollTo({ top: viewport.scrollTop >= bottom - 1 ? 0 : Math.min(nextTop, bottom), behavior: 'smooth' });
+    }, STEP_MS);
 })();
