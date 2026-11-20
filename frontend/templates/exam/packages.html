@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=27)}">
-    <script defer th:src="@{/js/offer-feed.js(v=3)}"></script>
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=28)}">
+    <script defer th:src="@{/js/offer-feed.js(v=5)}"></script>
     <script defer th:src="@{/js/class-packages.js(v=12)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
@@ -41,16 +41,19 @@
         </div>
     </section>
     <section class="pkg-container collection" id="collection" aria-label="Available offer packages">
-        <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="purchasesDialog" aria-label="Recent package purchases. Open the full list">
-            <span class="buy-feed-label"><span class="buy-feed-dot" aria-hidden="true"></span>Recent purchases</span>
-            <div class="buy-feed-viewport" aria-live="off">
-                <div class="buy-feed-item" id="buyFeedItem">
-                    <span class="buy-avatar" id="buyFeedAvatar" aria-hidden="true"></span>
-                    <p class="buy-text"><strong id="buyFeedName"></strong><span class="buy-from" id="buyFeedFrom"></span> purchased <b id="buyFeedPack"></b></p>
-                    <time class="buy-time" id="buyFeedTime"></time>
-                </div>
+        <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}">
+            <div class="buy-feed-head">
+                <span class="buy-feed-label" id="buyFeedLabel"><span class="buy-feed-dot" aria-hidden="true"></span>Recent purchases</span>
+                <button class="buy-feed-more" id="buyFeedMore" type="button" aria-haspopup="dialog" aria-controls="purchasesDialog">View all <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
             </div>
-            <span class="buy-feed-more" aria-hidden="true">View all <i class="bi bi-chevron-right"></i></span>
+            <ul class="buy-feed-viewport" id="buyFeedViewport" tabindex="0" aria-labelledby="buyFeedLabel"></ul>
+            <template id="buyFeedTemplate">
+                <li class="buy-feed-item">
+                    <span class="buy-avatar" aria-hidden="true"></span>
+                    <p class="buy-text"><strong></strong><span class="buy-from"></span> purchased <b></b></p>
+                    <time class="buy-time"></time>
+                </li>
+            </template>
             <ul hidden id="buyFeedSeed">
                 <li th:each="r : ${recent}" th:attr="data-id=${r.id},data-name=${r.name},data-school=${r.school},data-district=${r.district},data-pack=${r.packageName},data-at=${r.confirmedAt}"></li>
             </ul>

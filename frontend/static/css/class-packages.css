@@ -1534,15 +1534,13 @@ input:focus,textarea:focus,select:focus {
         animation:none!important
     }
 }
-/* Recent purchases: one notification at a time, cycling newest -> oldest. */
+/* Three visible purchase rows with native vertical scrolling. */
 .buy-feed {
-    display:flex;
-    align-items:center;
-    gap:16px;
+    --purchase-row-height:46px;
     max-width:1000px;
     margin:0 auto 20px;
-    padding:8px 10px 8px 18px;
-    border-radius:999px;
+    padding:8px 14px;
+    border-radius:18px;
     background:linear-gradient(135deg,#ffffffc4,#ffffff7a);
     border:1px solid #ffffffeb;
     box-shadow:0 8px 24px #18354b14,inset 0 1px 0 #fff;
@@ -1552,13 +1550,19 @@ input:focus,textarea:focus,select:focus {
 .buy-feed[hidden] {
     display:none
 }
+.buy-feed-head {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:0 4px;
+    border-bottom:1px solid #102b461a
+}
 .buy-feed-label {
     display:inline-flex;
     align-items:center;
     gap:7px;
     flex:none;
-    padding-right:16px;
-    border-right:1px solid #102b461a;
     font-size:10px;
     font-weight:700;
     letter-spacing:.08em;
@@ -1574,15 +1578,27 @@ input:focus,textarea:focus,select:focus {
     animation:buyFeedPulse 1.8s ease-out infinite
 }
 .buy-feed-viewport {
-    flex:1;
-    min-width:0;
-    overflow:hidden
+    max-height:calc(3 * var(--purchase-row-height));
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    scrollbar-width:thin;
+    margin:0;
+    padding:0;
+    list-style:none
 }
 .buy-feed-item {
     display:flex;
     align-items:center;
     gap:10px;
-    min-width:0
+    min-width:0;
+    height:var(--purchase-row-height);
+    box-sizing:border-box;
+    padding:0 6px;
+    border-bottom:1px solid #102b4612
+}
+.buy-feed-item:last-child {
+    border-bottom:0
 }
 .buy-avatar {
     --h:190;
@@ -1635,21 +1651,14 @@ input:focus,textarea:focus,select:focus {
 }
 @media (max-width:760px) {
     .buy-feed {
-        flex-wrap:wrap;
-        gap:6px 10px;
+        --purchase-row-height:66px;
         border-radius:16px;
         padding:9px 12px;
         margin-bottom:16px
     }
-    .buy-feed-label {
-        border-right:0;
-        padding-right:0
-    }
-    .buy-feed-viewport {
-        flex-basis:100%
-    }
     .buy-text {
         white-space:normal;
+        overflow-wrap:anywhere;
         display:-webkit-box;
         -webkit-line-clamp:3;
         -webkit-box-orient:vertical
@@ -1662,31 +1671,24 @@ input:focus,textarea:focus,select:focus {
     .buy-feed { background:#f9fcfd; }
 }
 
-/* Tapping the purchase bar opens the full, scrollable list. */
-.buy-feed[role=button] {
-    cursor:pointer;
-    transition:box-shadow .2s,border-color .2s,transform .2s
-}
-.buy-feed[role=button]:hover {
-    border-color:#b5e4e3;
-    box-shadow:0 10px 28px #187d7918,inset 0 1px 0 #fff
-}
-.buy-feed[role=button]:focus-visible {
-    outline:3px solid #087f7855;
-    outline-offset:2px
-}
-.buy-feed[role=button]:active {
-    transform:scale(.995)
-}
 .buy-feed-more {
     flex:none;
     display:inline-flex;
     align-items:center;
     gap:3px;
+    padding:8px 4px;
+    border:0;
+    background:none;
+    cursor:pointer;
     font-size:11px;
     font-weight:700;
     color:var(--teal);
     white-space:nowrap
+}
+.buy-feed-more:focus-visible,
+.buy-feed-viewport:focus-visible {
+    outline:2px solid var(--teal);
+    outline-offset:1px
 }
 .buy-feed-more .bi {
     font-size:10px
@@ -1822,9 +1824,6 @@ input:focus,textarea:focus,select:focus {
     }
     .purchase-list-foot {
         padding:10px 22px calc(16px + env(safe-area-inset-bottom))
-    }
-    .buy-feed-more {
-        display:none
     }
 }
 @media (prefers-reduced-motion:reduce) {
