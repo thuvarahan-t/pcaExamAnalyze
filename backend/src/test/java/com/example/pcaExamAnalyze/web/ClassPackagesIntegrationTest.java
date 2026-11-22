@@ -325,4 +325,64 @@ class ClassPackagesIntegrationTest {
         assertEquals("Offer", document.select(".admin-nav-link").last().text());
         assertEquals("Offer", document.selectFirst(".admin-nav-link.active").text());
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Self Study Pack", "Physics Practical Study Pack"})
+    void bulkPurchaseTemplateAndUploadAcceptBlankOptionalCellsAndRollBackInvalidRows(String packageName) throws Exception {
+        var pack = service.cards(true).stream().filter(card -> packageName.equals(card.name())).findFirst().orElseThrow();
+        Long id = pack.id();
+        var admin = admin();
+        String path = "/exam/admin/packages/" + id + "/purchases";
+        var adminPage = get(admin, path);
+        assertNotNull(Jsoup.parse(adminPage.body()).selectFirst("#purchaseWorkbook"));
+        var download = admin.send(HttpRequest.newBuilder(URI.create(base + path + "/template")).GET().build(),
+            HttpResponse.BodyHandlers.ofByteArray());
+        assertEquals(200, download.statusCode());
+        byte[] filled;
+        try (var book = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(download.body()));
+             var output = new java.io.ByteArrayOutputStream()) {
+            var sheet = book.getSheetAt(0);
+            assertEquals(1, sheet.getPhysicalNumberOfRows());
+            assertEquals(5, sheet.getRow(0).getPhysicalNumberOfCells());
+            sheet.createRow(1).createCell(0).setCellValue("Bulk Student");
+            sheet.createRow(2);
+            var row = sheet.createRow(3);
+            row.createCell(0).setCellValue("Second Student");
+            row.createCell(2).setCellValue(771234568);
+            book.write(output);
+            filled = output.toByteArray();
+        }
+        int before = service.purchaseList(id).size();
+        assertEquals(302, upload(admin, path, token(adminPage), filled));
+        var saved = service.purchaseList(id);
+        assertEquals(before + 2, saved.size());
+        var student = saved.stream().filter(p -> p.getStudentName().equals("Bulk Student")).findFirst().orElseThrow();
+        assertNull(student.getRegistrationId());
+        assertNull(student.getPhoneNumber());
+        assertNull(student.getSchool());
+        assertNull(student.getDistrict());
+        assertTrue(saved.stream().anyMatch(p -> "0771234568".equals(p.getPhoneNumber())));
+
+        try (var book = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(filled));
+             var output = new java.io.ByteArrayOutputStream()) {
+            book.getSheetAt(0).getRow(1).getCell(0).setCellValue("Would Rollback");
+            book.write(output);
+            assertEquals(302, upload(admin, path, token(get(admin, path)), output.toByteArray()));
+        }
+        assertEquals(before + 2, service.purchaseList(id).size());
+        assertTrue(get(admin, path).body().contains("Row 4:"));
+    }
+
+    private int upload(HttpClient admin, String path, String csrf, byte[] file) throws Exception {
+        String boundary = "bulk-purchase-test";
+        var body = HttpRequest.BodyPublishers.concat(
+            HttpRequest.BodyPublishers.ofString("--" + boundary
+                + "\r\nContent-Disposition: form-data; name=\"_csrf\"\r\n\r\n" + csrf
+                + "\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"workbook\"; filename=\"purchases.xlsx\"\r\n\r\n"),
+            HttpRequest.BodyPublishers.ofByteArray(file),
+            HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
+        return admin.send(HttpRequest.newBuilder(URI.create(base + path + "/bulk"))
+            .header("Content-Type", "multipart/form-data; boundary=" + boundary).POST(body).build(),
+            HttpResponse.BodyHandlers.discarding()).statusCode();
+    }
 }

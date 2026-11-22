@@ -58,11 +58,35 @@ public class ClassPackageAdminController {
     @GetMapping("/{id}/purchases")
     public String purchases(@PathVariable Long id, Model model, jakarta.servlet.http.HttpServletResponse response) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
-        model.addAttribute("pack", service.get(id)); model.addAttribute("purchases", service.purchaseList(id));
+        var pack = service.get(id);
+        model.addAttribute("pack", pack);
+        model.addAttribute("bulkPurchases", ClassPackageService.supportsBulkPurchases(pack.getName()));
+        model.addAttribute("purchases", service.purchaseList(id));
         model.addAttribute("interested", service.interestedStudents(id));
         model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
         model.addAttribute("zone", ClassPackageService.ZONE); return "exam/admin/package-purchases";
     }
+    @GetMapping("/{id}/purchases/template")
+    public ResponseEntity<byte[]> purchaseTemplate(@PathVariable Long id) throws java.io.IOException {
+        if (!ClassPackageService.supportsBulkPurchases(service.get(id).getName()))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=confirmed-purchases.xlsx")
+            .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .body(PurchaseWorkbook.template());
+    }
+
+    @PostMapping("/{id}/purchases/bulk")
+    public String bulkPurchases(@PathVariable Long id, @RequestParam MultipartFile workbook, RedirectAttributes redirect) {
+        try {
+            int count = service.addBulkPurchases(id, PurchaseWorkbook.read(workbook));
+            redirect.addFlashAttribute("success", count + " confirmed purchases added.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage() + " No purchases were added.");
+        }
+        return "redirect:/exam/admin/packages/" + id + "/purchases";
+    }
+
     @PostMapping(path = "/{id}/purchases", params = {"registrationId", "!phoneSuffix"})
     public String addPurchase(@PathVariable Long id, @RequestParam String registrationId,
             @RequestParam(defaultValue = "") String name, @RequestParam(defaultValue = "") String school,
