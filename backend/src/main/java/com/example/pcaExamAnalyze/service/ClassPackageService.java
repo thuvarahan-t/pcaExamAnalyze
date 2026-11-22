@@ -187,17 +187,56 @@ public class ClassPackageService {
     @Transactional
     public void addContactPurchase(Long id, String firstName, String registration, String phoneNumber,
                                    String school, String district, boolean sharedPhone) {
-        var contact = new Contact(namePart(firstName, 74, "student's name"), null, validatePhone(phoneNumber));
+        saveManualPurchase(locked(id), firstName, registration, validatePhone(phoneNumber), school, district, sharedPhone);
+    }
+
+    public static boolean supportsBulkPurchases(String packageName) {
+        return "Self Study Pack".equalsIgnoreCase(packageName)
+            || "Physics Practical Study Pack".equalsIgnoreCase(packageName);
+    }
+
+    public record BulkPurchase(int row, String firstName, String registrationId, String phone, String school, String district) {}
+
+    @Transactional
+    public int addBulkPurchases(Long id, List<BulkPurchase> rows) {
+        var pack = locked(id);
+        if (!supportsBulkPurchases(pack.getName())) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        if (rows.size() > pack.getCapacity() - purchases.countByClassPackageId(id))
+            throw new IllegalArgumentException("The file contains more students than the package has remaining seats.");
+        for (var row : rows) {
+            try {
+                String phone = row.phone().strip().replaceAll("[ -]", "");
+                if (phone.matches("7[0-9]{8}")) phone = "0" + phone;
+                saveManualPurchase(pack, row.firstName(), row.registrationId(),
+                    phone.isEmpty() ? null : validatePhone(phone), row.school(), row.district(), false);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Row " + row.row() + ": " + e.getMessage(), e);
+            }
+        }
+        return rows.size();
+    }
+
+    private void saveManualPurchase(ClassPackage pack, String firstName, String registration, String phone,
+                                    String school, String district, boolean sharedPhone) {
+        Long id = pack.getId();
+        var contact = new Contact(namePart(firstName, 74, "student's name"), null, phone);
         String reg = isBlank(registration) ? null : registrationId(registration);
-        ClassPackage pack = locked(id);
         if (reg != null && purchases.existsByClassPackageIdAndRegistrationId(id, reg))
             throw new IllegalArgumentException("This registration ID is already confirmed for this package.");
-        var matches = purchases.findByClassPackageIdAndPhoneNumber(id, contact.phoneNumber());
-        if (matches.stream().anyMatch(p -> p.getStudentName().equalsIgnoreCase(contact.fullName())))
-            throw new IllegalArgumentException("A purchase with this name and phone number is already confirmed.");
-        if (!sharedPhone && (!matches.isEmpty() || interests.existsByClassPackageIdAndPhoneNumber(id, contact.phoneNumber())))
-            throw new IllegalArgumentException("This phone number already has records for this package. Review the matching students below.");
+        if (phone != null) {
+            var matches = purchases.findByClassPackageIdAndPhoneNumber(id, phone);
+            if (matches.stream().anyMatch(p -> p.getStudentName().equalsIgnoreCase(contact.fullName())))
+                throw new IllegalArgumentException("A purchase with this name and phone number is already confirmed.");
+            if (!sharedPhone && (!matches.isEmpty() || interests.existsByClassPackageIdAndPhoneNumber(id, phone)))
+                throw new IllegalArgumentException("This phone number already has records for this package. Review the matching students before adding the purchase.");
+        }
         var purchase = contactPurchase(pack, contact, school(school), district(district));
+        if (reg == null && phone == null && purchaseList(id).stream().anyMatch(existing ->
+                existing.getRegistrationId() == null && existing.getPhoneNumber() == null
+                && existing.getStudentName().equalsIgnoreCase(purchase.getStudentName())
+                && Objects.equals(existing.getSchool(), purchase.getSchool())
+                && Objects.equals(existing.getDistrict(), purchase.getDistrict())))
+            throw new IllegalArgumentException("A purchase with these details is already confirmed. Add a Reg ID or phone number to distinguish students with the same details.");
         purchase.setRegistrationId(reg);
         purchases.saveAndFlush(purchase);
     }
@@ -330,7 +369,7 @@ public class ClassPackageService {
     public static String school(String value) {
         String school = value == null ? "" : value.strip().replaceAll("\\s+", " ");
         if (school.isEmpty()) return null;
-        if (school.length() > 150 || !school.matches("[\\p{L}\\p{M}\\p{N} .,’'()&/-]+"))
+        if (school.length() > 150 || !school.matches("[\\p{L}\\p{M}\\p{N} .,’'()&/\\[\\]-]+"))
             throw new IllegalArgumentException("Enter a valid school name (up to 150 characters).");
         return school;
     }

@@ -3,6 +3,16 @@
 <div class="admin-page-head"><div><a class="eyebrow teal" th:href="@{/exam/admin/packages}">← ALL PACKAGES</a><h1 th:text="${pack.name}"></h1></div><a class="btn" th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}">Edit package</a></div>
 <th:block th:replace="~{exam/admin/package-layout :: flash}"></th:block>
 <div class="glass-card capacity-summary"><strong th:text="|${#lists.size(purchases)} / ${pack.capacity}|"></strong><span>confirmed purchases</span></div>
+<details class="glass-card admin-panel" th:if="${bulkPurchases}" th:open="${error != null}">
+<summary class="btn">Bulk add</summary>
+<p>Download the Excel template and enter one student per row. Only First Name is required. Empty rows are skipped.</p>
+<p><a class="btn" th:href="@{/exam/admin/packages/{id}/purchases/template(id=${pack.id})}">Download template</a></p>
+<form th:action="@{/exam/admin/packages/{id}/purchases/bulk(id=${pack.id})}" method="post" enctype="multipart/form-data">
+<div class="admin-field"><label for="purchaseWorkbook">Filled Excel template</label>
+<input class="form-input" id="purchaseWorkbook" name="workbook" type="file" accept=".xlsx" required></div>
+<div class="admin-form-buttons"><button class="btn primary" type="submit" th:disabled="${#lists.size(purchases) >= pack.capacity}">Add bulk purchases</button></div>
+</form>
+</details>
 <section class="glass-card admin-panel purchase-form-card"><h2>Add purchase manually</h2>
 <form th:action="@{/exam/admin/packages/{id}/purchases(id=${pack.id})}" method="post" id="manualPurchase"><div class="admin-form-grid">
 <div class="admin-field"><label for="purchaseName">Student first name</label><input class="form-input" id="purchaseName" name="firstName" th:value="${enteredFirstName}" maxlength="74" required></div>
