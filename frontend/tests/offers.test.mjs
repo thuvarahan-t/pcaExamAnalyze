@@ -147,13 +147,16 @@ test('closing the dialog while preparing an enquiry prevents delayed WhatsApp na
 
 test('confirmed students filter by either name or registration ID without changing purchases', async () => {
     const document = new Element(), filter = new Element(), status = new Element();
-    const rows = [['PCA-101', 'Thuvrahan Kumar'], ['PCA-102', 'Arun Student']]
+    const rows = [['0712345678', 'Thuvrahan Kumar', 'REG-101', 'PCA-201'],
+        ['0798765432', 'Arun Student', 'REG-102', 'PCA-202']]
         .map(cells => Object.assign(new Element(), { cells: cells.map(text => new Element(text)) }));
     document.getElementById = id => ({ purchaseFilter: filter, purchaseFilterStatus: status })[id] ?? null;
     document.lists.set('[data-purchase-row]', rows);
     vm.runInNewContext(adminScript, { document });
     filter.value = 'THUV'; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [false, true]);
-    filter.value = '102'; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [true, false]);
+    filter.value = 'REG-102'; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [true, false]);
+    filter.value = '0712345678'; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [false, true]);
+    filter.value = 'PCA-202'; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [true, false]);
     filter.value = ''; await filter.fire('input'); assert.deepEqual(rows.map(row => row.hidden), [false, false]);
     assert.equal(rows.length, 2);
 });

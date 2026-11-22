@@ -8,7 +8,7 @@
         menuToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
         menuToggle.innerHTML = open ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-list"></i>';
     });
-    function setupStudentPages(filterId, rowSelector, listName) {
+    function setupStudentPages(filterId, rowSelector, listName, searchableColumns) {
         const filter = document.getElementById(filterId);
         if (!filter) return;
         const rows = [...document.querySelectorAll(rowSelector)];
@@ -23,7 +23,7 @@
         function render() {
             const query = filter.value.trim().toLocaleLowerCase();
             const matches = rows.filter(row => {
-                const text = row.cells[0].textContent + ' ' + row.cells[1].textContent;
+                const text = Array.from(row.cells).slice(0, searchableColumns).map(cell => cell.textContent).join(' ');
                 return text.toLocaleLowerCase().includes(query);
             });
             const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
@@ -42,8 +42,8 @@
         next?.addEventListener('click', () => { page++; render(); });
         render();
     }
-    setupStudentPages('purchaseFilter', '[data-purchase-row]', 'purchases');
-    setupStudentPages('interestFilter', '[data-interest-row]', 'interested');
+    setupStudentPages('purchaseFilter', '[data-purchase-row]', 'purchases', 4);
+    setupStudentPages('interestFilter', '[data-interest-row]', 'interested', 2);
     const phone = document.getElementById('purchasePhone');
     if (phone) {
         const warning = document.getElementById('manualPhoneMatches');

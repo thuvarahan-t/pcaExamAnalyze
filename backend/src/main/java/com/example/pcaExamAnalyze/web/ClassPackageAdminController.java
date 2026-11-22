@@ -63,7 +63,7 @@ public class ClassPackageAdminController {
         model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
         model.addAttribute("zone", ClassPackageService.ZONE); return "exam/admin/package-purchases";
     }
-    @PostMapping(path = "/{id}/purchases", params = "registrationId")
+    @PostMapping(path = "/{id}/purchases", params = {"registrationId", "!phoneSuffix"})
     public String addPurchase(@PathVariable Long id, @RequestParam String registrationId,
             @RequestParam(defaultValue = "") String name, @RequestParam(defaultValue = "") String school,
             @RequestParam(defaultValue = "") String district, RedirectAttributes redirect) {
@@ -77,17 +77,16 @@ public class ClassPackageAdminController {
     }
     @PostMapping(path = "/{id}/purchases", params = "phoneSuffix")
     public String addContactPurchase(@PathVariable Long id, @RequestParam String firstName,
-            @RequestParam String lastName, @RequestParam String phoneSuffix,
+            @RequestParam(defaultValue = "") String registrationId, @RequestParam String phoneSuffix,
             @RequestParam(defaultValue = "") String school, @RequestParam(defaultValue = "") String district,
             @RequestParam(defaultValue = "false") boolean sharedPhone, RedirectAttributes redirect) {
         try {
-            var contact = ClassPackageService.Contact.validated(firstName, lastName, "07" + phoneSuffix);
-            service.addContactPurchase(id, contact, school, district, sharedPhone);
+            service.addContactPurchase(id, firstName, registrationId, "07" + phoneSuffix, school, district, sharedPhone);
             redirect.addFlashAttribute("success", "Confirmed purchase added. Student count updated.");
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
             redirect.addFlashAttribute("enteredFirstName", firstName);
-            redirect.addFlashAttribute("enteredLastName", lastName);
+            redirect.addFlashAttribute("enteredRegistration", registrationId);
             redirect.addFlashAttribute("enteredPhone", phoneSuffix);
             redirect.addFlashAttribute("enteredSchool", school);
             redirect.addFlashAttribute("enteredDistrict", district);
