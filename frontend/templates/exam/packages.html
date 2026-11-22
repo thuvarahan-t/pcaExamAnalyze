@@ -9,9 +9,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=28)}">
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=31)}">
     <script defer th:src="@{/js/offer-feed.js(v=5)}"></script>
-    <script defer th:src="@{/js/class-packages.js(v=12)}"></script>
+    <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
+    <script defer th:src="@{/js/class-packages.js(v=14)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
@@ -93,8 +94,14 @@
     <button class="dialog-close" type="button" data-close aria-label="Close registration">×</button>
     <div class="dialog-eyebrow">YOUR PHYSICS JOURNEY</div><h2 id="registrationTitle" tabindex="-1">Let’s get you started.</h2><p class="dialog-subtitle">Send your details to our team on WhatsApp.</p>
     <div class="selected-package"><img id="selectedPoster" alt=""><div><small>YOUR SELECTED PACK</small><strong id="selectedPackage"></strong><span id="selectedPrice"></span></div></div>
-    <form id="enquiryForm"><label for="packageName">Full name</label><input id="packageName" name="name" th:value="${details.name}" required minlength="3" maxlength="150" autocomplete="name" placeholder="Enter your full name">
-        <label for="packageRegistration">Registration ID</label><input id="packageRegistration" name="registrationId" th:value="${details.registrationId}" required pattern="[A-Za-z0-9-]{3,30}" maxlength="30" autocomplete="off" placeholder="e.g. 261107" title="3–30 letters, numbers or hyphens">
+    <form id="enquiryForm">
+        <label for="packageName">மாணவர் பெயர் (First name)</label>
+        <input id="packageName" name="firstName" th:value="${details.firstName}" required maxlength="74" autocomplete="given-name">
+        <label for="packageLastName">தந்தையின் பெயர் (Last name)</label>
+        <input id="packageLastName" name="lastName" th:value="${details.lastName}" required maxlength="75" autocomplete="family-name">
+        <label for="packagePhone">Package தொடர்பான விவரங்களைத் தெரிவிக்க வேண்டிய தொலைபேசி இலக்கம்</label>
+        <div class="package-phone"><span aria-hidden="true">07</span><input id="packagePhone" name="phoneSuffix" th:value="${#strings.isEmpty(details.phoneNumber) ? '' : #strings.substring(details.phoneNumber, 2)}" type="tel" inputmode="numeric" autocomplete="tel-national" data-package-phone data-phone-grouped required pattern="[0-9] [0-9]{3} [0-9]{4}" maxlength="10" aria-describedby="packagePhoneHint"></div>
+        <p class="field-hint" id="packagePhoneHint">Enter the 8 digits after 07.</p>
         <p class="field-hint">Saved details are filled in for you. You can edit them here.</p><p class="form-error" id="enquiryError" role="alert"></p>
         <button class="pkg-btn whatsapp" type="submit" id="prepareEnquiry">Send message in WhatsApp <span aria-hidden="true">↗</span></button>
         <p class="field-hint">WhatsApp opens with your message filled in. Tap Send there to contact our team.</p>

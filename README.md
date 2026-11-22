@@ -49,15 +49,17 @@ exams without an account.
 
 ## Class packages
 
-Students browse `/exam/packages`, see the live campaign countdown and confirmed purchases
-out of each package's capacity, and click a poster to prepare a WhatsApp enquiry. Existing
-student details prefill the editable form. Sending an enquiry does not confirm a purchase.
+Students browse `/exam/packages`, see the campaign countdown and confirmed purchases
+out of each package's capacity, and enter the student's first name, father's name, and
+a contact number before opening WhatsApp. The contact number starts with `07` followed by
+eight digits. The prefilled message includes a unique enquiry reference.
 
-Teachers use **Class Packages** in the admin menu (`/exam/admin/packages`) to change the
-deadline and WhatsApp number, create/edit packages, upload JPEG/PNG posters, publish/hide
-offers, and add or remove confirmed purchases by registration ID. Names can be taken from
-existing exam records. Duplicate registrations within a package and over-capacity purchases
-are rejected. Public pages never expose the purchaser list.
+Teachers use **Class Packages** in the admin menu (`/exam/admin/packages`) to manage
+offers and review enquiries. After checking payment, search by phone number or enquiry
+reference and confirm the matching enquiry. Teachers can also add a confirmed purchase
+manually and review other students using the same number. Existing registration-ID
+records remain visible. Contact numbers and enquiry references are private to the
+student's WhatsApp message and the admin purchase page.
 
 The supplied three posters seed once on first startup with zero purchases and 111 places
 per package. Packages, campaign settings, uploaded posters and confirmed purchases live in

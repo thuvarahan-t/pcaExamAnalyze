@@ -77,3 +77,6 @@
 .offer-admin-page .student-pagination[hidden] { display:none; }
 .offer-admin-page .student-pagination button:disabled { opacity:.45; cursor:default; }
 .offer-admin-page .admin-table tr[hidden] { display:none; }
+
+.offer-admin-page .package-phone { display: flex; align-items: center; gap: 10px; }
+.offer-admin-page .package-phone input { flex: 1; min-width: 0; }

@@ -121,16 +121,124 @@ public class ClassPackageService {
         interest.setLastInterestedAt(Instant.now());
         interests.saveAndFlush(interest);
     }
-    public record InterestedStudent(String registrationId, String studentName, Instant firstInterestedAt,
+    public record Contact(String firstName, String lastName, String phoneNumber) implements java.io.Serializable {
+        public static Contact validated(String firstName, String lastName, String phoneNumber) {
+            return new Contact(namePart(firstName, 74, "student's name"),
+                namePart(lastName, 75, "father's name"), validatePhone(phoneNumber));
+        }
+
+        public String fullName() { return firstName + " " + lastName; }
+    }
+
+    private static String namePart(String value, int max, String label) {
+        String name = value == null ? "" : value.strip().replaceAll("\\s+", " ");
+        if (name.isEmpty() || name.length() > max || value.codePoints().anyMatch(Character::isISOControl)
+                || !name.matches("[\\p{L}\\p{M} .'’-]+")
+                || name.codePoints().noneMatch(Character::isLetter))
+            throw new IllegalArgumentException("Enter a valid " + label + ".");
+        return name;
+    }
+
+    public static String validatePhone(String value) {
+        if (value == null || !value.matches("07[0-9]{8}"))
+            throw new IllegalArgumentException("Enter a phone number starting with 07 followed by 8 digits.");
+        return value;
+    }
+
+    @Transactional
+    public PackageInterest recordContactEnquiry(Long id, Contact contact, String requestKey) {
+        ClassPackage pack = locked(id);
+        var previous = interests.findByClassPackageIdAndRequestKey(id, requestKey);
+        if (previous.isPresent()) {
+            var saved = previous.get();
+            var savedContact = new Contact(saved.getFirstName(), saved.getLastName(), saved.getPhoneNumber());
+            if (!savedContact.equals(contact))
+                throw new IllegalArgumentException("The enquiry details changed. Reopen the form and try again.");
+            return saved;
+        }
+        assertEnquiryAllowed(id);
+        var interest = new PackageInterest();
+        interest.setClassPackage(pack);
+        interest.setRequestKey(requestKey);
+        interest.setFirstName(contact.firstName());
+        interest.setLastName(contact.lastName());
+        interest.setPhoneNumber(contact.phoneNumber());
+        interest.setStudentName(contact.fullName());
+        return interests.saveAndFlush(interest);
+    }
+
+    @Transactional
+    public void confirmEnquiry(Long id, Long enquiryId) {
+        ClassPackage pack = locked(id);
+        var enquiry = interests.findByIdAndClassPackageId(enquiryId, id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (enquiry.getRegistrationId() != null) {
+            if (!purchases.existsByClassPackageIdAndRegistrationId(id, enquiry.getRegistrationId()))
+                addPurchase(id, enquiry.getRegistrationId(), enquiry.getStudentName());
+            return;
+        }
+        if (purchases.existsByEnquiryId(enquiryId)) return;
+        var purchase = contactPurchase(pack,
+            new Contact(enquiry.getFirstName(), enquiry.getLastName(), enquiry.getPhoneNumber()), null, null);
+        purchase.setEnquiryId(enquiryId);
+        purchases.saveAndFlush(purchase);
+    }
+
+    @Transactional
+    public void addContactPurchase(Long id, Contact contact, String school, String district, boolean sharedPhone) {
+        ClassPackage pack = locked(id);
+        var matches = purchases.findByClassPackageIdAndPhoneNumber(id, contact.phoneNumber());
+        if (matches.stream().anyMatch(p -> p.getStudentName().equalsIgnoreCase(contact.fullName())))
+            throw new IllegalArgumentException("A purchase with this name and phone number is already confirmed.");
+        if (!sharedPhone && (!matches.isEmpty() || interests.existsByClassPackageIdAndPhoneNumber(id, contact.phoneNumber())))
+            throw new IllegalArgumentException("This phone number already has records for this package. Review the matching students below.");
+        purchases.saveAndFlush(contactPurchase(pack, contact, school(school), district(district)));
+    }
+
+    private PackagePurchase contactPurchase(ClassPackage pack, Contact contact, String school, String district) {
+        if (purchases.countByClassPackageId(pack.getId()) >= pack.getCapacity())
+            throw new IllegalArgumentException("Package capacity reached. Increase capacity before adding another purchase.");
+        var purchase = new PackagePurchase();
+        purchase.setClassPackage(pack);
+        purchase.setFirstName(contact.firstName());
+        purchase.setLastName(contact.lastName());
+        purchase.setPhoneNumber(contact.phoneNumber());
+        purchase.setStudentName(contact.fullName());
+        purchase.setSchool(school);
+        purchase.setDistrict(district);
+        return purchase;
+    }
+
+    @Transactional
+    public void editEnquiryName(Long id, Long enquiryId, String firstName, String lastName) {
+        locked(id);
+        var enquiry = interests.findByIdAndClassPackageId(enquiryId, id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        var contact = Contact.validated(firstName, lastName, enquiry.getPhoneNumber());
+        enquiry.setFirstName(contact.firstName());
+        enquiry.setLastName(contact.lastName());
+        enquiry.setStudentName(contact.fullName());
+        purchases.findByEnquiryId(enquiryId).ifPresent(purchase -> {
+            purchase.setFirstName(contact.firstName());
+            purchase.setLastName(contact.lastName());
+            purchase.setStudentName(contact.fullName());
+        });
+    }
+
+    public record InterestedStudent(Long id, String reference, String firstName, String lastName, String phoneNumber, String registrationId, String studentName, Instant firstInterestedAt,
                                     Instant lastInterestedAt, Instant purchasedAt) {}
     public List<InterestedStudent> interestedStudents(Long id) {
         get(id);
         Map<String, PackagePurchase> confirmed = new HashMap<>();
-        purchaseList(id).forEach(p -> confirmed.put(registrationId(p.getRegistrationId()), p));
+        Map<Long, PackagePurchase> byEnquiry = new HashMap<>();
+        purchaseList(id).forEach(p -> {
+            if (p.getRegistrationId() != null) confirmed.put(p.getRegistrationId(), p);
+            if (p.getEnquiryId() != null) byEnquiry.put(p.getEnquiryId(), p);
+        });
         return interests.findByClassPackageIdOrderByLastInterestedAtDescIdDesc(id).stream()
             .map(i -> {
-                var purchase = confirmed.get(i.getRegistrationId());
-                return new InterestedStudent(i.getRegistrationId(),
+                var purchase = i.getRegistrationId() == null ? byEnquiry.get(i.getId()) : confirmed.get(i.getRegistrationId());
+                return new InterestedStudent(i.getId(), i.getReference(), i.getFirstName(), i.getLastName(), i.getPhoneNumber(), i.getRegistrationId(),
                     purchase == null ? i.getStudentName() : purchase.getStudentName(), i.getFirstInterestedAt(),
                     i.getLastInterestedAt(), purchase == null ? null : purchase.getConfirmedAt());
             }).toList();

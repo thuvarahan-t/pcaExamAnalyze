@@ -25,6 +25,8 @@ public class PostgresSchemaRepair implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        jdbc.execute("alter table package_interests alter column registration_id drop not null");
+        jdbc.execute("alter table package_purchases alter column registration_id drop not null");
         if (!isPostgres()) {
             return;
         }

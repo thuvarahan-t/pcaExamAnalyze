@@ -3,6 +3,9 @@ import com.example.pcaExamAnalyze.domain.PackagePurchase;
 import org.springframework.data.jpa.repository.*;
 import java.util.*;
 public interface PackagePurchaseRepository extends JpaRepository<PackagePurchase, Long> {
+    List<PackagePurchase> findByClassPackageIdAndPhoneNumber(Long packageId, String phoneNumber);
+    Optional<PackagePurchase> findByEnquiryId(Long enquiryId);
+    boolean existsByEnquiryId(Long enquiryId);
     long countByClassPackageId(Long id);
     boolean existsByClassPackageIdAndRegistrationId(Long id, String registrationId);
     Optional<PackagePurchase> findByClassPackageIdAndRegistrationId(Long id, String registrationId);

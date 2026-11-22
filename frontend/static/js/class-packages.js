@@ -130,6 +130,7 @@
         if (catalogRefreshPending) location.reload();
     });
     posterDialog.addEventListener('close', () => { if (catalogRefreshPending) location.reload(); });
+    let enquiryAttempt;
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (!selected || preparing || !form.reportValidity() || !available(selected)) return;
@@ -138,15 +139,24 @@
         try {
             const headers = { 'Accept': 'application/json' };
             headers[document.querySelector('meta[name="_csrf_header"]').content] = document.querySelector('meta[name="_csrf"]').content;
+            const body = new URLSearchParams(new FormData(form));
+            body.set('phoneNumber', '07' + body.get('phoneSuffix').replaceAll(' ', ''));
+            body.delete('phoneSuffix');
+            const fingerprint = selected.dataset.enquiryUrl + '?' + body;
+            if (enquiryAttempt?.fingerprint !== fingerprint) {
+                const bytes = Array.from(crypto.getRandomValues(new Uint8Array(16)),
+                    byte => byte.toString(16).padStart(2, '0')).join('');
+                const key = bytes.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+                enquiryAttempt = { fingerprint, key };
+            }
+            body.set('requestKey', enquiryAttempt.key);
             const response = await fetch(selected.dataset.enquiryUrl, { method: 'POST', headers,
-                body: new URLSearchParams(new FormData(form)), cache: 'no-store' });
+                body, cache: 'no-store' });
             if (version !== requestVersion) return;
             if (!response.headers.get('content-type')?.includes('application/json'))
                 throw new Error('Your session may have expired. Refresh this page and try again.');
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Unable to prepare your message. Please try again.');
-            document.getElementById('packageName').value = result.details.name;
-            document.getElementById('packageRegistration').value = result.details.registrationId;
             if (!available(selected)) throw new Error(stateLabel(selected) + '. Please check the other available packs.');
             window.location.assign(result.url);
         } catch (e) {
