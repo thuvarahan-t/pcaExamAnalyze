@@ -112,41 +112,67 @@ class ClassPackagesIntegrationTest {
         assertTrue(get(admin, "/exam/admin/packages/" + id + "/purchases").body().contains("PRIVATE-001"));
         assertTrue(get(student, "/exam").body().contains("/exam/packages"));
     }
-    @Test void whatsappIsEncodedAndSavedWithoutCountingAsAPurchase() throws Exception {
-        Long id = fixture(111); var c = client(); String csrf = token(get(c, "/exam/packages"));
-        String name = "அருண் குமார்";
-        var result = post(c, "/exam/packages/" + id + "/enquiry", csrf, "name=" + enc(name) + "&registrationId=reg-101");
-        assertEquals(200, result.statusCode()); assertTrue(result.body().contains("https://wa.me/94779179035?text="));
-        assertTrue(result.body().contains("Hi%2C%20my%20name%20is%20"));
-        assertTrue(result.body().contains(enc("I'd like to purchase the " + service.get(id).getName() + ".").replace("+", "%20")));
-        assertFalse(result.body().contains("purchase%20this%20package"));
-        assertTrue(result.body().contains("Registration%20No%3A*%20REG-101")); assertTrue(result.body().contains("*Package%3A*%20"));
-        assertEquals(0, service.purchaseList(id).size());
-        var saved = Jsoup.parse(get(c, "/exam/packages").body());
-        assertEquals(name, saved.selectFirst("#packageName").val()); assertEquals("REG-101", saved.selectFirst("#packageRegistration").val());
-        assertTrue(result.headers().allValues("set-cookie").stream().anyMatch(v -> v.contains("HttpOnly") && v.contains("SameSite=Lax")));
-        assertEquals(400, post(c, "/exam/packages/" + id + "/enquiry", csrf, "name=Bad%0AInjected%3AValue&registrationId=reg-101").statusCode());
+    private String contactForm(String firstName, String lastName, String number, String key) {
+        return "firstName=" + enc(firstName) + "&lastName=" + enc(lastName)
+            + "&phoneNumber=" + number + "&requestKey=" + key;
     }
-    @Test void existingExamCookiePrefillsAndPackageEditsDoNotChangeExamIdentity() throws Exception {
-        var form = new ExamStudentDetailsForm(); form.setEmail("student@example.test"); form.setRegistrationId("EXAM-101");
-        form.setNic("200000000001"); form.setFullName("Original Student"); form.setBatch("2027 A/L"); form.setSchool("Example School");
-        form.setStream("Physical Science"); form.setDistrict("Jaffna");
-        var res = new MockHttpServletResponse(); ExamDetailsCookie.write(new MockHttpServletRequest(), res, form);
-        var cookie = res.getCookies()[0];
-        var cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL); var httpCookie = new HttpCookie(cookie.getName(), cookie.getValue());
-        httpCookie.setPath("/exam"); httpCookie.setVersion(0); cookies.getCookieStore().add(URI.create(base), httpCookie);
-        var c = HttpClient.newBuilder().cookieHandler(cookies).build(); var first = get(c, "/exam/packages");
-        assertEquals("EXAM-101", Jsoup.parse(first.body()).selectFirst("#packageRegistration").val());
-        var id = fixture(111); assertEquals(200, post(c, "/exam/packages/" + id + "/enquiry", token(first), "name=Edited+Student&registrationId=PACKAGE-102").statusCode());
-        assertEquals("PACKAGE-102", Jsoup.parse(get(c, "/exam/packages").body()).selectFirst("#packageRegistration").val());
-        assertFalse(cookies.getCookieStore().getCookies().stream().filter(v -> v.getName().equals(cookie.getName())).anyMatch(v -> !v.getValue().equals(cookie.getValue())));
+
+    @Test void whatsappReferenceConfirmsTheExactEnquiryAndKeepsSharedPhonesSeparate() throws Exception {
+        Long id = fixture(111);
+        String path = "/exam/packages/" + id + "/enquiry";
+        var student = client();
+        String csrf = token(get(student, "/exam/packages"));
+        String key = java.util.UUID.randomUUID().toString();
+        String form = contactForm("அருண்", "குமார்", "0712345678", key);
+        var result = post(student, path, csrf, form);
+        assertEquals(200, result.statusCode());
+        var first = service.interestedStudents(id).getFirst();
+        assertTrue(result.body().contains("https://wa.me/94779179035?text="));
+        assertTrue(result.body().contains("Enquiry%20Ref%3A*%20" + first.reference()));
+        assertTrue(result.body().contains("0712345678"));
+        assertEquals(200, post(student, path, csrf, form).statusCode());
+        assertEquals(1, service.interestedStudents(id).size());
+        assertTrue(service.purchaseList(id).isEmpty());
+        var saved = Jsoup.parse(get(student, "/exam/packages").body());
+        assertEquals("அருண்", saved.selectFirst("#packageName").val());
+        assertEquals("குமார்", saved.selectFirst("#packageLastName").val());
+        assertEquals("12345678", saved.selectFirst("#packagePhone").val());
+        assertNull(saved.selectFirst("#enquiryForm [name=registrationId]"));
+        assertTrue(result.headers().allValues("set-cookie").stream().anyMatch(v -> v.contains("HttpOnly") && v.contains("SameSite=Lax")));
+        assertEquals(400, post(student, path, csrf, contactForm("Bad\nInjected", "Name", "0712345678", key)).statusCode());
+        assertEquals(400, post(student, path, csrf, contactForm("Other", "Student", "0812345678", key)).statusCode());
+        assertEquals(400, post(student, path, csrf, contactForm("Other", "Student", "071234567", key)).statusCode());
+        assertEquals(200, post(student, path, csrf,
+            contactForm("Sibling", "Kumar", "0712345678", java.util.UUID.randomUUID().toString())).statusCode());
+        assertEquals(2, service.interestedStudents(id).size());
+        var admin = admin();
+        String purchasesPath = "/exam/admin/packages/" + id + "/purchases";
+        var page = get(admin, purchasesPath);
+        assertEquals(200, page.statusCode());
+        assertTrue(page.body().contains(first.reference()));
+        assertTrue(page.body().contains("0712345678"));
+        String adminCsrf = token(page);
+        String enquiryPath = "/exam/admin/packages/" + id + "/enquiries/" + first.id();
+        for (int i = 0; i < 2; i++)
+            assertEquals(302, post(admin, enquiryPath + "/confirm", adminCsrf, "").statusCode());
+        assertEquals(1, service.purchaseList(id).size());
+        assertEquals(first.id(), service.purchaseList(id).getFirst().getEnquiryId());
+        assertEquals(1, service.interestedStudents(id).stream().filter(row -> row.purchasedAt() != null).count());
+        assertEquals(302, post(admin, enquiryPath + "/name", adminCsrf,
+            "firstName=Corrected&lastName=Kumar").statusCode());
+        assertEquals("Corrected Kumar", service.purchaseList(id).getFirst().getStudentName());
+        assertEquals(first.id(), service.purchaseList(id).getFirst().getEnquiryId());
+        String manual = "firstName=Manual&lastName=Sibling&phoneSuffix=12345678";
+        assertEquals(302, post(admin, purchasesPath, adminCsrf, manual).statusCode());
+        assertEquals(1, service.purchaseList(id).size());
+        assertEquals(302, post(admin, purchasesPath, adminCsrf, manual + "&sharedPhone=true").statusCode());
+        assertEquals(302, post(admin, purchasesPath, adminCsrf, manual + "&sharedPhone=true").statusCode());
+        assertEquals(2, service.purchaseList(id).size());
+        assertFalse(get(student, "/exam/packages/purchases").body().contains("0712345678"));
     }
     @Test void whatsappInterestPersistsDeduplicatesAndTracksPurchaseChanges() throws Exception {
         Long id = fixture(111);
-        var student = client();
-        String csrf = token(get(student, "/exam/packages"));
-        assertEquals(200, post(student, "/exam/packages/" + id + "/enquiry", csrf,
-            "name=Interested+Student&registrationId=interest-101").statusCode());
+        service.recordInterest(id, "Interested Student", "interest-101");
         var first = service.interestedStudents(id).getFirst();
         assertEquals("INTEREST-101", first.registrationId());
         assertNull(first.purchasedAt());
@@ -221,7 +247,7 @@ class ClassPackagesIntegrationTest {
     }
     @Test void adminHttpMutationsUseAuthenticationCsrfAndValidateInput() throws Exception {
         Long id = fixture(111); var c = client(); var page = get(c, "/exam/packages");
-        assertTrue(post(c, "/exam/packages/" + id + "/enquiry", "bad-token", "name=Some+Student&registrationId=CSRF-01").statusCode() >= 300);
+        assertTrue(post(c, "/exam/packages/" + id + "/enquiry", "bad-token", contactForm("Some", "Student", "0712345678", java.util.UUID.randomUUID().toString())).statusCode() >= 300);
         assertTrue(post(c, "/exam/admin/packages/" + id + "/purchases", token(page), "registrationId=HACK-01&name=Some+Student").statusCode() >= 300);
         assertEquals(0, service.purchaseList(id).size());
         var admin = admin(); String csrf = token(get(admin, "/exam/admin/packages"));
