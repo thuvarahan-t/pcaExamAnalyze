@@ -162,12 +162,20 @@ class ClassPackagesIntegrationTest {
             "firstName=Corrected&lastName=Kumar").statusCode());
         assertEquals("Corrected Kumar", service.purchaseList(id).getFirst().getStudentName());
         assertEquals(first.id(), service.purchaseList(id).getFirst().getEnquiryId());
-        String manual = "firstName=Manual&lastName=Sibling&phoneSuffix=12345678";
+        String manual = "firstName=Manual&registrationId=reg-123&phoneSuffix=12345678";
         assertEquals(302, post(admin, purchasesPath, adminCsrf, manual).statusCode());
         assertEquals(1, service.purchaseList(id).size());
         assertEquals(302, post(admin, purchasesPath, adminCsrf, manual + "&sharedPhone=true").statusCode());
         assertEquals(302, post(admin, purchasesPath, adminCsrf, manual + "&sharedPhone=true").statusCode());
         assertEquals(2, service.purchaseList(id).size());
+        var manualPurchase = service.purchaseList(id).stream().filter(p -> "Manual".equals(p.getStudentName()))
+            .findFirst().orElseThrow();
+        assertEquals("REG-123", manualPurchase.getRegistrationId());
+        assertNull(manualPurchase.getLastName());
+        assertEquals(302, post(admin, purchasesPath, adminCsrf,
+            "firstName=Optional&registrationId=&phoneSuffix=12345679").statusCode());
+        assertTrue(service.purchaseList(id).stream()
+            .anyMatch(p -> "Optional".equals(p.getStudentName()) && p.getRegistrationId() == null));
         assertFalse(get(student, "/exam/packages/purchases").body().contains("0712345678"));
     }
     @Test void whatsappInterestPersistsDeduplicatesAndTracksPurchaseChanges() throws Exception {

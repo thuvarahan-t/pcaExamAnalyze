@@ -127,7 +127,7 @@ public class ClassPackageService {
                 namePart(lastName, 75, "father's name"), validatePhone(phoneNumber));
         }
 
-        public String fullName() { return firstName + " " + lastName; }
+        public String fullName() { return lastName == null ? firstName : firstName + " " + lastName; }
     }
 
     private static String namePart(String value, int max, String label) {
@@ -185,14 +185,21 @@ public class ClassPackageService {
     }
 
     @Transactional
-    public void addContactPurchase(Long id, Contact contact, String school, String district, boolean sharedPhone) {
+    public void addContactPurchase(Long id, String firstName, String registration, String phoneNumber,
+                                   String school, String district, boolean sharedPhone) {
+        var contact = new Contact(namePart(firstName, 74, "student's name"), null, validatePhone(phoneNumber));
+        String reg = isBlank(registration) ? null : registrationId(registration);
         ClassPackage pack = locked(id);
+        if (reg != null && purchases.existsByClassPackageIdAndRegistrationId(id, reg))
+            throw new IllegalArgumentException("This registration ID is already confirmed for this package.");
         var matches = purchases.findByClassPackageIdAndPhoneNumber(id, contact.phoneNumber());
         if (matches.stream().anyMatch(p -> p.getStudentName().equalsIgnoreCase(contact.fullName())))
             throw new IllegalArgumentException("A purchase with this name and phone number is already confirmed.");
         if (!sharedPhone && (!matches.isEmpty() || interests.existsByClassPackageIdAndPhoneNumber(id, contact.phoneNumber())))
             throw new IllegalArgumentException("This phone number already has records for this package. Review the matching students below.");
-        purchases.saveAndFlush(contactPurchase(pack, contact, school(school), district(district)));
+        var purchase = contactPurchase(pack, contact, school(school), district(district));
+        purchase.setRegistrationId(reg);
+        purchases.saveAndFlush(purchase);
     }
 
     private PackagePurchase contactPurchase(ClassPackage pack, Contact contact, String school, String district) {
