@@ -44,6 +44,29 @@
     }
     setupStudentPages('purchaseFilter', '[data-purchase-row]', 'purchases');
     setupStudentPages('interestFilter', '[data-interest-row]', 'interested');
+    const phone = document.getElementById('purchasePhone');
+    if (phone) {
+        const warning = document.getElementById('manualPhoneMatches');
+        const list = document.getElementById('manualPhoneMatchList');
+        const shared = document.getElementById('sharedPhone');
+        const rows = [...document.querySelectorAll('[data-purchase-row][data-phone], [data-interest-row][data-phone]')];
+        function showMatches() {
+            const matches = rows.filter(row => row.dataset.phone === '07' + phone.value);
+            list.replaceChildren(...matches.map(row => {
+                const item = document.createElement('li');
+                const enquiry = row.hasAttribute('data-interest-row');
+                item.textContent = row.cells[1].textContent + ' · ' + row.cells[0].textContent.trim()
+                    + ' · ' + (enquiry ? 'Enquiry' : 'Confirmed purchase');
+                return item;
+            }));
+            warning.hidden = matches.length === 0;
+            shared.checked = false;
+            shared.disabled = warning.hidden;
+            shared.required = !warning.hidden;
+        }
+        phone.addEventListener('input', showMatches);
+        showMatches();
+    }
     const upload = document.getElementById('posterUpload');
     if (!upload) return;
     let objectUrl;

@@ -63,7 +63,7 @@ public class ClassPackageAdminController {
         model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
         model.addAttribute("zone", ClassPackageService.ZONE); return "exam/admin/package-purchases";
     }
-    @PostMapping("/{id}/purchases")
+    @PostMapping(path = "/{id}/purchases", params = "registrationId")
     public String addPurchase(@PathVariable Long id, @RequestParam String registrationId,
             @RequestParam(defaultValue = "") String name, @RequestParam(defaultValue = "") String school,
             @RequestParam(defaultValue = "") String district, RedirectAttributes redirect) {
@@ -74,6 +74,46 @@ public class ClassPackageAdminController {
             redirect.addFlashAttribute("enteredSchool", school); redirect.addFlashAttribute("enteredDistrict", district);
         }
         return "redirect:/exam/admin/packages/" + id + "/purchases";
+    }
+    @PostMapping(path = "/{id}/purchases", params = "phoneSuffix")
+    public String addContactPurchase(@PathVariable Long id, @RequestParam String firstName,
+            @RequestParam String lastName, @RequestParam String phoneSuffix,
+            @RequestParam(defaultValue = "") String school, @RequestParam(defaultValue = "") String district,
+            @RequestParam(defaultValue = "false") boolean sharedPhone, RedirectAttributes redirect) {
+        try {
+            var contact = ClassPackageService.Contact.validated(firstName, lastName, "07" + phoneSuffix);
+            service.addContactPurchase(id, contact, school, district, sharedPhone);
+            redirect.addFlashAttribute("success", "Confirmed purchase added. Student count updated.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+            redirect.addFlashAttribute("enteredFirstName", firstName);
+            redirect.addFlashAttribute("enteredLastName", lastName);
+            redirect.addFlashAttribute("enteredPhone", phoneSuffix);
+            redirect.addFlashAttribute("enteredSchool", school);
+            redirect.addFlashAttribute("enteredDistrict", district);
+        }
+        return "redirect:/exam/admin/packages/" + id + "/purchases";
+    }
+    @PostMapping("/{id}/enquiries/{enquiryId}/confirm")
+    public String confirmEnquiry(@PathVariable Long id, @PathVariable Long enquiryId, RedirectAttributes redirect) {
+        try {
+            service.confirmEnquiry(id, enquiryId);
+            redirect.addFlashAttribute("success", "Enquiry purchase confirmed.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/exam/admin/packages/" + id + "/purchases#interestedStudents";
+    }
+    @PostMapping("/{id}/enquiries/{enquiryId}/name")
+    public String editEnquiryName(@PathVariable Long id, @PathVariable Long enquiryId,
+            @RequestParam String firstName, @RequestParam String lastName, RedirectAttributes redirect) {
+        try {
+            service.editEnquiryName(id, enquiryId, firstName, lastName);
+            redirect.addFlashAttribute("success", "Student name updated.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/exam/admin/packages/" + id + "/purchases#interestedStudents";
     }
     @PostMapping("/{id}/purchases/{purchaseId}/remove")
     public String removePurchase(@PathVariable Long id, @PathVariable Long purchaseId) {
