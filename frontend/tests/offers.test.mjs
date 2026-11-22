@@ -38,11 +38,11 @@ function studentPage({ mobile = false, purchased = 0 } = {}) {
     const ids = Object.fromEntries(['registrationDialog', 'posterDialog', 'previewRegister', 'enquiryForm',
         'enquiryError', 'prepareEnquiry', 'countDays', 'countHours', 'countMinutes', 'countSeconds',
         'countdownTitle', 'selectedPackage', 'selectedPrice', 'selectedPoster', 'packageName',
-        'packageRegistration', 'registrationTitle', 'fullPoster', 'previewPackageName', 'offerDeadline', 'refreshStatus']
+        'packagePhone', 'registrationTitle', 'fullPoster', 'previewPackageName', 'offerDeadline', 'refreshStatus']
         .map(id => [id, new Element()]));
     for (const id of ['countDays', 'countHours', 'countMinutes', 'countSeconds']) ids[id].textContent = '--';
     for (const id of ['registrationDialog', 'posterDialog']) ids[id].selectors.set('[data-close]', new Element());
-    ids.packageName.value = 'Thuvrahan'; ids.packageRegistration.value = 'PCA-101';
+    ids.packageName.value = 'Thuvrahan'; ids.packagePhone.value = '4 104 6208';
     const page = new Element();
     page.dataset = { serverNow: '2026-11-12T00:00:00Z', endsAt: '2026-11-13T00:00:00Z', statusUrl: '/exam/packages/status' };
     const card = new Element();
@@ -71,10 +71,10 @@ function studentPage({ mobile = false, purchased = 0 } = {}) {
     const response = body => ({ ok: true, headers: { get: () => 'application/json' }, json: async () => body });
     let handleFetch = async url => response(url.endsWith('/status')
         ? { serverNow: page.dataset.serverNow, endsAt: page.dataset.endsAt, packages: [catalog] }
-        : { url: 'https://wa.me/94779179035?text=prepared', details: { name: 'Thuvrahan', registrationId: 'PCA-101' } });
+        : { url: 'https://wa.me/94779179035?text=prepared' });
     const context = vm.createContext({ document, window, location, URLSearchParams, Intl, Date, Number, Map, String,
-        performance: { now: () => elapsed }, AbortSignal: { timeout() {} },
-        FormData: class { *[Symbol.iterator]() { yield ['name', ids.packageName.value]; yield ['registrationId', ids.packageRegistration.value]; } },
+        crypto: { getRandomValues: bytes => bytes.fill(1) }, performance: { now: () => elapsed }, AbortSignal: { timeout() {} },
+        FormData: class { *[Symbol.iterator]() { yield ['firstName', ids.packageName.value]; yield ['lastName', 'Kumar']; yield ['phoneSuffix', ids.packagePhone.value]; } },
         fetch: async (url, options) => { requests.push({ url, options }); return handleFetch(url, options); },
         setInterval: callback => intervals.push(callback), requestAnimationFrame() {}, cancelAnimationFrame() {} });
     vm.runInContext(studentScript, context);
@@ -103,7 +103,10 @@ test('one submit validates and prepares the WhatsApp link with CSRF and student 
     await page.ids.enquiryForm.fire('submit');
     assert.equal(page.requests.length, 1);
     assert.equal(page.requests[0].options.headers['X-CSRF-TOKEN'], 'test-csrf');
-    assert.equal(page.requests[0].options.body.get('registrationId'), 'PCA-101');
+    assert.equal(page.requests[0].options.body.get('phoneNumber'), '0741046208');
+    assert.equal(page.requests[0].options.body.get('firstName'), 'Thuvrahan');
+    assert.equal(page.requests[0].options.body.get('lastName'), 'Kumar');
+    assert.equal(page.requests[0].options.body.get('requestKey'), '01010101-0101-0101-0101-010101010101');
     assert.equal(page.location.assigned, 'https://wa.me/94779179035?text=prepared');
 });
 
@@ -138,7 +141,7 @@ test('closing the dialog while preparing an enquiry prevents delayed WhatsApp na
     page.setFetch(() => new Promise(resolve => { complete = resolve; }));
     const submission = page.ids.enquiryForm.fire('submit'); page.ids.registrationDialog.close();
     complete({ ok: true, headers: { get: () => 'application/json' }, json: async () => ({
-        url: 'https://wa.me/94779179035', details: { name: 'Thuvrahan', registrationId: 'PCA-101' } }) });
+        url: 'https://wa.me/94779179035' }) });
     await submission; assert.equal(page.location.assigned, undefined);
 });
 

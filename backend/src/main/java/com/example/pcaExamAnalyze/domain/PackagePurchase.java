@@ -12,7 +12,11 @@ public class PackagePurchase {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "package_id", nullable = false) private ClassPackage classPackage;
-    @Column(name = "registration_id", nullable = false, length = 30) private String registrationId;
+    @Column(name = "registration_id", length = 30) private String registrationId;
+    @Column(length = 74) private String firstName;
+    @Column(length = 75) private String lastName;
+    @Column(length = 10) private String phoneNumber;
+    @Column(unique = true) private Long enquiryId;
     @Column(nullable = false, length = 150) private String studentName;
     @Column(length = 150) private String school;
     @Column(length = 50) private String district;
