@@ -1,13 +1,24 @@
 <!DOCTYPE html><html xmlns:th="http://www.thymeleaf.org" lang="en"><head th:replace="~{exam/admin/package-layout :: head('Offer')}"></head><body class="offer-admin-page"><div class="admin-shell">
 <aside th:replace="~{exam/admin/sidebar :: sidebar('offers')}"></aside><main class="admin-main">
-<div class="admin-page-head"><div><h1>Offer</h1></div><a class="btn primary" th:href="@{/exam/admin/packages/new}">+ Create package</a></div>
+<div class="admin-page-head"><div><h1>Offer</h1></div><a class="btn" th:href="@{/exam/packages}">View offer page</a></div>
+<nav class="admin-actions offer-section-nav" aria-label="Offer sections" data-offer-tabs>
+    <a class="btn" id="tab-packages" href="#offer-packages">Packages</a>
+    <a class="btn" id="tab-events" href="#event-highlights">Event Highlights</a>
+    <a class="btn" id="tab-video" href="#offer-video">YouTube video</a>
+    <a class="btn" id="tab-feedback" href="#student-feedback">Student Feedback
+        <span class="offer-pending-count" th:if="${!#lists.isEmpty(pendingFeedback)}"
+              th:text="|${#lists.size(pendingFeedback)} pending|"></span>
+    </a>
+</nav>
 <th:block th:replace="~{exam/admin/package-layout :: flash}"></th:block>
+<div id="offer-packages">
 <section class="glass-card admin-panel"><h2>Campaign settings</h2>
 <form th:action="@{/exam/admin/packages/campaign}" method="post" th:object="${campaignForm}"><div class="admin-form-grid campaign-fields">
 <div class="admin-field"><label for="title">Page headline</label><input class="form-input" id="title" th:field="*{title}" required maxlength="160"><span class="error" th:errors="*{title}"></span></div>
 <div class="admin-field"><label for="endsAt">Offer ends · Sri Lanka time</label><input class="form-input" id="endsAt" type="datetime-local" th:field="*{endsAt}" required><span class="error" th:errors="*{endsAt}"></span></div>
 <div class="admin-field"><label for="whatsappNumber">Admin WhatsApp number</label><input class="form-input" id="whatsappNumber" placeholder="94779179035" th:field="*{whatsappNumber}" required pattern="[1-9][0-9]{7,14}" maxlength="15" inputmode="tel"><span class="error" th:errors="*{whatsappNumber}"></span></div>
 <div class="campaign-save"><button class="btn primary" type="submit">Save settings</button></div></div></form></section>
+<p><a class="btn primary" th:href="@{/exam/admin/packages/new}">+ Create package</a></p>
 <div class="admin-card-grid"><article class="glass-card admin-pack-card" th:each="pack : ${packages}">
 <span class="publication-tag" th:classappend="${!pack.published} ? 'draft'" th:text="${pack.published ? 'PUBLISHED' : 'DRAFT / HIDDEN'}"></span>
 <a th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}"><img th:src="@{/exam/admin/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="${pack.name}" loading="lazy"></a><h2 th:text="${pack.name}"></h2>
@@ -15,4 +26,10 @@
 <div class="admin-actions"><a class="btn primary" th:href="@{/exam/admin/packages/{id}/purchases(id=${pack.id})}">Interested / Purchases</a><a class="btn" th:href="@{/exam/admin/packages/{id}/edit(id=${pack.id})}">Edit</a>
 <form th:action="@{/exam/admin/packages/{id}/toggle(id=${pack.id})}" method="post"><button class="btn" type="submit" th:text="${pack.published ? 'Hide' : 'Publish'}"></button></form></div>
 </article></div><div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h2>Your first package starts here.</h2><p>Create a package and upload a poster to get started.</p></div>
+</div>
+<th:block th:replace="~{exam/admin/offer-content :: sections}"></th:block>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script defer th:src="@{/js/sl-district-map.js}"></script>
+<script defer th:src="@{/js/district-map-init.js(v=7)}"></script>
+<script th:src="@{/js/offer-admin-tabs.js(v=1)}"></script>
 </main></div></body></html>

@@ -2,11 +2,18 @@ package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.ClassPackageService;
 import com.example.pcaExamAnalyze.service.ClassPackageService.Contact;
+import com.example.pcaExamAnalyze.domain.OfferFeedback.Status;
+import com.example.pcaExamAnalyze.service.OfferContentService;
+import com.example.pcaExamAnalyze.service.OfferContentService.FeedbackInput;
+import com.example.pcaExamAnalyze.service.OfferContentService.PhotoVariant;
+import com.example.pcaExamAnalyze.report.ExamReportService;
 import jakarta.servlet.http.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -18,7 +25,11 @@ public class ClassPackageController {
     private static final String DETAILS_KEY = "packageContactDetails";
     private static final String COOKIE = "pca_package_contact";
     private final ClassPackageService service;
-    public ClassPackageController(ClassPackageService service) { this.service = service; }
+    private final OfferContentService content;
+    public ClassPackageController(ClassPackageService service, OfferContentService content) {
+        this.service = service;
+        this.content = content;
+    }
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ResponseEntity<?> unavailable(org.springframework.web.server.ResponseStatusException exception) {
         return ResponseEntity.status(exception.getStatusCode()).cacheControl(CacheControl.noStore())
@@ -31,7 +42,46 @@ public class ClassPackageController {
         model.addAttribute("campaign", service.campaign()); model.addAttribute("packages", service.cards(false));
         model.addAttribute("serverNow", Instant.now()); model.addAttribute("details", details(request));
         model.addAttribute("recent", service.recentPurchases());
+        model.addAttribute("events", content.events(false));
+        model.addAttribute("feedback", content.feedback(false));
+        model.addAttribute("districts", ExamReportService.DISTRICTS);
         return "exam/packages";
+    }
+
+    @GetMapping("/event-photos/{id}")
+    public ResponseEntity<byte[]> eventPhoto(@PathVariable Long id, @RequestParam(defaultValue = "hero") String variant,
+            WebRequest request) {
+        var size = switch (variant) {
+            case "hero" -> PhotoVariant.HERO;
+            case "thumb" -> PhotoVariant.THUMB;
+            default -> throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST);
+        };
+        String etag = "\"event-photo-web-v1-" + id + "-" + variant + "\"";
+        var cache = CacheControl.noCache();
+        if (request.getHeader(HttpHeaders.IF_NONE_MATCH) != null) {
+            content.requirePublishedPhoto(id);
+            if (request.checkNotModified(etag)) {
+                return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).cacheControl(cache).build();
+            }
+        }
+        var photo = content.webPhoto(id, size);
+        return ResponseEntity.ok().eTag(etag).cacheControl(cache).header("X-Content-Type-Options", "nosniff")
+            .contentType(MediaType.parseMediaType(photo.contentType())).body(photo.data());
+    }
+
+    @PostMapping("/feedback")
+    public String feedback(@RequestParam(defaultValue = "") String name,
+            @RequestParam(defaultValue = "") String school, @RequestParam(defaultValue = "") String district,
+            @RequestParam(defaultValue = "") String comment, RedirectAttributes redirect) {
+        try {
+            var input = new FeedbackInput(name, school, district, "", comment);
+            content.addFeedback(input, Status.PENDING);
+            redirect.addFlashAttribute("feedbackSuccess", true);
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("feedbackError", e.getMessage());
+            redirect.addFlashAttribute("feedbackDraft", new FeedbackInput(name, school, district, "", comment));
+        }
+        return "redirect:/exam/packages#student-feedback";
     }
     @GetMapping("/status") @ResponseBody
     public ResponseEntity<?> status() {

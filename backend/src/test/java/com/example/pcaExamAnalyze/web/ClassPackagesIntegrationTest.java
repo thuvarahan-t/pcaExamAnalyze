@@ -327,7 +327,7 @@ class ClassPackagesIntegrationTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"Self Study Pack", "Physics Practical Study Pack"})
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Theory Study Pack", "Self Study Pack", "Physics Practical Study Pack"})
     void bulkPurchaseTemplateAndUploadAcceptBlankOptionalCellsAndRollBackInvalidRows(String packageName) throws Exception {
         var pack = service.cards(true).stream().filter(card -> packageName.equals(card.name())).findFirst().orElseThrow();
         Long id = pack.id();
@@ -373,15 +373,234 @@ class ClassPackagesIntegrationTest {
         assertTrue(get(admin, path).body().contains("Row 4:"));
     }
 
+    @Test void offerFeedbackUsesDistrictPickerAndRequiresModerationBeforePublicDisplay() throws Exception {
+        String offer = "/exam/packages";
+        String manage = "/exam/admin/packages";
+        var student = client();
+        var teacher = admin();
+        var quote = "Clear explanations helped me revise.";
+        String fields = "name=Feedback+Student&school=Test+School&comment=" + enc(quote);
+        var invalid = submitFeedbackForm(student, fields + "&district=Invalid", false);
+        assertEquals(302, invalid.statusCode());
+        assertTrue(invalid.headers().firstValue("Location").orElseThrow().endsWith(offer + "#student-feedback"));
+        var rejected = Jsoup.parse(get(student, offer).body());
+        assertTrue(rejected.selectFirst(".share-feedback").hasAttr("open"));
+        assertEquals("Feedback Student", rejected.selectFirst(".share-feedback input[name=name]").val());
+        assertNotNull(rejected.selectFirst(".share-feedback .district-picker #map"));
+        assertNull(rejected.selectFirst(".share-feedback [name=consent], .share-feedback [name=packageId]"));
+        assertFalse(get(teacher, manage).body().contains(quote));
+        var submission = submitFeedbackForm(student, fields + "&district=Jaffna", false);
+        assertEquals(302, submission.statusCode());
+        assertTrue(submission.headers().firstValue("Location").orElseThrow().endsWith(offer + "#student-feedback"));
+        assertNotNull(Jsoup.parse(get(student, offer).body()).selectFirst(".showcase-message"));
+        assertFalse(get(student, offer).body().contains(quote));
+        var adminPage = get(teacher, manage);
+        var adminDoc = Jsoup.parse(adminPage.body());
+        assertNotNull(adminDoc.selectFirst("#tab-feedback .offer-pending-count"));
+        var pending = adminDoc.selectFirst(".offer-review-queue article:contains(" + quote + ")");
+        assertNotNull(pending);
+        assertEquals("Approve & publish", pending.selectFirst("button[value=PUBLISHED]").text());
+        String statusPath = pending.selectFirst("form").attr("action");
+        var approval = post(teacher, statusPath, token(adminPage), "status=PUBLISHED");
+        assertEquals(302, approval.statusCode());
+        assertTrue(approval.headers().firstValue("Location").orElseThrow().endsWith("#student-feedback"));
+        var publicQuote = Jsoup.parse(get(student, offer).body()).selectFirst(".student-quote:contains(" + quote + ")");
+        assertNotNull(publicQuote);
+        assertTrue(publicQuote.text().contains("Feedback Student Test School · Jaffna"));
+        assertNull(publicQuote.selectFirst(".quote-package"));
+        var reviewed = get(teacher, manage);
+        var reviewDoc = Jsoup.parse(reviewed.body());
+        assertNull(reviewDoc.selectFirst(".offer-review-queue article:contains(" + quote + ")"));
+        assertNotNull(reviewDoc.selectFirst("details:has(summary:contains(Published feedback)) article:contains(" + quote + ")"));
+        assertEquals(302, post(teacher, statusPath, token(reviewed), "status=HIDDEN").statusCode());
+        assertFalse(get(student, offer).body().contains(quote));
+    }
+
+    @Test void staleFeedbackFormReturnsToOfferForAnonymousAndSignedInVisitors() throws Exception {
+        String fields = "name=Feedback+Student&school=Test+School&district=Jaffna&comment=Feedback+with+expired+token";
+        for (var browser : List.of(client(), admin())) {
+            var expired = submitFeedbackForm(browser, fields, true);
+            assertEquals(302, expired.statusCode());
+            assertTrue(expired.headers().firstValue("Location").orElseThrow().endsWith("/exam/packages#student-feedback"));
+            var offer = Jsoup.parse(get(browser, "/exam/packages").body());
+            assertNotNull(offer.selectFirst(".share-feedback[open]"));
+            assertEquals("Your feedback form expired. Please fill it in again and resend.",
+                offer.selectFirst(".feedback-form [role=alert]").text());
+        }
+        assertFalse(get(admin(), "/exam/admin/packages").body().contains("Feedback with expired token"));
+    }
+
+    private HttpResponse<String> submitFeedbackForm(HttpClient browser, String fields, boolean expired) throws Exception {
+        var form = Jsoup.parse(get(browser, "/exam/packages").body()).selectFirst(".feedback-form");
+        assertNotNull(form);
+        var token = form.selectFirst("input[name=_csrf]");
+        assertNotNull(token);
+        String body = fields + "&_csrf=" + enc(expired ? "expired-token" : token.val());
+        return browser.send(HttpRequest.newBuilder(URI.create(base + form.attr("action")))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test void offerAdminCanPublishEventPhotosAndConfigureVideo() throws Exception {
+        String offer = "/exam/packages";
+        String manage = "/exam/admin/packages";
+        var teacher = admin();
+        var student = client();
+        var eventFields = Map.of("title", "Physics seminar",
+            "venue", "Jaffna", "description", "A revision session and practice questions.");
+        byte[] photo = new ClassPathResource("package-posters/theory.jpg").getContentAsByteArray();
+        assertEquals(302, upload(teacher, manage + "/events", token(get(teacher, manage)),
+            eventFields, "photos", "event.jpg", List.of(photo, photo, photo)));
+        var eventPage = get(teacher, manage);
+        var eventDoc = Jsoup.parse(eventPage.body());
+        assertNull(eventDoc.selectFirst("#event-highlights [name=eventDate], #event-highlights input[name=published]"));
+        var event = eventDoc.selectFirst("#event-highlights details:contains(Physics seminar)");
+        assertNotNull(event);
+        assertEquals(3, event.select(".offer-event-previews img").size());
+        String privatePhoto = event.selectFirst("img").attr("src");
+        String publicPhoto = privatePhoto.replace("/admin/", "/");
+        var originalResponse = getPhoto(teacher, privatePhoto, null);
+        var heroResponse = getPhoto(student, publicPhoto, null);
+        var thumbResponse = getPhoto(student, publicPhoto + "?variant=thumb", null);
+        assertEquals(200, originalResponse.statusCode());
+        assertArrayEquals(photo, originalResponse.body());
+        assertEquals(200, heroResponse.statusCode());
+        assertEquals(200, thumbResponse.statusCode());
+        assertEquals("image/jpeg", heroResponse.headers().firstValue("Content-Type").orElseThrow());
+        assertEquals("image/jpeg", thumbResponse.headers().firstValue("Content-Type").orElseThrow());
+        assertTrue(thumbResponse.body().length < heroResponse.body().length);
+        assertTrue(heroResponse.body().length < photo.length);
+        var heroImage = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(heroResponse.body()));
+        var thumbImage = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(thumbResponse.body()));
+        assertEquals(920, Math.max(heroImage.getWidth(), heroImage.getHeight()));
+        assertEquals(144, Math.max(thumbImage.getWidth(), thumbImage.getHeight()));
+        String photoEtag = heroResponse.headers().firstValue("ETag").orElseThrow();
+        var notModified = getPhoto(student, publicPhoto, photoEtag);
+        assertEquals(304, notModified.statusCode());
+        assertEquals(0, notModified.body().length);
+        String edit = event.selectFirst(".event-edit-form").attr("action");
+        String visibility = event.selectFirst("form:has(button[name=published])").attr("action");
+        String editFields = eventFields.entrySet().stream()
+            .map(field -> field.getKey() + "=" + enc(field.getValue())).collect(java.util.stream.Collectors.joining("&"));
+        assertEquals(302, post(teacher, edit, token(eventPage), editFields).statusCode());
+        assertEquals(302, upload(teacher, edit, token(get(teacher, manage)),
+            eventFields, "photos", "extra.jpg", List.of(photo, photo, photo)));
+        var appendedPage = get(teacher, manage);
+        var appendedEvent = Jsoup.parse(appendedPage.body()).selectFirst("#event-highlights details:contains(Physics seminar)");
+        assertNotNull(appendedEvent);
+        assertEquals(6, appendedEvent.select(".offer-event-previews img").size());
+        assertEquals(privatePhoto, appendedEvent.selectFirst("img").attr("src"));
+        var lastPreview = appendedEvent.select(".offer-event-previews > div").last();
+        assertNotNull(lastPreview);
+        String removedPhoto = lastPreview.selectFirst("img").attr("src").replace("/admin/", "/");
+        assertEquals(200, get(student, removedPhoto).statusCode());
+        assertEquals(302, post(teacher, lastPreview.selectFirst("form").attr("action"),
+            token(appendedPage), "").statusCode());
+        assertEquals(404, get(student, removedPhoto).statusCode());
+        assertEquals(302, upload(teacher, edit, token(get(teacher, manage)),
+            eventFields, "photos", "extra.jpg", Collections.nCopies(16, new byte[] {1})));
+        assertTrue(get(teacher, manage).body().contains("An event can have up to 20 photos."));
+        assertEquals(302, post(teacher, manage + "/video", token(get(teacher, manage)),
+            "video=" + enc("https://youtu.be/AbCdEf12345?t=42")).statusCode());
+        var page = Jsoup.parse(get(student, offer).body());
+        assertEquals("Physics seminar", page.selectFirst("#event-highlights h3").text());
+        assertEquals(5, page.select("#event-highlights [data-event-photo]").size());
+        assertEquals(200, get(student, publicPhoto).statusCode());
+        var promo = page.selectFirst("#student-feedback.offer-student-stories.with-promo > #offer-video iframe");
+        assertNotNull(promo);
+        assertEquals("https://www.youtube-nocookie.com/embed/AbCdEf12345", promo.attr("data-promo-video"));
+        assertFalse(promo.hasAttr("src"));
+        assertTrue(promo.attr("allow").contains("autoplay"));
+        assertNotNull(page.selectFirst("#student-feedback > .student-voices"));
+        assertNotNull(page.selectFirst("#student-feedback > .offer-story-response .share-feedback"));
+        assertNull(page.selectFirst("#offer-video button"));
+        assertEquals(List.of("event-highlights", "buyFeed", "student-feedback", "offer-video", "study-packs"),
+            page.select("#event-highlights, #buyFeed, #offer-video, #study-packs, #student-feedback").eachAttr("id"));
+        var teacherOffer = Jsoup.parse(get(teacher, offer).body());
+        assertTrue(teacherOffer.select(".showcase a[href^=/exam/admin/packages]").isEmpty());
+        assertEquals(302, post(teacher, visibility, token(get(teacher, manage)), "published=false").statusCode());
+        assertEquals(302, post(teacher, edit, token(get(teacher, manage)), editFields).statusCode());
+        assertEquals(404, get(student, publicPhoto).statusCode());
+        assertEquals(404, getPhoto(student, publicPhoto, photoEtag).statusCode());
+        assertEquals(302, post(teacher, manage + "/video", token(get(teacher, manage)), "video=").statusCode());
+        assertNull(Jsoup.parse(get(student, offer).body()).selectFirst("#offer-video"));
+        assertEquals(302, post(teacher, manage + "/events", token(get(teacher, manage)),
+            "description=Text-only+highlight").statusCode());
+        var textOnly = Jsoup.parse(get(student, offer).body()).selectFirst("#event-highlights .showcase-event");
+        assertNotNull(textOnly);
+        assertEquals("Text-only highlight", textOnly.selectFirst(".event-description").text());
+        assertNull(textOnly.selectFirst(".event-gallery"));
+    }
+
+    private HttpResponse<byte[]> getPhoto(HttpClient browser, String path, String etag) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create(base + path));
+        if (etag != null) request.header("If-None-Match", etag);
+        return browser.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    @Test void offerFeedbackAdminSupportsManualEntryAndAtomicWorkbookImport() throws Exception {
+        String offer = "/exam/packages";
+        String manage = "/exam/admin/packages";
+        var teacher = admin();
+        var student = client();
+        String feedbackPath = manage + "/feedback";
+        var adminPage = get(teacher, manage);
+        var adminDoc = Jsoup.parse(adminPage.body());
+        assertEquals(4, adminDoc.select("[data-offer-tabs] a").size());
+        assertNotNull(adminDoc.selectFirst("form[action=\"/exam/admin/packages/feedback\"] .district-picker #map"));
+        assertNull(adminDoc.selectFirst("form[action=\"/exam/admin/packages/feedback\"] [name=packageId], "
+            + "form[action=\"/exam/admin/packages/feedback\"] [name=consent], form[action=\"/exam/admin/packages/feedback\"] [name=published]"));
+        assertEquals(302, post(teacher, feedbackPath, token(adminPage),
+            "name=Manual+Student&school=Test+School&district=Jaffna&comment=Manual+feedback").statusCode());
+        assertTrue(get(student, offer).body().contains("Manual feedback"));
+        var download = teacher.send(HttpRequest.newBuilder(URI.create(base + feedbackPath + "/template")).GET().build(),
+            HttpResponse.BodyHandlers.ofByteArray());
+        assertEquals(200, download.statusCode());
+        try (var book = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(download.body()))) {
+            var sheet = book.getSheetAt(0);
+            var values = List.of("Workbook Student", "Test School", "Jaffna", "Workbook feedback");
+            var row = sheet.createRow(1);
+            for (int i = 0; i < values.size(); i++) row.createCell(i).setCellValue(values.get(i));
+            sheet.createRow(2).createCell(0).setCellValue("Invalid row");
+            var options = Map.of("consent", "true", "published", "true");
+            for (boolean valid : List.of(false, true)) {
+                if (valid) sheet.removeRow(sheet.getRow(2));
+                var output = new java.io.ByteArrayOutputStream();
+                book.write(output);
+                assertEquals(302, upload(teacher, feedbackPath + "/bulk", token(get(teacher, manage)),
+                    options, "workbook", "feedback.xlsx", output.toByteArray()));
+                assertEquals(valid, get(student, offer).body().contains("Workbook feedback"));
+            }
+        }
+    }
+
     private int upload(HttpClient admin, String path, String csrf, byte[] file) throws Exception {
-        String boundary = "bulk-purchase-test";
-        var body = HttpRequest.BodyPublishers.concat(
-            HttpRequest.BodyPublishers.ofString("--" + boundary
-                + "\r\nContent-Disposition: form-data; name=\"_csrf\"\r\n\r\n" + csrf
-                + "\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"workbook\"; filename=\"purchases.xlsx\"\r\n\r\n"),
-            HttpRequest.BodyPublishers.ofByteArray(file),
-            HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
-        return admin.send(HttpRequest.newBuilder(URI.create(base + path + "/bulk"))
+        return upload(admin, path + "/bulk", csrf, Map.of(), "workbook", "purchases.xlsx", file);
+    }
+
+    private int upload(HttpClient admin, String path, String csrf, Map<String, String> fields,
+            String fileField, String filename, byte[] file) throws Exception {
+        return upload(admin, path, csrf, fields, fileField, filename, List.of(file));
+    }
+
+    private int upload(HttpClient admin, String path, String csrf, Map<String, String> fields,
+            String fileField, String filename, List<byte[]> files) throws Exception {
+        String boundary = "offer-upload-test";
+        var parts = new StringBuilder("--" + boundary + "\r\nContent-Disposition: form-data; name=\"_csrf\"\r\n\r\n" + csrf + "\r\n");
+        fields.forEach((name, value) -> parts.append("--").append(boundary)
+            .append("\r\nContent-Disposition: form-data; name=\"").append(name).append("\"\r\n\r\n").append(value).append("\r\n"));
+        var publishers = new ArrayList<HttpRequest.BodyPublisher>();
+        publishers.add(HttpRequest.BodyPublishers.ofString(parts.toString()));
+        for (byte[] file : files) {
+            publishers.add(HttpRequest.BodyPublishers.ofString("--" + boundary
+                + "\r\nContent-Disposition: form-data; name=\"" + fileField + "\"; filename=\""
+                + filename + "\"\r\n\r\n"));
+            publishers.add(HttpRequest.BodyPublishers.ofByteArray(file));
+            publishers.add(HttpRequest.BodyPublishers.ofString("\r\n"));
+        }
+        publishers.add(HttpRequest.BodyPublishers.ofString("--" + boundary + "--\r\n"));
+        var body = HttpRequest.BodyPublishers.concat(publishers.toArray(HttpRequest.BodyPublisher[]::new));
+        return admin.send(HttpRequest.newBuilder(URI.create(base + path))
             .header("Content-Type", "multipart/form-data; boundary=" + boundary).POST(body).build(),
             HttpResponse.BodyHandlers.discarding()).statusCode();
     }

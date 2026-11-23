@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en"><body>
+<th:block th:fragment="sections">
+    <section class="glass-card admin-panel offer-content-panel" id="event-highlights">
+        <h2>Event Highlights</h2>
+        <div class="flash success" role="status" th:if="${eventSuccess}" th:text="${eventSuccess}"></div>
+        <div class="flash error" role="alert" th:if="${eventError}" th:text="${eventError}"></div>
+        <details th:open="${#lists.isEmpty(events) or (eventError != null and activeEventId == null)}">
+            <summary>Add an event</summary>
+            <form th:replace="~{exam/admin/offer-content :: eventForm(null)}"></form>
+        </details>
+        <details th:each="item : ${events}" th:open="${activeEventId == item.event.id}">
+            <summary>
+                <span th:text="${#strings.isEmpty(item.event.title) ? 'Event highlight #' + item.event.id : item.event.title}"></span>
+                <span class="publication-tag" th:classappend="${!item.event.published} ? 'draft'"
+                      th:text="${item.event.published ? 'Published' : 'Hidden'}"></span>
+                <span class="event-photo-count" th:text="|${#lists.size(item.photos)} / ${maxEventPhotos} photos|"></span>
+            </summary>
+            <div class="offer-event-previews" th:if="${!#lists.isEmpty(item.photos)}">
+                <div th:each="photo, shot : ${item.photos}">
+                    <img th:src="@{/exam/admin/packages/event-photos/{id}(id=${photo})}"
+                         th:alt="|Event photo ${shot.count}|" loading="lazy">
+                    <form th:action="@{/exam/admin/packages/events/{eventId}/photos/{photoId}/remove(eventId=${item.event.id},photoId=${photo})}"
+                          method="post" data-confirm="Remove this photo from the event?" data-confirm-title="Remove event photo?"
+                          data-confirm-action="Remove photo" data-confirm-type="danger">
+                        <button class="btn danger" type="submit" th:attr="aria-label=|Remove photo ${shot.count}|">Remove</button>
+                    </form>
+                </div>
+            </div>
+            <form th:replace="~{exam/admin/offer-content :: eventForm(${item.event})}"></form>
+            <form th:action="@{/exam/admin/packages/events/{id}/visibility(id=${item.event.id})}" method="post">
+                <button class="btn" type="submit" name="published" th:value="${!item.event.published}"
+                        th:text="${item.event.published ? 'Hide event' : 'Publish event'}"></button>
+            </form>
+        </details>
+    </section>
+
+    <section class="glass-card admin-panel offer-content-panel" id="offer-video">
+        <h2>YouTube video</h2>
+        <div class="flash success" role="status" th:if="${videoSuccess}" th:text="${videoSuccess}"></div>
+        <div class="flash error" role="alert" th:if="${videoError}" th:text="${videoError}"></div>
+        <form th:action="@{/exam/admin/packages/video}" method="post">
+            <div class="admin-field">
+                <label>YouTube video link or ID <input class="form-input" name="video" type="text" maxlength="500"
+                    th:value="${youtubeId}" placeholder="https://www.youtube.com/watch?v=..."></label>
+                <small>Choose a video that allows embedding. Clear this field to hide the player.</small>
+            </div>
+            <button class="btn primary" type="submit">Save video</button>
+        </form>
+    </section>
+
+    <section class="glass-card admin-panel offer-content-panel" id="student-feedback">
+        <h2>Student Feedback</h2>
+        <div class="flash success" role="status" th:if="${feedbackSuccess}" th:text="${feedbackSuccess}"></div>
+        <div class="flash error" role="alert" th:if="${feedbackError}" th:text="${feedbackError}"></div>
+        <section class="offer-review-queue" aria-labelledby="feedback-review-heading">
+            <h3 id="feedback-review-heading">Awaiting approval <span th:text="${#lists.size(pendingFeedback)}"></span></h3>
+            <p th:if="${#lists.isEmpty(pendingFeedback)}">No feedback waiting for approval.</p>
+            <div th:replace="~{exam/admin/offer-content :: feedbackCards(${pendingFeedback})}"></div>
+        </section>
+        <details>
+            <summary>Add feedback manually</summary>
+            <form th:action="@{/exam/admin/packages/feedback}" method="post">
+                <div class="admin-form-grid">
+                    <div class="admin-field"><label>Student name<input class="form-input" name="name" required minlength="3" maxlength="150"></label></div>
+                    <div class="admin-field"><label>School<input class="form-input" name="school" required maxlength="150"></label></div>
+                    <div class="admin-field feedback-district">
+                        <label for="district">District</label>
+                        <select class="form-input" id="district" name="district" required>
+                            <option value="">Choose district</option><option th:each="district : ${districts}" th:text="${district}"></option>
+                        </select>
+                        <div th:replace="~{exam/district-picker :: picker('Choose district', false)}"></div>
+                    </div>
+                </div>
+                <div class="admin-field"><label>Feedback<textarea class="form-input" name="comment" rows="4" required maxlength="600"></textarea></label></div>
+                <button class="btn primary" type="submit">Publish feedback</button>
+            </form>
+        </details>
+        <details>
+            <summary>Bulk add feedback</summary>
+            <p>Up to 250 entries per workbook.</p>
+            <p><a class="btn" th:href="@{/exam/admin/packages/feedback/template}">Download Excel template</a></p>
+            <form th:action="@{/exam/admin/packages/feedback/bulk}" method="post" enctype="multipart/form-data">
+                <div class="admin-field"><label>Filled Excel template<input class="form-input" name="workbook" type="file" accept=".xlsx" required></label></div>
+                <div th:replace="~{exam/admin/offer-content :: publishOptions}"></div>
+                <button class="btn primary" type="submit">Import feedback</button>
+            </form>
+        </details>
+        <details th:if="${!#lists.isEmpty(publishedFeedback)}">
+            <summary th:text="|Published feedback (${#lists.size(publishedFeedback)})|"></summary>
+            <div th:replace="~{exam/admin/offer-content :: feedbackCards(${publishedFeedback})}"></div>
+        </details>
+        <details th:if="${!#lists.isEmpty(hiddenFeedback)}">
+            <summary th:text="|Hidden feedback (${#lists.size(hiddenFeedback)})|"></summary>
+            <div th:replace="~{exam/admin/offer-content :: feedbackCards(${hiddenFeedback})}"></div>
+        </details>
+    </section>
+</th:block>
+
+<form th:fragment="eventForm(event)" class="event-edit-form" method="post" enctype="multipart/form-data"
+      th:action="${event == null} ? @{/exam/admin/packages/events} : @{/exam/admin/packages/events/{id}(id=${event.id})}">
+    <div class="admin-form-grid">
+        <div class="admin-field"><label>Event name<input class="form-input" name="title" maxlength="140" th:value="${event?.title}"></label></div>
+        <div class="admin-field"><label>Venue<input class="form-input" name="venue" maxlength="140" th:value="${event?.venue}"></label></div>
+        <div class="admin-field"><label><span th:text="${event == null ? 'Event photos' : 'Add more photos'}"></span>
+            <input class="form-input" type="file" name="photos"
+            accept="image/jpeg,image/png" multiple></label>
+            <small th:text="|Select multiple JPEG or PNG files, up to 5 MB each. Maximum ${maxEventPhotos} per event.|"></small>
+        </div>
+    </div>
+    <div class="admin-field"><label>Short description<textarea class="form-input" name="description" rows="3"
+          maxlength="480" th:text="${event?.description}"></textarea></label></div>
+    <button class="btn primary" type="submit" th:text="${event == null} ? 'Publish event' : 'Save changes'"></button>
+</form>
+
+<div th:fragment="feedbackCards(entries)" th:if="${!#lists.isEmpty(entries)}" class="offer-moderation">
+    <article th:each="entry : ${entries}" th:with="status=${entry.status.name()}">
+        <header><strong th:text="${entry.studentName}"></strong></header>
+        <small><span th:text="|${entry.school} · ${entry.district}|"></span><span
+            th:if="${!#strings.isEmpty(entry.packageName)}" th:text="| · ${entry.packageName}|"></span></small>
+        <p th:text="${entry.comment}"></p>
+        <form class="admin-actions" th:action="@{/exam/admin/packages/feedback/{id}/status(id=${entry.id})}" method="post">
+            <button class="btn primary" type="submit" name="status" value="PUBLISHED" th:if="${status != 'PUBLISHED'}"
+                    th:text="${status == 'PENDING' ? 'Approve &amp; publish' : 'Publish'}"></button>
+            <button class="btn" type="submit" name="status" value="HIDDEN" th:if="${status != 'HIDDEN'}"
+                    th:text="${status == 'PENDING' ? 'Keep hidden' : 'Hide'}"></button>
+        </form>
+    </article>
+</div>
+
+<div th:fragment="publishOptions">
+    <label class="offer-check"><input type="checkbox" name="consent" value="true" required> I have permission to publish the feedback and student details.</label>
+    <label class="offer-check"><input type="checkbox" name="published" value="true"> Publish immediately</label>
+</div>
+</body></html>

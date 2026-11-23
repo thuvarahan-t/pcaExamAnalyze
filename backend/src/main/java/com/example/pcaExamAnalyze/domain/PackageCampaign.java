@@ -6,6 +6,7 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(name = "package_campaign")
 @Getter @Setter
 public class PackageCampaign {
@@ -13,4 +14,5 @@ public class PackageCampaign {
     @Column(nullable = false, length = 160) private String title;
     @Column(nullable = false) private Instant endsAt;
     @Column(nullable = false, length = 16) private String whatsappNumber;
+    @Column(length = 11) private String youtubeVideoId;
 }
