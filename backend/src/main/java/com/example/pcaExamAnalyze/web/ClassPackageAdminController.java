@@ -1,8 +1,13 @@
 package com.example.pcaExamAnalyze.web;
 
+import com.example.pcaExamAnalyze.domain.OfferFeedback.Status;
 import com.example.pcaExamAnalyze.service.ClassPackageService;
+import com.example.pcaExamAnalyze.service.OfferContentService;
+import com.example.pcaExamAnalyze.report.ExamReportService;
 import com.example.pcaExamAnalyze.web.dto.*;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,7 +20,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/exam/admin/packages")
 public class ClassPackageAdminController {
     private final ClassPackageService service;
-    public ClassPackageAdminController(ClassPackageService service) { this.service = service; }
+    private final OfferContentService content;
+    public ClassPackageAdminController(ClassPackageService service, OfferContentService content) {
+        this.service = service;
+        this.content = content;
+    }
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     public String uploadTooLarge(RedirectAttributes redirect) {
         redirect.addFlashAttribute("error", "Poster is too large. Upload a JPEG or PNG file, 5 MB or smaller.");
@@ -24,7 +33,16 @@ public class ClassPackageAdminController {
     @GetMapping
     public String index(Model model) {
         if (!model.containsAttribute("campaignForm")) model.addAttribute("campaignForm", service.campaignForm());
-        model.addAttribute("packages", service.cards(true)); return "exam/admin/packages";
+        model.addAttribute("packages", service.cards(true));
+        model.addAttribute("events", content.events(true));
+        model.addAttribute("maxEventPhotos", OfferContentService.MAX_EVENT_PHOTOS);
+        var feedbackByStatus = content.feedback(true).stream().collect(Collectors.groupingBy(entry -> entry.getStatus()));
+        model.addAttribute("pendingFeedback", feedbackByStatus.getOrDefault(Status.PENDING, List.of()));
+        model.addAttribute("publishedFeedback", feedbackByStatus.getOrDefault(Status.PUBLISHED, List.of()));
+        model.addAttribute("hiddenFeedback", feedbackByStatus.getOrDefault(Status.HIDDEN, List.of()));
+        model.addAttribute("districts", ExamReportService.DISTRICTS);
+        model.addAttribute("youtubeId", service.campaign().getYoutubeVideoId());
+        return "exam/admin/packages";
     }
     @PostMapping("/campaign")
     public String campaign(@Valid @ModelAttribute("campaignForm") PackageCampaignForm form, BindingResult errors,
