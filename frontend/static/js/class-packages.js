@@ -69,10 +69,13 @@
                 const initialized = digit.textContent !== '--';
                 digit.textContent = next;
                 if (initialized && !reducedMotion.matches && !document.hidden) digit.animate([
-                    { transform: 'translateY(4px)', opacity: .55 }, { transform: 'translateY(0)', opacity: 1 }
-                ], { duration: 280, easing: 'ease-out' });
+                    { transform: 'translateY(70%) scale(.9)', opacity: 0 }, { transform: 'none', opacity: 1 }
+                ], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' });
             }
         });
+        page.dataset.expired = String(expired());
+        const pill = document.getElementById('offerPillTime');
+        if (pill) pill.textContent = (values[0] ? values[0] + 'd ' : '') + values.slice(1).map(value => String(value).padStart(2, '0')).join(':');
         document.getElementById('countdownTitle').textContent = expired() ? 'This offer has ended.' : 'Your offer ends in';
         cards.forEach(card => {
             const button = card.querySelector('.register-button');
@@ -174,7 +177,7 @@
             const status = await response.json();
             serverBase = Date.parse(status.serverNow); monotonicBase = performance.now(); endsAt = Date.parse(status.endsAt);
             const deadline = document.getElementById('offerDeadline'); deadline.dateTime = status.endsAt;
-            deadline.textContent = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Colombo' }).format(new Date(endsAt));
+            deadline.textContent = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Colombo' }).format(new Date(endsAt)).replace(/[ap]m$/, half => half.toUpperCase());
             if (window.PcaOfferFeed && Array.isArray(status.recent)) window.PcaOfferFeed.update(status.recent, status.serverNow);
             const visible = new Map(status.packages.map(pack => [String(pack.id), pack]));
             cards.forEach(card => {
@@ -187,6 +190,7 @@
                     || Number(card.dataset.posterVersion) !== pack.posterVersion);
                 if (card.dataset.updated === 'true') catalogRefreshPending = true;
                 card.dataset.purchased = pack.purchased; card.dataset.capacity = pack.capacity;
+                card.dataset.low = String((pack.capacity - pack.purchased) * 4 <= pack.capacity);
                 card.querySelector('.purchased-count').textContent = pack.purchased;
                 card.querySelector('.purchase-capacity').textContent = ' / ' + pack.capacity;
                 card.querySelector('.seats-left').textContent = Math.max(0, pack.capacity - pack.purchased) + ' places left';

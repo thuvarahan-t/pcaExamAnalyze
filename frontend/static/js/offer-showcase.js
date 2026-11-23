@@ -1,15 +1,16 @@
 (() => {
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const compact = matchMedia('(max-width: 680px)');
+    const medium = matchMedia('(max-width: 1000px)');
     const photoDelay = 1000;
     const photoWaitLimit = 3000;
     const eventDelay = 3500;
     const feedbackDelay = 2000;
     const slideEasing = 'cubic-bezier(.22,1,.36,1)';
 
-    function animateEntrance(element, transform, duration) {
+    function animateEntrance(element, transform, duration, delay = 0) {
         return element.animate([{ opacity: 0, transform }, { opacity: 1, transform: 'none' }],
-            { duration, easing: slideEasing });
+            { duration, delay, easing: slideEasing, fill: 'backwards' });
     }
 
     function eventGallery(slide, onPick) {
@@ -157,10 +158,14 @@
         let hovering = false;
         let inView = true;
         let hasEnteredView = false;
+        let allVisible = false;
+        let railWidth = 0;
 
         function show(direction = 0) {
             const visibleCount = Math.min(slides.length,
-                events || compact.matches || section.dataset.feedbackLayout === 'single' ? 1 : 3);
+                events || compact.matches || section.dataset.feedbackLayout === 'single' ? 1 : medium.matches ? 2 : 3);
+            allVisible = slides.length <= visibleCount;
+            controls.hidden = allVisible;
             const previous = slides[first];
             const animate = !!direction && !reducedMotion.matches;
             const feedbackPositions = !events && animate ? measureFeedback() : null;
@@ -180,7 +185,17 @@
             }
             position.textContent = `${first + 1} / ${slides.length}`;
             if (animate && events) slideEvent(previous, slides[first], direction);
+            holdHeight();
             if (feedbackPositions) slideFeedback(feedbackPositions, outgoing, direction);
+        }
+
+        // Slides differ in height. The rail only ever grows, so rotation never moves the page below it.
+        function holdHeight() {
+            if (rail.offsetWidth !== railWidth) {
+                railWidth = rail.offsetWidth;
+                rail.style.minHeight = '';
+            }
+            rail.style.minHeight = `${rail.offsetHeight}px`;
         }
 
         function visibleSlides() {
@@ -215,13 +230,15 @@
                     height: `${leaving.height}px`
                 });
                 rail.append(ghost);
-                ghost.animate([{ opacity: 1 }, { opacity: 0, transform: `translateX(${-direction * 48}px)` }], timing)
+                // Leaves before its neighbour arrives, so two quotes never read on top of each other.
+                ghost.animate([{ opacity: 1 }, { opacity: 0, transform: `translateX(${-direction * 28}px) scale(.96)` }],
+                    { duration: 170, easing: 'ease-out', fill: 'forwards' })
                     .onfinish = () => ghost.remove();
             }
             for (const slide of visibleSlides()) {
                 const start = slide === outgoing ? null : positions.get(slide);
                 if (!start) {
-                    animateEntrance(slide, `translateX(${direction * 48}px)`, duration);
+                    animateEntrance(slide, `translateX(${direction * 48}px)`, duration, 130);
                     continue;
                 }
                 const finish = slide.getBoundingClientRect();
@@ -251,7 +268,7 @@
             clearTimeout(timer);
             const holdFeedback = !events && (reducedMotion.matches || hovering ||
                 section.contains(document.activeElement));
-            if (!rotates || holdFeedback || !inView || document.hidden || touching) return;
+            if (!rotates || holdFeedback || (!events && allVisible) || !inView || document.hidden || touching) return;
             const gallery = galleries[first];
             if (shouldAdvancePhoto(gallery)) {
                 if (!gallery.loading) gallery.preloadNext();
@@ -293,7 +310,6 @@
         previous.hidden = next.hidden = position.hidden = slides.length < 2;
         previous.addEventListener('click', () => change(-1));
         next.addEventListener('click', () => change(1));
-        controls.hidden = slides.length < 2;
         if (!events) {
             section.addEventListener('pointerenter', event => {
                 if (event.pointerType !== 'touch') hovering = true;
@@ -343,7 +359,8 @@
                 schedule();
             }).observe(rail);
         }
-        compact.addEventListener('change', () => show());
+        for (const query of [compact, medium]) query.addEventListener('change', () => { show(); schedule(); });
+        window.addEventListener('resize', holdHeight);
         reducedMotion.addEventListener('change', schedule);
         show();
         schedule();

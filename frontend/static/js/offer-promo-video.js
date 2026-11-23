@@ -1,66 +1,80 @@
 (() => {
+    const mux = document.querySelector('iframe[data-mux-src]');
+    if (mux) {
+        const source = new URL(mux.dataset.muxSrc);
+        const poster = mux.parentElement.querySelector('.offer-video-poster');
+        if (poster) source.searchParams.set('poster', poster.src);
+        if (typeof IntersectionObserver !== 'function'
+            || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            mux.src = source.href;
+            return;
+        }
+
+        let inView = false;
+        function startMux() {
+            if (!inView || document.hidden) return;
+            observer.disconnect();
+            document.removeEventListener('visibilitychange', startMux);
+            source.searchParams.set('autoplay', 'true');
+            mux.src = source.href;
+        }
+
+        const observer = new IntersectionObserver(([entry]) => {
+            inView = entry.isIntersecting;
+            startMux();
+        });
+        observer.observe(mux.parentElement);
+        document.addEventListener('visibilitychange', startMux);
+        return;
+    }
+
     const video = document.querySelector('iframe[data-promo-video]');
-    if (!video) return;
+    if (!video || typeof IntersectionObserver !== 'function'
+        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let player;
     let visible = false;
-    let autoAttempted = false;
+    let apiRequested = false;
 
     function startWhenVisible() {
-        if (!visible || document.hidden || autoAttempted) return;
-        connect();
-        if (!player) return;
-        autoAttempted = true;
-        player.unMute();
-        player.playVideo();
-    }
-
-    function connect() {
-        if (video.hasAttribute('src')) return;
-        const url = new URL(video.dataset.promoVideo);
-        url.searchParams.set('playsinline', '1');
-        url.searchParams.set('enablejsapi', '1');
-        url.searchParams.set('controls', '0');
-        url.searchParams.set('origin', window.location.origin);
-        video.src = url.href;
+        if (!visible || document.hidden) return;
+        if (player) {
+            observer.disconnect();
+            document.removeEventListener('visibilitychange', startWhenVisible);
+            if (player.getPlayerState() === window.YT.PlayerState.UNSTARTED
+                || player.getPlayerState() === window.YT.PlayerState.CUED) {
+                player.mute();
+                player.playVideo();
+            }
+            return;
+        }
+        if (apiRequested) return;
+        apiRequested = true;
 
         function attachPlayer() {
-            new window.YT.Player(video, { events: {
-                onReady({ target }) {
-                    player = target;
-                    startWhenVisible();
-                },
-                onStateChange({ data }) {
-                    if (data === window.YT.PlayerState.PLAYING) autoAttempted = true;
+            new window.YT.Player(video, {
+                events: {
+                    onReady({ target }) {
+                        player = target;
+                        startWhenVisible();
+                    }
                 }
-            } });
+            });
         }
 
         if (window.YT?.Player) {
             attachPlayer();
-        } else {
-            const previousReady = window.onYouTubeIframeAPIReady;
-            window.onYouTubeIframeAPIReady = () => {
-                previousReady?.();
-                attachPlayer();
-            };
-            const api = document.createElement('script');
-            api.async = true;
-            api.src = 'https://www.youtube.com/iframe_api';
-            document.head.append(api);
+            return;
         }
-    }
-
-    function loadForManualPlayback() {
-        if (video.hasAttribute('src')) return;
-        autoAttempted = true;
-        connect();
-    }
-
-    video.addEventListener('focus', loadForManualPlayback, { once: true });
-    if (typeof IntersectionObserver !== 'function') {
-        loadForManualPlayback();
-        return;
+        const previousReady = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+            previousReady?.();
+            attachPlayer();
+        };
+        const api = document.createElement('script');
+        api.async = true;
+        api.src = 'https://www.youtube.com/iframe_api';
+        document.head.append(api);
     }
 
     const threshold = 0.51;
@@ -68,6 +82,6 @@
         visible = entry.isIntersecting && entry.intersectionRatio >= threshold;
         startWhenVisible();
     }, { threshold });
-    observer.observe(video);
+    observer.observe(video.parentElement);
     document.addEventListener('visibilitychange', startWhenVisible);
 })();
