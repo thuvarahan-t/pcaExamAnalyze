@@ -25,6 +25,8 @@ h1,h2,h3,.selected-package strong {
     overflow-wrap:anywhere
 }
 .packages-page {
+    --offer-font:Sora,"Anek Tamil",sans-serif;
+    font-family:var(--offer-font);
     min-height:100svh;
     display:flex;
     flex-direction:column
@@ -66,7 +68,7 @@ h1,h2,h3,.selected-package strong {
         gap:3px;
         height:100%;
         color:#8089a8;
-        font:700 10.5px Inter,sans-serif;
+        font:700 10.5px var(--offer-font,Inter,sans-serif);
         letter-spacing:.01em
     }
     .package-nav-icon {
