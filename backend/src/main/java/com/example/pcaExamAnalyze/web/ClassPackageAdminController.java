@@ -41,7 +41,9 @@ public class ClassPackageAdminController {
         model.addAttribute("publishedFeedback", feedbackByStatus.getOrDefault(Status.PUBLISHED, List.of()));
         model.addAttribute("hiddenFeedback", feedbackByStatus.getOrDefault(Status.HIDDEN, List.of()));
         model.addAttribute("districts", ExamReportService.DISTRICTS);
-        model.addAttribute("youtubeId", service.campaign().getYoutubeVideoId());
+        var campaign = service.campaign();
+        model.addAttribute("promoVideo", campaign.getMuxPlaybackId() == null ? campaign.getYoutubeVideoId()
+            : "https://player.mux.com/" + campaign.getMuxPlaybackId());
         return "exam/admin/packages";
     }
     @PostMapping("/campaign")

@@ -178,8 +178,13 @@ public class OfferContentService {
 
     @Transactional
     public void saveVideo(String value) {
-        db.createQuery("update PackageCampaign c set c.youtubeVideoId = :id where c.id = 1")
-            .setParameter("id", youtubeId(value)).executeUpdate();
+        String input = value == null ? "" : value.strip();
+        var mux = java.util.regex.Pattern.compile("(?:https://player\\.mux\\.com/)?([A-Za-z0-9_-]{20,128})")
+            .matcher(input);
+        String muxId = mux.matches() ? mux.group(1) : null;
+        String youtube = muxId == null ? youtubeId(input) : null;
+        db.createQuery("update PackageCampaign c set c.youtubeVideoId = :youtube, c.muxPlaybackId = :mux where c.id = 1")
+            .setParameter("youtube", youtube).setParameter("mux", muxId).executeUpdate();
     }
 
     private static OfferFeedback newFeedback(FeedbackInput input, Status status) {
@@ -216,7 +221,7 @@ public class OfferContentService {
         } catch (IllegalArgumentException ignored) {
             // Invalid URLs use the same validation message as unsupported links.
         }
-        throw new IllegalArgumentException("Enter a YouTube video link or its 11-character video ID.");
+        throw new IllegalArgumentException("Enter a YouTube video link or ID, or a Mux player link or Playback ID.");
     }
 
     private static String requiredText(String value, int max, String field) {
