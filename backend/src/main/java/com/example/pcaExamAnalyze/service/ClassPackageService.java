@@ -386,7 +386,7 @@ public class ClassPackageService {
             throw new IllegalArgumentException("Enter a valid full name (3–150 characters, letters and name punctuation only).");
         return name;
     }
-    private PackagePoster validatePoster(MultipartFile file) {
+    static PackagePoster validatePoster(MultipartFile file) {
         if (file.getSize() > 5 * 1024 * 1024) throw new IllegalArgumentException("Poster must be 5 MB or smaller.");
         try {
             byte[] bytes = file.getBytes();
