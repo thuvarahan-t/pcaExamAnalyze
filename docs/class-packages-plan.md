@@ -44,6 +44,33 @@ A public Class Packages page inside the existing Spring Boot / Thymeleaf website
 - Store package records, uploaded image bytes and purchases durably in the existing database. Bundled sample posters are included in the app; seed once without overwriting admin changes or resurrecting removed data.
 - All admin mutations use existing teacher authentication and CSRF protection. Validate on the server; handle duplicate IDs, missing records, capacity and malformed uploads gracefully.
 
+## Offer page showcase
+
+The page order is campaign and countdown, **PCA Event Highlights**, **Recent purchases**,
+the combined promo and **Hear from our students** panel, then package cards.
+The hero's study pack link jumps to the package cards.
+
+| Section | Student experience | Offer admin workflow |
+| --- | --- | --- |
+| Event Highlights | A light, animated glass panel with the supplied event photos and text. On phones the photo sits above the description. The slideshow shows each photo for one second and then advances to the next event. Thumbnails allow direct selection. Public images use compressed display and thumbnail sizes. | Publish a text-only, photo-only, or combined highlight. Select multiple JPEG or PNG photos, up to 20 per event and 5 MB per file. Editing adds new photos to the gallery. Remove an individual photo from its preview. Existing events have a separate Hide or Publish action. Newer highlights appear first. |
+| YouTube video | A compact promo player in the same panel as student feedback. It sits beside feedback on desktop and above it on mobile. When the player enters view, it attempts playback with sound. The control bar is hidden and playback uses YouTube's native in-video interaction. | Paste a YouTube video link or ID and save it. Clear the field to remove the player. |
+| Student Feedback | The carousel shows one card on mobile or alongside the promo, and up to three cards in a full-width desktop layout. Cards show the comment, student name, school, and district. Older entries may also display their saved package. The carousel advances every two seconds. | Publish an individual comment directly, or import multiple entries with the Excel template. Imported entries can go into the review queue or be published immediately. An invalid workbook row rolls back the entire import. |
+| Share feedback | Open the Tamil feedback prompt below the cards, fill in the name and school, choose a district, and write a comment. The picker offers a map and searchable list on desktop and an alphabetical, searchable list on mobile. | The **Student Feedback** tab shows a pending count. Open **Awaiting approval** and choose **Approve & publish** to show an entry on the offer page, or **Keep hidden** to archive it privately. |
+| Bulk purchases | Confirmed counts and purchase display follow the existing workflow. | Every package, including Theory, has the same **Bulk add** form and Excel template. Existing capacity, duplicate, and atomic import checks apply. |
+
+Both carousels support next, previous, and touch swipes. Event photos rotate continuously
+while visible, including during hover and keyboard focus. The feedback carousel pauses
+during hover or focus. Reduced motion removes event transitions
+and stops feedback autoplay. Events and video appear publicly after an admin adds them.
+Teachers manage content from separate Packages, Event Highlights, YouTube video, and
+Student Feedback tabs on the admin Offer page. Event photos, feedback, and the video ID
+are stored in the existing database.
+
+Verification covered 18 offer integration tests and nine frontend regressions. Chrome
+checks at 1360px and 390px covered the event and feedback carousels, the feedback
+form, the video slot, and reduced motion using isolated test data. The updated app
+also returned HTTP 200 for the offer page on the configured PostgreSQL database.
+
 ## Implementation checklist
 
 - [x] Inspect posters, existing security, student cookie and project structure.
