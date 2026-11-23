@@ -190,17 +190,11 @@ public class ClassPackageService {
         saveManualPurchase(locked(id), firstName, registration, validatePhone(phoneNumber), school, district, sharedPhone);
     }
 
-    public static boolean supportsBulkPurchases(String packageName) {
-        return "Self Study Pack".equalsIgnoreCase(packageName)
-            || "Physics Practical Study Pack".equalsIgnoreCase(packageName);
-    }
-
     public record BulkPurchase(int row, String firstName, String registrationId, String phone, String school, String district) {}
 
     @Transactional
     public int addBulkPurchases(Long id, List<BulkPurchase> rows) {
         var pack = locked(id);
-        if (!supportsBulkPurchases(pack.getName())) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         if (rows.size() > pack.getCapacity() - purchases.countByClassPackageId(id))
             throw new IllegalArgumentException("The file contains more students than the package has remaining seats.");
         for (var row : rows) {

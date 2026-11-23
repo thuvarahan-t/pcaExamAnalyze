@@ -60,7 +60,6 @@ public class ClassPackageAdminController {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         var pack = service.get(id);
         model.addAttribute("pack", pack);
-        model.addAttribute("bulkPurchases", ClassPackageService.supportsBulkPurchases(pack.getName()));
         model.addAttribute("purchases", service.purchaseList(id));
         model.addAttribute("interested", service.interestedStudents(id));
         model.addAttribute("districts", com.example.pcaExamAnalyze.report.ExamReportService.DISTRICTS);
@@ -68,8 +67,7 @@ public class ClassPackageAdminController {
     }
     @GetMapping("/{id}/purchases/template")
     public ResponseEntity<byte[]> purchaseTemplate(@PathVariable Long id) throws java.io.IOException {
-        if (!ClassPackageService.supportsBulkPurchases(service.get(id).getName()))
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND);
+        service.get(id);
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=confirmed-purchases.xlsx")
             .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))

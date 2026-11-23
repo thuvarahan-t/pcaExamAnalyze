@@ -327,7 +327,7 @@ class ClassPackagesIntegrationTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"Self Study Pack", "Physics Practical Study Pack"})
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Theory Study Pack", "Self Study Pack", "Physics Practical Study Pack"})
     void bulkPurchaseTemplateAndUploadAcceptBlankOptionalCellsAndRollBackInvalidRows(String packageName) throws Exception {
         var pack = service.cards(true).stream().filter(card -> packageName.equals(card.name())).findFirst().orElseThrow();
         Long id = pack.id();
