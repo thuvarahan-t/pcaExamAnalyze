@@ -110,7 +110,12 @@ class ClassPackagesIntegrationTest {
         for (String path : List.of("/exam/admin/packages", "/exam/admin/packages/new", "/exam/admin/packages/" + id + "/edit", "/exam/admin/packages/" + id + "/purchases", "/exam/admin"))
             assertEquals(200, get(admin, path).statusCode(), path);
         assertTrue(get(admin, "/exam/admin/packages/" + id + "/purchases").body().contains("PRIVATE-001"));
-        assertTrue(get(student, "/exam").body().contains("/exam/packages"));
+        var portal = Jsoup.parse(get(student, "/exam").body());
+        assertEquals(List.of("/exam/packages", "/exam/packages"),
+            portal.select("a[aria-label='View PCA offers']").eachAttr("href"));
+        var trailingSlash = get(student, "/exam/packages/");
+        assertEquals(200, trailingSlash.statusCode());
+        assertNotNull(Jsoup.parse(trailingSlash.body()).selectFirst("body.packages-page"));
     }
     private String contactForm(String firstName, String lastName, String number, String key) {
         return "firstName=" + enc(firstName) + "&lastName=" + enc(lastName)
@@ -509,8 +514,12 @@ class ClassPackagesIntegrationTest {
         var promo = page.selectFirst("#student-feedback.offer-student-stories.with-promo > #offer-video iframe");
         assertNotNull(promo);
         assertEquals("https://www.youtube-nocookie.com/embed/AbCdEf12345", promo.attr("data-promo-video"));
-        assertFalse(promo.hasAttr("src"));
+        assertEquals("https://www.youtube-nocookie.com/embed/AbCdEf12345?playsinline=1&enablejsapi=1&rel=0",
+            promo.attr("src"));
+        assertEquals("lazy", promo.attr("loading"));
         assertTrue(promo.attr("allow").contains("autoplay"));
+        assertEquals("https://www.youtube.com/watch?v=AbCdEf12345",
+            page.selectFirst("#offer-video .offer-video-link").attr("href"));
         assertNotNull(page.selectFirst("#student-feedback > .student-voices"));
         assertNotNull(page.selectFirst("#student-feedback > .offer-story-response .share-feedback"));
         assertNull(page.selectFirst("#offer-video button"));
@@ -522,6 +531,16 @@ class ClassPackagesIntegrationTest {
         assertEquals(302, post(teacher, edit, token(get(teacher, manage)), editFields).statusCode());
         assertEquals(404, get(student, publicPhoto).statusCode());
         assertEquals(404, getPhoto(student, publicPhoto, photoEtag).statusCode());
+        String muxPlayer = "https://player.mux.com/TestPlaybackIdForPhysicsCubeAcademy";
+        assertEquals(302, post(teacher, manage + "/video", token(get(teacher, manage)),
+            "video=" + enc(muxPlayer)).statusCode());
+        var muxPage = Jsoup.parse(get(student, offer).body());
+        var muxFrame = muxPage.selectFirst("#offer-video iframe");
+        assertEquals(muxPlayer + "?preload=none", muxFrame.attr("data-mux-src"));
+        assertFalse(muxFrame.hasAttr("src"));
+        assertEquals("single", muxPage.selectFirst("#student-feedback").attr("data-feedback-layout"));
+        assertNull(muxPage.selectFirst("#offer-video [data-promo-video]"));
+        assertEquals(muxPlayer, Jsoup.parse(get(teacher, manage).body()).selectFirst("input[name=video]").val());
         assertEquals(302, post(teacher, manage + "/video", token(get(teacher, manage)), "video=").statusCode());
         assertNull(Jsoup.parse(get(student, offer).body()).selectFirst("#offer-video"));
         assertEquals(302, post(teacher, manage + "/events", token(get(teacher, manage)),

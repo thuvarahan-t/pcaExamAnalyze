@@ -32,7 +32,7 @@
             </div>
             <div class="event-copy" th:if="${!#strings.isEmpty(item.event.title) or !#strings.isEmpty(item.event.venue) or !#strings.isEmpty(item.event.description)}">
                 <h3 th:if="${!#strings.isEmpty(item.event.title)}" th:text="${item.event.title}"></h3>
-                <p class="event-details" th:if="${!#strings.isEmpty(item.event.venue)}" th:text="${item.event.venue}"></p>
+                <p class="event-details" th:if="${!#strings.isEmpty(item.event.venue)}"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span th:text="${item.event.venue}"></span></p>
                 <p class="event-description" th:if="${!#strings.isEmpty(item.event.description)}" th:text="${item.event.description}"></p>
             </div>
         </article>
@@ -40,13 +40,25 @@
     <div th:replace="~{exam/offer-showcase :: controls('Event highlights')}"></div>
 </section>
 
-<div th:fragment="video" th:if="${campaign.youtubeVideoId != null}" class="showcase-video" id="offer-video">
+<div th:fragment="video" th:if="${campaign.hasPromoVideo()}" class="showcase-video" id="offer-video">
     <div class="offer-video-player">
-        <iframe th:attr="data-promo-video=|https://www.youtube-nocookie.com/embed/${campaign.youtubeVideoId}|"
-                title="Physics Cube Academy promo video" tabindex="0" referrerpolicy="strict-origin-when-cross-origin"
+        <img th:if="${campaign.muxPlaybackId != null}" class="offer-video-poster"
+             th:src="@{/img/offer-promo-poster.jpg}" alt="" width="1600" height="900" loading="lazy">
+        <iframe th:if="${campaign.muxPlaybackId != null}"
+                th:attr="data-mux-src=|https://player.mux.com/${campaign.muxPlaybackId}?preload=none|"
+                title="Physics Cube Academy promo video" loading="lazy"
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        <iframe th:if="${campaign.youtubeVideoId != null}"
+                th:attr="data-promo-video=|https://www.youtube-nocookie.com/embed/${campaign.youtubeVideoId}|"
+                th:src="|https://www.youtube-nocookie.com/embed/${campaign.youtubeVideoId}?playsinline=1&amp;enablejsapi=1&amp;rel=0|"
+                title="Physics Cube Academy promo video" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
                 allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
     </div>
-    <noscript><a th:href="|https://www.youtube.com/watch?v=${campaign.youtubeVideoId}|">Watch the promo on YouTube</a></noscript>
+    <noscript th:if="${campaign.muxPlaybackId != null}">
+        <a class="offer-video-link" th:href="|https://player.mux.com/${campaign.muxPlaybackId}|">Watch the promo video</a>
+    </noscript>
+    <a th:if="${campaign.youtubeVideoId != null}" class="offer-video-link"
+       th:href="|https://www.youtube.com/watch?v=${campaign.youtubeVideoId}|">Watch on YouTube</a>
 </div>
 
 <div th:fragment="feedback" class="student-voices">
@@ -56,10 +68,11 @@
     <div class="showcase-rail feedback-rail" th:if="${!#lists.isEmpty(feedback)}"
          th:attr="data-feedback-count=${#lists.size(feedback)}">
         <article class="student-quote" th:each="entry, loop : ${feedback}" data-showcase-slide
-                 th:classappend="${loop.index < (campaign.youtubeVideoId != null ? 1 : 3)} ? 'is-current'">
+                 th:classappend="${loop.index < (campaign.hasPromoVideo() ? 1 : 3)} ? 'is-current'">
             <span class="quote-package" th:if="${!#strings.isEmpty(entry.packageName)}" th:text="${entry.packageName}"></span>
             <blockquote th:text="${entry.comment}"></blockquote>
             <footer>
+                <span class="quote-avatar" aria-hidden="true" th:if="${!#strings.isEmpty(entry.studentName)}" th:text="${#strings.toUpperCase(#strings.substring(entry.studentName, 0, 1))}"></span>
                 <strong th:text="${entry.studentName}"></strong>
                 <span th:text="|${entry.school} · ${entry.district}|"></span>
             </footer>

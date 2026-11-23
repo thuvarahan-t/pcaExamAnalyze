@@ -36,7 +36,7 @@ public class ClassPackageController {
             .body(Map.of("error", "This package is no longer available."));
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     public String page(HttpServletRequest request, HttpServletResponse response, Model model) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         model.addAttribute("campaign", service.campaign()); model.addAttribute("packages", service.cards(false));

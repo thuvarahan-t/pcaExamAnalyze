@@ -36,13 +36,13 @@
     </section>
 
     <section class="glass-card admin-panel offer-content-panel" id="offer-video">
-        <h2>YouTube video</h2>
+        <h2>Promo video</h2>
         <div class="flash success" role="status" th:if="${videoSuccess}" th:text="${videoSuccess}"></div>
         <div class="flash error" role="alert" th:if="${videoError}" th:text="${videoError}"></div>
         <form th:action="@{/exam/admin/packages/video}" method="post">
             <div class="admin-field">
-                <label>YouTube video link or ID <input class="form-input" name="video" type="text" maxlength="500"
-                    th:value="${youtubeId}" placeholder="https://www.youtube.com/watch?v=..."></label>
+                <label>Mux player link or YouTube video link <input class="form-input" name="video" type="text" maxlength="500"
+                    th:value="${promoVideo}" placeholder="https://player.mux.com/..."></label>
                 <small>Choose a video that allows embedding. Clear this field to hide the player.</small>
             </div>
             <button class="btn primary" type="submit">Save video</button>

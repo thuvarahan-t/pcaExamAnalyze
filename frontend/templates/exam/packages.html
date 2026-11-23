@@ -2,46 +2,48 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#102b46"><title>Class Packages · Physics Cube Academy</title>
+    <meta name="theme-color" content="#081a30"><title>Class Packages · Physics Cube Academy</title>
     <meta name="_csrf" th:content="${_csrf.token}"><meta name="_csrf_header" th:content="${_csrf.headerName}">
     <link rel="icon" th:href="@{/img/favicon-circle.png}">
     <link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400..800&display=swap" rel="stylesheet">
+    <link rel="preload" th:href="@{/fonts/sora-latin.woff2}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=32)}">
-    <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=10)}">
+    <link rel="stylesheet" th:href="@{/css/offer-page.css(v=3)}">
+    <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=15)}">
     <link rel="stylesheet" th:href="@{/css/district-picker.css(v=3)}">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
     <script defer th:src="@{/js/sl-district-map.js}"></script>
     <script defer th:src="@{/js/district-map-init.js(v=8)}"></script>
-    <script defer th:src="@{/js/offer-showcase.js(v=6)}"></script>
-    <script defer th:if="${campaign.youtubeVideoId != null}" th:src="@{/js/offer-promo-video.js(v=4)}"></script>
-    <script defer th:src="@{/js/offer-feed.js(v=5)}"></script>
+    <script defer th:src="@{/js/offer-motion.js(v=2)}"></script>
+    <script defer th:src="@{/js/offer-showcase.js(v=7)}"></script>
+    <script defer th:if="${campaign.hasPromoVideo()}" th:src="@{/js/offer-promo-video.js(v=9)}"></script>
+    <script defer th:src="@{/js/offer-feed.js(v=6)}"></script>
     <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
-    <script defer th:src="@{/js/class-packages.js(v=14)}"></script>
+    <script defer th:src="@{/js/class-packages.js(v=15)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
-    <a class="pkg-brand" th:href="@{/exam}"><img th:src="@{/img/logo.png}" alt=""><span>PHYSICS CUBE<small>ACADEMY</small></span></a>
-    <div class="pkg-nav-links"><a th:href="@{/exam}">Exam portal</a><a class="current" th:href="@{/exam/packages}" aria-current="page">Class packages</a><a th:href="@{/exam/result}">My results <span aria-hidden="true">↗</span></a></div>
+    <a class="pkg-brand" th:href="@{/exam}"><img th:src="@{/img/logo.png}" alt="" width="44" height="44"><span>PHYSICS CUBE<small>ACADEMY</small></span></a>
+    <a class="offer-pill" href="#study-packs"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i><span id="offerPillTime" aria-hidden="true"></span><span class="offer-pill-cta">View study packs</span></a>
+    <div class="pkg-nav-links"><a th:href="@{/exam}">Exam portal</a><a class="current" th:href="@{/exam/packages}" aria-current="page">Class packages</a><a th:href="@{/exam/result}">My results</a></div>
 </nav></header>
 <main>
     <section class="pkg-hero">
+        <div class="hero-wave" aria-hidden="true"></div><div class="hero-wave second" aria-hidden="true"></div>
         <div class="pkg-container hero-layout">
             <div class="hero-copy"><span class="eyebrow"><span class="live-dot"></span> PHYSICS CUBE STUDY COLLECTION</span>
                 <h1 th:text="${campaign.title == 'Your next step starts here.' or campaign.title == 'Offer ends in' ? 'PCA Mega Offer Packages' : campaign.title}">PCA Mega Offer Packages</h1>
                 <p>A little more understanding. A lot more confidence.</p>
-                <a class="hero-explore" href="#study-packs">Find your study pack <span aria-hidden="true">↓</span></a>
+                <a class="hero-explore" href="#study-packs">Find your study pack <i class="bi bi-arrow-down" aria-hidden="true"></i></a>
             </div>
             <div class="countdown-panel">
                 <div class="countdown-heading"><span class="eyebrow">LIMITED TIME. BIG POSSIBILITIES.</span><span class="offer-badge">SPECIAL OFFER</span></div>
                 <h2 id="countdownTitle">Your offer ends in</h2>
                 <div class="countdown" role="timer" aria-label="Time remaining for the offer">
-                    <div><strong id="countDays">--</strong><span>DAYS</span></div><b aria-hidden="true">:</b>
-                    <div><strong id="countHours">--</strong><span>HOURS</span></div><b aria-hidden="true">:</b>
-                    <div><strong id="countMinutes">--</strong><span>MINS</span></div><b aria-hidden="true">:</b>
-                    <div><strong id="countSeconds">--</strong><span>SECS</span></div>
+                    <div><div class="count-tile"><strong id="countDays">--</strong></div><span>DAYS</span></div><b aria-hidden="true">:</b>
+                    <div><div class="count-tile"><strong id="countHours">--</strong></div><span>HOURS</span></div><b aria-hidden="true">:</b>
+                    <div><div class="count-tile"><strong id="countMinutes">--</strong></div><span>MINS</span></div><b aria-hidden="true">:</b>
+                    <div><div class="count-tile"><strong id="countSeconds">--</strong></div><span>SECS</span></div>
                 </div>
                 <div class="deadline-note">Offer closes <time id="offerDeadline" th:datetime="${campaign.endsAt}" th:text="${#temporals.format(campaign.endsAt.atZone(T(com.example.pcaExamAnalyze.service.ClassPackageService).ZONE), 'dd MMM yyyy, hh:mm a')}"></time> · Sri Lanka</div>
                 <noscript><p>Enable JavaScript for the live countdown and WhatsApp registration.</p></noscript>
@@ -70,32 +72,36 @@
         <p class="status-note" id="refreshStatus" role="status"></p>
         <section class="showcase showcase-feedback offer-student-stories" id="student-feedback"
                  aria-labelledby="feedbackHeading" data-showcase="feedback"
-                 th:classappend="${campaign.youtubeVideoId != null} ? 'with-promo'"
-                 th:attr="data-feedback-layout=${campaign.youtubeVideoId != null ? 'single' : 'grid'}">
+                 th:classappend="${campaign.hasPromoVideo()} ? 'with-promo'"
+                 th:attr="data-feedback-layout=${campaign.hasPromoVideo() ? 'single' : 'grid'}">
             <div th:replace="~{exam/offer-showcase :: video}"></div>
             <div th:replace="~{exam/offer-showcase :: feedback}"></div>
             <div th:replace="~{exam/offer-showcase :: feedbackForm}"></div>
         </section>
-        <div class="package-grid" id="study-packs" th:if="${!#lists.isEmpty(packages)}">
-            <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
+        <section class="packs" id="study-packs" aria-labelledby="packsHeading">
+        <header class="showcase-header packs-header"><h2 id="packsHeading">Choose your study pack</h2></header>
+        <div class="package-grid" th:if="${!#lists.isEmpty(packages)}">
+            <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-low=${pack.remaining() * 4 <= pack.capacity},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
                 <div class="poster-area">
                     <div class="poster-labels"><span class="category-label" th:text="${pack.category}"></span><span class="discount-label" th:if="${pack.discount() > 0}" th:text="|${pack.discount()}% OFF|"></span></div>
                     <button type="button" class="poster-button" data-register th:attr="aria-label=|Register for ${pack.name}|">
                         <img th:src="@{/exam/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="|${pack.name} promotional poster|" width="1254" height="1254" loading="lazy">
-                        <span class="poster-hint">Get this package <span aria-hidden="true">↗</span></span>
+                        <span class="poster-hint">Get this package <i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
                     </button>
                 </div>
                 <div class="package-content"><h3 th:text="${pack.name}"></h3>
                     <div class="price-line"><div><span class="price-caption">SPECIAL OFFER</span><div class="price"><span>Rs.</span><strong th:text="${#numbers.formatDecimal(pack.offerPrice, 1, 'COMMA', 0, 'POINT')}"></strong></div></div><div class="was-price"><span>Regular price</span><del th:text="|Rs. ${#numbers.formatDecimal(pack.originalPrice, 1, 'COMMA', 0, 'POINT')}|"></del></div></div>
-                    <div class="availability"><span class="availability-heading">CONFIRMED PURCHASES</span><div class="availability-line"><div class="purchase-total"><div><strong class="purchased-count" th:text="${pack.purchased}"></strong><span class="purchase-capacity" th:text="| / ${pack.capacity}|"></span></div><span class="purchase-caption">students purchased</span></div><span class="seats-left" th:text="|${pack.remaining()} places left|"></span></div>
+                    <div class="availability"><div class="availability-line"><span class="availability-heading">CONFIRMED PURCHASES</span><span class="seats-left" th:text="|${pack.remaining()} places left|"></span></div>
+                        <div class="purchase-total"><strong class="purchased-count" th:text="${pack.purchased}"></strong><span class="purchase-capacity" th:text="| / ${pack.capacity}|"></span><span class="purchase-caption">students purchased</span></div>
                         <div class="purchase-progress" role="progressbar" th:attr="aria-valuenow=${pack.purchased},aria-valuemax=${pack.capacity},aria-label=|Confirmed purchases for ${pack.name}|" aria-valuemin="0"><span th:style="|width: ${pack.progress()}%|"></span></div>
                     </div>
-                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Get this package'}"></span><span aria-hidden="true">↗</span></button>
+                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Get this package'}"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
                     <button class="poster-preview-link" type="button" data-preview>View full poster</button>
                 </div>
             </article>
         </div>
-        <div class="pkg-empty" id="study-packs" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
+        <div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
+        </section>
     </section>
 </main>
 <footer class="pkg-container pkg-footer"><span>© Physics Cube Academy</span><span>Small steps. Stronger understanding.</span></footer>

@@ -15,4 +15,9 @@ public class PackageCampaign {
     @Column(nullable = false) private Instant endsAt;
     @Column(nullable = false, length = 16) private String whatsappNumber;
     @Column(length = 11) private String youtubeVideoId;
+    @Column(length = 128) private String muxPlaybackId;
+
+    public boolean hasPromoVideo() {
+        return muxPlaybackId != null || youtubeVideoId != null;
+    }
 }
