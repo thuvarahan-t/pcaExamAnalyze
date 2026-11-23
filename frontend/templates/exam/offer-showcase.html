@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en"><body>
+<section th:fragment="events" th:if="${!#lists.isEmpty(events)}"
+         class="showcase showcase-events" id="event-highlights" aria-labelledby="eventHeading" data-showcase="events">
+    <header class="showcase-header">
+        <h2 id="eventHeading">PCA Event Highlights</h2>
+    </header>
+    <div class="showcase-rail">
+        <article class="showcase-event" th:each="item, loop : ${events}" data-showcase-slide
+                 th:classappend="|${loop.first ? 'is-current' : ''} ${#lists.isEmpty(item.photos) or (#strings.isEmpty(item.event.title) and #strings.isEmpty(item.event.venue) and #strings.isEmpty(item.event.description)) ? 'event-single-column' : ''}|">
+            <div class="event-gallery" data-event-gallery th:if="${!#lists.isEmpty(item.photos)}">
+                <a class="event-cover" th:href="@{/exam/packages/event-photos/{id}(id=${item.photos[0]})}"
+                   th:attr="aria-label=|Open event photo 1 of ${#lists.size(item.photos)}|">
+                    <img th:src="@{/exam/packages/event-photos/{id}(id=${item.photos[0]})}"
+                         th:alt="${#strings.isEmpty(item.event.title) ? 'PCA event photo' : item.event.title}"
+                         th:attr="loading=${loop.first ? 'eager' : 'lazy'},fetchpriority=${loop.first ? 'high' : 'auto'}" decoding="async">
+                    <span class="event-photo-count" data-event-photo-count aria-hidden="true"
+                          th:if="${#lists.size(item.photos) > 1}" th:text="|1 / ${#lists.size(item.photos)}|"></span>
+                </a>
+                <div class="event-gallery-navigation" th:if="${#lists.size(item.photos) > 1}" role="group" aria-label="Event photos">
+                    <button type="button" data-event-photo-prev aria-label="Previous photo" hidden><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                    <div class="event-thumbnails">
+                        <a th:each="photo, shot : ${item.photos}"
+                           th:href="@{/exam/packages/event-photos/{id}(id=${photo})}"
+                           th:attr="aria-label=|Show photo ${shot.count}|,aria-current=${shot.first}" data-event-photo>
+                            <span th:text="${shot.count}" aria-hidden="true"></span>
+                            <img th:attr="data-src=@{/exam/packages/event-photos/{id}(id=${photo},variant='thumb')}" alt="" loading="lazy" decoding="async">
+                        </a>
+                    </div>
+                    <button type="button" data-event-photo-next aria-label="Next photo" hidden><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                </div>
+            </div>
+            <div class="event-copy" th:if="${!#strings.isEmpty(item.event.title) or !#strings.isEmpty(item.event.venue) or !#strings.isEmpty(item.event.description)}">
+                <h3 th:if="${!#strings.isEmpty(item.event.title)}" th:text="${item.event.title}"></h3>
+                <p class="event-details" th:if="${!#strings.isEmpty(item.event.venue)}" th:text="${item.event.venue}"></p>
+                <p class="event-description" th:if="${!#strings.isEmpty(item.event.description)}" th:text="${item.event.description}"></p>
+            </div>
+        </article>
+    </div>
+    <div th:replace="~{exam/offer-showcase :: controls('Event highlights')}"></div>
+</section>
+
+<div th:fragment="video" th:if="${campaign.youtubeVideoId != null}" class="showcase-video" id="offer-video">
+    <div class="offer-video-player">
+        <iframe th:attr="data-promo-video=|https://www.youtube-nocookie.com/embed/${campaign.youtubeVideoId}|"
+                title="Physics Cube Academy promo video" tabindex="0" referrerpolicy="strict-origin-when-cross-origin"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+    </div>
+    <noscript><a th:href="|https://www.youtube.com/watch?v=${campaign.youtubeVideoId}|">Watch the promo on YouTube</a></noscript>
+</div>
+
+<div th:fragment="feedback" class="student-voices">
+    <header class="showcase-header">
+        <h2 id="feedbackHeading">Hear from our students</h2>
+    </header>
+    <div class="showcase-rail feedback-rail" th:if="${!#lists.isEmpty(feedback)}"
+         th:attr="data-feedback-count=${#lists.size(feedback)}">
+        <article class="student-quote" th:each="entry, loop : ${feedback}" data-showcase-slide
+                 th:classappend="${loop.index < (campaign.youtubeVideoId != null ? 1 : 3)} ? 'is-current'">
+            <span class="quote-package" th:if="${!#strings.isEmpty(entry.packageName)}" th:text="${entry.packageName}"></span>
+            <blockquote th:text="${entry.comment}"></blockquote>
+            <footer>
+                <strong th:text="${entry.studentName}"></strong>
+                <span th:text="|${entry.school} · ${entry.district}|"></span>
+            </footer>
+        </article>
+    </div>
+    <div th:replace="~{exam/offer-showcase :: controls('Student feedback')}"></div>
+</div>
+
+<div th:fragment="feedbackForm" class="offer-story-response">
+    <p class="showcase-message" role="status" th:if="${feedbackSuccess}">உங்கள் கருத்துக்கு நன்றி. பரிசீலனைக்குப் பிறகு அது வெளியிடப்படும்.</p>
+    <details class="share-feedback" th:open="${feedbackError != null}">
+        <summary>
+            <i class="bi bi-chat-text feedback-cta-icon" aria-hidden="true"></i>
+            <span lang="ta">Packages பற்றி உங்கள் கருத்துகளைப் பகிருங்கள்</span>
+            <i class="bi bi-plus-lg feedback-cta-toggle" aria-hidden="true"></i>
+        </summary>
+        <form th:action="@{/exam/packages/feedback}" method="post" class="feedback-form">
+            <p class="showcase-error" role="alert" th:if="${feedbackError}" th:text="${feedbackError}"></p>
+            <div class="feedback-fields">
+                <label>Student name<input name="name" autocomplete="name" required minlength="3" maxlength="150" th:value="${feedbackDraft?.name()}"></label>
+                <label>School<input name="school" required maxlength="150" th:value="${feedbackDraft?.school()}"></label>
+                <div class="feedback-district" data-mobile-district-list>
+                    <label for="district">District</label>
+                    <select id="district" name="district" required>
+                        <option value="">Choose district</option>
+                        <option th:each="district : ${#lists.sort(districts)}" th:text="${district}" th:selected="${district == feedbackDraft?.district()}"></option>
+                    </select>
+                    <div th:replace="~{exam/district-picker :: picker('Choose district', false)}"></div>
+                </div>
+            </div>
+            <label>Your feedback<textarea name="comment" required maxlength="600" rows="4" th:text="${feedbackDraft?.comment()}"></textarea></label>
+            <button type="submit" class="pkg-btn primary">Send feedback</button>
+        </form>
+    </details>
+</div>
+
+<div th:fragment="controls(label)" class="showcase-controls" th:attr="aria-label=${label}" role="group" hidden>
+    <button type="button" data-showcase-prev aria-label="Previous"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
+    <span data-showcase-position aria-hidden="true"></span>
+    <button type="button" data-showcase-next aria-label="Next"><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+</div>
+</body></html>

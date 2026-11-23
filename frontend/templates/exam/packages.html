@@ -7,9 +7,16 @@
     <link rel="icon" th:href="@{/img/favicon-circle.png}">
     <link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400..800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=31)}">
+    <link rel="stylesheet" th:href="@{/css/class-packages.css(v=32)}">
+    <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=10)}">
+    <link rel="stylesheet" th:href="@{/css/district-picker.css(v=3)}">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+    <script defer th:src="@{/js/sl-district-map.js}"></script>
+    <script defer th:src="@{/js/district-map-init.js(v=8)}"></script>
+    <script defer th:src="@{/js/offer-showcase.js(v=6)}"></script>
+    <script defer th:if="${campaign.youtubeVideoId != null}" th:src="@{/js/offer-promo-video.js(v=4)}"></script>
     <script defer th:src="@{/js/offer-feed.js(v=5)}"></script>
     <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
     <script defer th:src="@{/js/class-packages.js(v=14)}"></script>
@@ -25,7 +32,7 @@
             <div class="hero-copy"><span class="eyebrow"><span class="live-dot"></span> PHYSICS CUBE STUDY COLLECTION</span>
                 <h1 th:text="${campaign.title == 'Your next step starts here.' or campaign.title == 'Offer ends in' ? 'PCA Mega Offer Packages' : campaign.title}">PCA Mega Offer Packages</h1>
                 <p>A little more understanding. A lot more confidence.</p>
-                <a class="hero-explore" href="#collection">Find your study pack <span aria-hidden="true">↓</span></a>
+                <a class="hero-explore" href="#study-packs">Find your study pack <span aria-hidden="true">↓</span></a>
             </div>
             <div class="countdown-panel">
                 <div class="countdown-heading"><span class="eyebrow">LIMITED TIME. BIG POSSIBILITIES.</span><span class="offer-badge">SPECIAL OFFER</span></div>
@@ -42,6 +49,7 @@
         </div>
     </section>
     <section class="pkg-container collection" id="collection" aria-label="Available offer packages">
+        <section th:replace="~{exam/offer-showcase :: events}"></section>
         <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}">
             <div class="buy-feed-head">
                 <span class="buy-feed-label" id="buyFeedLabel"><span class="buy-feed-dot" aria-hidden="true"></span>Recent purchases</span>
@@ -60,7 +68,15 @@
             </ul>
         </div>
         <p class="status-note" id="refreshStatus" role="status"></p>
-        <div class="package-grid" th:if="${!#lists.isEmpty(packages)}">
+        <section class="showcase showcase-feedback offer-student-stories" id="student-feedback"
+                 aria-labelledby="feedbackHeading" data-showcase="feedback"
+                 th:classappend="${campaign.youtubeVideoId != null} ? 'with-promo'"
+                 th:attr="data-feedback-layout=${campaign.youtubeVideoId != null ? 'single' : 'grid'}">
+            <div th:replace="~{exam/offer-showcase :: video}"></div>
+            <div th:replace="~{exam/offer-showcase :: feedback}"></div>
+            <div th:replace="~{exam/offer-showcase :: feedbackForm}"></div>
+        </section>
+        <div class="package-grid" id="study-packs" th:if="${!#lists.isEmpty(packages)}">
             <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
                 <div class="poster-area">
                     <div class="poster-labels"><span class="category-label" th:text="${pack.category}"></span><span class="discount-label" th:if="${pack.discount() > 0}" th:text="|${pack.discount()}% OFF|"></span></div>
@@ -79,7 +95,7 @@
                 </div>
             </article>
         </div>
-        <div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
+        <div class="pkg-empty" id="study-packs" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
     </section>
 </main>
 <footer class="pkg-container pkg-footer"><span>© Physics Cube Academy</span><span>Small steps. Stronger understanding.</span></footer>
