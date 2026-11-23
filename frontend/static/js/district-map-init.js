@@ -5,7 +5,7 @@
  *   - a clean custom glassmorphism dropdown (left), and
  *   - the interactive Raphael Sri Lanka map (right, from sl-district-map.js).
  *
- * Both write to the hidden #district field that the form submits. Each district gets its
+ * Both update the #district field that the form submits. Each district gets its
  * own distinct colour, used BOTH as the map fill and as the dropdown's colour dot, so the
  * two views match. The map's stable path ids (d1..d25) map to the canonical names.
  */
@@ -58,13 +58,8 @@
         return DISTRICT_STROKES[index % DISTRICT_STROKES.length];
     }
 
-    // On phones we show the dropdown only — the map is hidden (CSS) and not worth wiring up.
-    function mapEnabled() {
-        return !window.matchMedia('(max-width: 820px)').matches;
-    }
-
     function init() {
-        var districts = window.districts;
+        var districts = window.districts || [];
         var hidden = document.getElementById('district');
         var label = document.getElementById('district-name');
         var mapBox = document.getElementById('map');
@@ -73,11 +68,37 @@
         var triggerText = document.getElementById('district-trigger-text');
         var panel = document.getElementById('district-panel');
         var search = document.getElementById('district-search');
+        var list = document.getElementById('district-list');
         var options = box ? Array.prototype.slice.call(box.querySelectorAll('.gselect-option')) : [];
-        if (!districts || !districts.length || !hidden || !mapBox || !box) {
-            return;
+        if (!hidden || !box || !list || !options.length) return;
+        if (box.closest('[data-mobile-district-list]')) {
+            var mobileLayout = window.matchMedia('(max-width: 820px)');
+            var desktopOptions = options;
+            var mobileOptions = options.slice().sort(function (first, second) {
+                return first.dataset.value.localeCompare(second.dataset.value, 'en');
+            });
+            function orderOptions() {
+                options = mobileLayout.matches ? mobileOptions : desktopOptions;
+                list.append.apply(list, options);
+            }
+            if (mobileLayout.matches) orderOptions();
+            mobileLayout.addEventListener('change', orderOptions);
         }
-        var useMap = mapEnabled();
+        var empty = panel.querySelector('.gselect-empty');
+        var feedbackPicker = box.closest('.feedback-district');
+        var useMap = mapBox && districts.length;
+        if (mapBox && !useMap) mapBox.closest('.gselect-map').hidden = true;
+        if (feedbackPicker) {
+            box.closest('.district-picker').hidden = false;
+            hidden.hidden = true;
+            var fieldLabel = feedbackPicker.querySelector('label');
+            fieldLabel.htmlFor = trigger.id;
+            hidden.addEventListener('invalid', function (event) {
+                event.preventDefault();
+                trigger.focus();
+                openPanel(true, false);
+            });
+        }
 
         // Build name -> colour from the map order, so dropdown dots match map fills exactly.
         var nameColour = {};
@@ -100,16 +121,22 @@
         function clearHoverOption() {
             options.forEach(function (li) { li.classList.remove('hover-match'); });
         }
-        function previewDistrict(name) {
+        function scrollToOption(option) {
+            var item = option.getBoundingClientRect();
+            var viewport = list.getBoundingClientRect();
+            if (item.top < viewport.top) list.scrollTop += item.top - viewport.top;
+            else if (item.bottom > viewport.bottom) list.scrollTop += item.bottom - viewport.bottom;
+        }
+        function previewDistrict(name, fromMap) {
             clearHoverOption();
-            if (search && search.value) {
+            if (fromMap && search && search.value) {
                 search.value = '';
                 filter('');
             }
             var li = optionFor(name);
             if (li) {
                 li.classList.add('hover-match');
-                li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                if (fromMap) scrollToOption(li);
             }
             if (label) { label.textContent = labelFor(name); }
         }
@@ -144,12 +171,11 @@
                 li.setAttribute('aria-selected', isActive ? 'true' : 'false');
             });
             paintMap(name);
-            var activeOption = optionFor(name);
-            if (activeOption) { activeOption.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
         }
 
         function placePanel() {
             panel.classList.remove('align-right');
+            if (window.getComputedStyle(panel).position === 'static') return;
             var panelRect = panel.getBoundingClientRect();
             var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
             var viewportHeight = document.documentElement.clientHeight || window.innerHeight;
@@ -170,42 +196,80 @@
             }
         }
 
-        function openPanel(open) {
+        function openPanel(open, focusSearch) {
             box.classList.toggle('open', open);
             panel.hidden = !open;
             trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open) {
+                if (search) {
+                    search.value = '';
+                    filter('');
+                    if (focusSearch) search.focus({ preventScroll: true });
+                }
+                var active = optionFor(hidden.value);
+                if (active) scrollToOption(active);
                 placePanel();
-                if (search) { search.value = ''; filter(''); search.focus(); }
             }
         }
 
         function filter(q) {
             q = q.trim().toLowerCase();
+            var matches = 0;
             options.forEach(function (li) {
                 var match = li.getAttribute('data-value').toLowerCase().indexOf(q) !== -1;
                 li.classList.toggle('is-hidden', !match);
+                if (match) matches++;
             });
+            if (empty) empty.hidden = matches !== 0;
         }
 
         // ---- Dropdown wiring ----
         options.forEach(function (li) {
             var name = li.getAttribute('data-value');
             li.style.setProperty('--dot', nameColour[name] || '#cbd5e1');
-            li.addEventListener('click', function () { setDistrict(name); openPanel(false); });
+            li.tabIndex = -1;
+            li.addEventListener('click', function () {
+                setDistrict(name);
+                openPanel(false);
+                trigger.focus({ preventScroll: true });
+            });
             li.addEventListener('mouseover', function () { previewDistrict(name); });
             li.addEventListener('mouseout', clearHoverOption);
         });
-        trigger.addEventListener('click', function () { openPanel(panel.hidden); });
+        trigger.addEventListener('click', function (event) {
+            var keyboard = event.detail === 0;
+            var desktopPointer = window.matchMedia('(hover: hover) and (min-width: 821px)').matches;
+            openPanel(panel.hidden, keyboard || desktopPointer);
+        });
         if (search) { search.addEventListener('input', function () { filter(search.value); }); }
+        panel.addEventListener('keydown', function (event) {
+                var visible = options.filter(function (option) { return !option.classList.contains('is-hidden'); });
+                var current = visible.indexOf(document.activeElement);
+                if (event.key === 'Enter' && (current >= 0 || document.activeElement === search)) {
+                    event.preventDefault();
+                    if (current >= 0) visible[current].click();
+                    else if (visible.length === 1) visible[0].click();
+                } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+                           (current >= 0 || document.activeElement === search)) {
+                    event.preventDefault();
+                    var next = event.key === 'ArrowDown' ? visible[current + 1] : visible[current - 1];
+                    if (next) {
+                        next.focus({ preventScroll: true });
+                        scrollToOption(next);
+                    } else if (search) search.focus({ preventScroll: true });
+                }
+        });
         document.addEventListener('click', function (e) {
             if (!box.contains(e.target)) { openPanel(false); }
         });
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { openPanel(false); }
+            if (e.key === 'Escape' && !panel.hidden) {
+                openPanel(false);
+                trigger.focus({ preventScroll: true });
+            }
         });
 
-        // ---- Map wiring (desktop/tablet only — skipped on phones) ----
+        // Bind the map once so it stays interactive when the screen is resized.
         if (useMap) {
             districts.forEach(function (el, i) {
                 var name = nameOf(el);
@@ -223,7 +287,7 @@
                     this.attr({ stroke: HOVER_STROKE, 'stroke-width': isSelected ? 3.2 : 2.6 });
                     this.node.style.filter = 'drop-shadow(0 4px 9px rgba(244,114,182,.32))';
                     this.toFront();
-                    previewDistrict(hovered);
+                    previewDistrict(hovered, true);
                 });
                 el.mouseout(function () {
                     clearHoverOption();
@@ -236,6 +300,7 @@
                         setDistrict(name);
                         clearHoverOption();
                         openPanel(false);
+                        trigger.focus({ preventScroll: true });
                     }
                 });
             });
@@ -250,6 +315,7 @@
                 setDistrict(node.getAttribute('data-district'));
                 clearHoverOption();
                 openPanel(false);
+                trigger.focus({ preventScroll: true });
             };
             // pointerup is more reliable after Raphael moves a hovered path to the front.
             // Keep click as a fallback for browsers and keyboard-generated activation.

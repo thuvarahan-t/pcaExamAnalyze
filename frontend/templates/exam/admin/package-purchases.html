@@ -21,27 +21,7 @@
 <div class="admin-field"><label for="purchaseSchool">School</label><input class="form-input" id="purchaseSchool" name="school" th:value="${enteredSchool}" maxlength="150" placeholder="Optional school"></div>
 <div class="admin-field district-field"><label for="district-trigger">District</label>
 <input type="hidden" id="district" name="district" th:value="${enteredDistrict}">
-<div class="gselect" id="district-select">
-  <button type="button" class="gselect-trigger form-input" id="district-trigger" aria-haspopup="listbox" aria-expanded="false">
-    <span id="district-trigger-text" class="gselect-placeholder" data-placeholder="Optional">Optional</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
-  </button>
-  <div class="gselect-panel" id="district-panel" hidden>
-    <div class="gselect-body">
-      <div class="gselect-left">
-        <div class="gselect-search-wrap"><i class="bi bi-search" aria-hidden="true"></i><input type="text" id="district-search" class="gselect-search" placeholder="Search district..." autocomplete="off"></div>
-        <ul class="gselect-list" id="district-list" role="listbox">
-          <li class="gselect-option gselect-clear" data-value="" role="option">Optional</li>
-          <li th:each="d : ${districts}" th:attr="data-value=${d}" th:text="${d}" class="gselect-option" role="option"></li>
-        </ul>
-      </div>
-      <div class="gselect-map">
-        <div class="map-title"><i class="bi bi-map" aria-hidden="true"></i> Sri Lanka - click district</div>
-        <div id="district-name" class="map-label">Tap the district on the map</div>
-        <div id="map"></div>
-      </div>
-    </div>
-  </div>
-</div></div></div>
+<div th:replace="~{exam/district-picker :: picker('Optional', true)}"></div></div></div>
 <div id="manualPhoneMatches" hidden>
 <p>Review students with this phone number. If the payment belongs to an existing enquiry, confirm it in Interested students.</p>
 <ul id="manualPhoneMatchList"></ul>
@@ -75,5 +55,5 @@
 </nav></section></main></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
 <script th:src="@{/js/sl-district-map.js}"></script>
-<script th:src="@{/js/district-map-init.js(v=5)}"></script>
+<script th:src="@{/js/district-map-init.js(v=7)}"></script>
 </body></html>

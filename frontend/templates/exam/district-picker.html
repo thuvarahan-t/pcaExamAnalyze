@@ -1,0 +1,24 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="picker(placeholder, optional)" class="district-picker" th:hidden="${!optional}">
+<div class="gselect" id="district-select">
+  <button type="button" class="gselect-trigger form-input" id="district-trigger" aria-haspopup="listbox" aria-controls="district-list" aria-expanded="false">
+    <span id="district-trigger-text" class="gselect-placeholder" th:attr="data-placeholder=${placeholder}" th:text="${placeholder}">Optional</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+  <div class="gselect-panel" id="district-panel" hidden>
+    <div class="gselect-body">
+      <div class="gselect-left">
+        <div class="gselect-search-wrap"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="district-search" class="gselect-search" aria-label="Search districts" placeholder="Search districts" autocomplete="off"></div>
+        <ul class="gselect-list" id="district-list" role="listbox" aria-label="Sri Lanka districts">
+          <li th:if="${optional}" class="gselect-option gselect-clear" data-value="" role="option">Optional</li>
+          <li th:each="d : ${districts}" th:attr="data-value=${d}" th:text="${d}" class="gselect-option" role="option"></li>
+        </ul>
+        <p class="gselect-empty" role="status" hidden>No matching districts.</p>
+      </div>
+      <div class="gselect-map">
+        <div class="map-title"><i class="bi bi-map" aria-hidden="true"></i> Sri Lanka - click district</div>
+        <div id="district-name" class="map-label">Tap the district on the map</div>
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
