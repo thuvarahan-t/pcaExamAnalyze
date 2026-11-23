@@ -5,6 +5,47 @@ import { readFile } from 'node:fs/promises';
 
 const studentScript = await readFile(new URL('../static/js/class-packages.js', import.meta.url), 'utf8');
 const adminScript = await readFile(new URL('../static/js/package-admin.js', import.meta.url), 'utf8');
+const promoScript = await readFile(new URL('../static/js/offer-promo-video.js', import.meta.url), 'utf8');
+
+test('promo only autoplays muted once when the player is ready and visible', () => {
+    const calls = [];
+    const frame = { parentElement: {} };
+    let reportVisibility, onReady;
+    const document = {
+        querySelector: selector => selector === 'iframe[data-promo-video]' ? frame : null,
+        addEventListener() {},
+        removeEventListener() {}
+    };
+    const window = {
+        matchMedia: () => ({ matches: false }),
+        YT: {
+            Player: class {
+                constructor(iframe, { events }) {
+                    assert.equal(iframe, frame);
+                    onReady = events.onReady;
+                }
+            },
+            PlayerState: { UNSTARTED: -1, CUED: 5 }
+        }
+    };
+    class IntersectionObserver {
+        constructor(callback) { reportVisibility = callback; }
+        observe(element) { assert.equal(element, frame.parentElement); }
+        disconnect() { calls.push('disconnect'); }
+    }
+    vm.runInNewContext(promoScript, { document, window, IntersectionObserver });
+    const enter = { isIntersecting: true, intersectionRatio: 1 };
+    reportVisibility([enter]);
+    reportVisibility([{ isIntersecting: false, intersectionRatio: 0 }]);
+    onReady({ target: {
+        getPlayerState: () => -1,
+        mute: () => calls.push('mute'),
+        playVideo: () => calls.push('play')
+    } });
+    assert.deepEqual(calls, []);
+    reportVisibility([enter]);
+    assert.deepEqual(calls, ['disconnect', 'mute', 'play']);
+});
 
 // Small DOM adapter for exercising actual event handlers without a browser or WhatsApp.
 class Element {
