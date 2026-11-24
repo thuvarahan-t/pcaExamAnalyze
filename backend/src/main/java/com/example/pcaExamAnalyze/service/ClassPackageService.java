@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.imageio.ImageIO;
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.*;
 import java.util.*;
 
@@ -42,10 +43,13 @@ public class ClassPackageService {
         return p;
     }
     public record Card(Long id, String name, String category, String batch, String description,
-                       BigDecimal originalPrice, BigDecimal offerPrice, int capacity, long purchased,
+                       BigDecimal originalPrice, BigDecimal offerPrice, Integer discountPercent, int capacity, long purchased,
                        int displayOrder, boolean published, long posterVersion) {
-        public int discount() { return originalPrice.signum() == 0 ? 0 :
-            100 - offerPrice.multiply(BigDecimal.valueOf(100)).divide(originalPrice, 0, java.math.RoundingMode.HALF_UP).intValue(); }
+        public int discount() {
+            if (discountPercent != null) return discountPercent;
+            return originalPrice.signum() == 0 ? 0 :
+                100 - offerPrice.multiply(BigDecimal.valueOf(100)).divide(originalPrice, 0, RoundingMode.HALF_UP).intValue();
+        }
         public long remaining() { return Math.max(0, capacity - purchased); }
         public int progress() { return (int) Math.min(100, purchased * 100 / capacity); }
     }
@@ -54,7 +58,7 @@ public class ClassPackageService {
         purchases.counts().forEach(c -> counts.put(c.getPackageId(), c.getTotal()));
         return (admin ? packages.findAllByOrderByDisplayOrderAscIdAsc() : packages.findByPublishedTrueOrderByDisplayOrderAscIdAsc())
             .stream().map(p -> new Card(p.getId(), p.getName(), p.getCategory(), p.getBatch(), p.getDescription(),
-                p.getOriginalPrice(), p.getOfferPrice(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
+                p.getOriginalPrice(), p.getOfferPrice(), p.getDiscountPercent(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
                 p.getDisplayOrder(), p.isPublished(), p.getPosterVersion())).toList();
     }
     /** Public purchase feed: newest first, name and package only (registration IDs stay private). */
@@ -287,6 +291,7 @@ public class ClassPackageService {
         ClassPackage p = get(id);
         ClassPackageForm f = new ClassPackageForm();
         f.setName(p.getName()); f.setCategory(p.getCategory()); f.setBatch(p.getBatch()); f.setDescription(p.getDescription());
+        f.setDiscountPercent(p.getDiscountPercent());
         f.setOriginalPrice(p.getOriginalPrice()); f.setOfferPrice(p.getOfferPrice()); f.setCapacity(p.getCapacity());
         f.setDisplayOrder(p.getDisplayOrder()); f.setPublished(p.isPublished()); return f;
     }
@@ -310,7 +315,14 @@ public class ClassPackageService {
     }
     private Long savePackage(Long id, ClassPackage source, ClassPackageForm f, MultipartFile upload) {
         ClassPackage p = id == null ? new ClassPackage() : locked(id);
-        if (f.getOfferPrice().compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
+        var discount = f.getDiscountPercent();
+        var offerPrice = f.getOfferPrice();
+        if (discount != null) {
+            if (discount < 0 || discount > 100) throw new IllegalArgumentException("Discount must be between 0 and 100.");
+            offerPrice = f.getOriginalPrice().multiply(BigDecimal.valueOf(100 - discount, 2)).setScale(2, RoundingMode.HALF_UP);
+        }
+        if (offerPrice == null) throw new IllegalArgumentException("Enter an offer price or a discount percentage.");
+        if (offerPrice.compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
         if (id != null && f.getCapacity() < purchases.countByClassPackageId(id))
             throw new IllegalArgumentException("Capacity cannot be lower than confirmed purchases.");
         PackagePoster image = null;
@@ -327,7 +339,7 @@ public class ClassPackageService {
         }
         if (f.getBatch() != null) p.setBatch(f.getBatch().strip());
         if (f.getDescription() != null) p.setDescription(f.getDescription().strip());
-        p.setOriginalPrice(f.getOriginalPrice()); p.setOfferPrice(f.getOfferPrice());
+        p.setOriginalPrice(f.getOriginalPrice()); p.setOfferPrice(offerPrice); p.setDiscountPercent(discount);
         p.setCapacity(f.getCapacity()); p.setPublished(f.isPublished());
         if (f.getDisplayOrder() != null) p.setDisplayOrder(f.getDisplayOrder());
         else if (id == null) p.setDisplayOrder(packages.findFirstByOrderByDisplayOrderDescIdDesc().map(last -> last.getDisplayOrder() + 1).orElse(0));
