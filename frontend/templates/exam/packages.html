@@ -8,7 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
     <link rel="preload" th:href="@{/fonts/sora-latin.woff2}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" th:href="@{/css/offer-page.css(v=3)}">
+    <link rel="stylesheet" th:href="@{/css/offer-page.css(v=4)}">
     <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=15)}">
     <link rel="stylesheet" th:href="@{/css/district-picker.css(v=3)}">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
@@ -17,9 +17,9 @@
     <script defer th:src="@{/js/offer-motion.js(v=2)}"></script>
     <script defer th:src="@{/js/offer-showcase.js(v=7)}"></script>
     <script defer th:if="${campaign.hasPromoVideo()}" th:src="@{/js/offer-promo-video.js(v=9)}"></script>
-    <script defer th:src="@{/js/offer-feed.js(v=6)}"></script>
+    <script defer th:src="@{/js/offer-feed.js(v=7)}"></script>
     <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
-    <script defer th:src="@{/js/class-packages.js(v=15)}"></script>
+    <script defer th:src="@{/js/class-packages.js(v=16)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
@@ -52,12 +52,15 @@
     </section>
     <section class="pkg-container collection" id="collection" aria-label="Available offer packages">
         <section th:replace="~{exam/offer-showcase :: events}"></section>
-        <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}">
+        <div class="buy-feed" id="buyFeed" th:hidden="${#lists.isEmpty(recent)}"
+             th:attr="data-url=@{/exam/packages/purchases},data-has-more=${hasMoreRecent}">
             <div class="buy-feed-head">
                 <span class="buy-feed-label" id="buyFeedLabel"><span class="buy-feed-dot" aria-hidden="true"></span>Recent purchases</span>
                 <button class="buy-feed-more" id="buyFeedMore" type="button" aria-haspopup="dialog" aria-controls="purchasesDialog">View all <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
             </div>
             <ul class="buy-feed-viewport" id="buyFeedViewport" tabindex="0" aria-labelledby="buyFeedLabel"></ul>
+            <p class="purchase-list-status" id="buyFeedStatus" role="status"></p>
+            <button class="pkg-btn purchase-retry" id="buyFeedRetry" type="button" hidden>Try again</button>
             <template id="buyFeedTemplate">
                 <li class="buy-feed-item">
                     <span class="buy-avatar" aria-hidden="true"></span>
@@ -137,10 +140,10 @@
         <h2 id="purchasesTitle" tabindex="-1">Recent purchases</h2>
         <p class="dialog-subtitle">Students who have joined our offer packages, newest first.</p>
     </div>
-    <ul class="purchase-list" id="purchaseList"></ul>
+    <ul class="purchase-list" id="purchaseList" tabindex="0" aria-labelledby="purchasesTitle"></ul>
     <div class="purchase-list-foot">
         <p class="purchase-list-status" id="purchaseListStatus" role="status"></p>
-        <button class="pkg-btn load-more" id="purchaseLoadMore" type="button" hidden>Load more</button>
+        <button class="pkg-btn purchase-retry" id="purchaseListRetry" type="button" hidden>Try again</button>
     </div>
 </dialog>
 <dialog class="poster-dialog" id="posterDialog" aria-label="Full package poster"><button class="dialog-close" type="button" data-close aria-label="Close poster">×</button><img id="fullPoster" alt=""><div class="poster-dialog-actions"><strong id="previewPackageName"></strong><button class="pkg-btn whatsapp" id="previewRegister" type="button">Get this package ↗</button></div></dialog>

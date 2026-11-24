@@ -64,15 +64,14 @@ public class ClassPackageService {
     /** Public purchase feed: newest first, name and package only (registration IDs stay private). */
     public record RecentPurchase(Long id, String name, String school, String district, String packageName, Instant confirmedAt) {}
     public static final int RECENT_LIMIT = 30;
-    public List<RecentPurchase> recentPurchases() {
-        return purchases.recent(org.springframework.data.domain.PageRequest.of(0, RECENT_LIMIT)).stream()
-            .map(ClassPackageService::toRecent).toList();
+    public PurchasePage recentPurchases() {
+        return purchasePage(null, null, RECENT_LIMIT);
     }
     private static RecentPurchase toRecent(PackagePurchaseRepository.RecentPurchase r) {
         return new RecentPurchase(r.getId(), maskName(r.getStudentName()), nz(r.getSchool()), nz(r.getDistrict()),
             r.getPackageName(), r.getConfirmedAt());
     }
-    /** One page of the public "Recent purchases" popup; pass the last item's time + id to get the next page. */
+    /** One page of public purchases; pass the last item's time and ID to get the next page. */
     public record PurchasePage(List<RecentPurchase> items, boolean hasMore) {}
     public static final int PAGE_SIZE = 20;
     public PurchasePage purchasePage(Instant beforeAt, Long beforeId, int size) {
@@ -291,8 +290,8 @@ public class ClassPackageService {
         ClassPackage p = get(id);
         ClassPackageForm f = new ClassPackageForm();
         f.setName(p.getName()); f.setCategory(p.getCategory()); f.setBatch(p.getBatch()); f.setDescription(p.getDescription());
-        f.setDiscountPercent(p.getDiscountPercent());
         f.setOriginalPrice(p.getOriginalPrice()); f.setOfferPrice(p.getOfferPrice()); f.setCapacity(p.getCapacity());
+        f.setDiscountPercent(p.getDiscountPercent());
         f.setDisplayOrder(p.getDisplayOrder()); f.setPublished(p.isPublished()); return f;
     }
     public PackageCampaignForm campaignForm() {
