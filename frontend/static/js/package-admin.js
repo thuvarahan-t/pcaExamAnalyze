@@ -67,23 +67,4 @@
         phone.addEventListener('input', showMatches);
         showMatches();
     }
-    const originalPrice = document.getElementById('originalPrice');
-    const offerPrice = document.getElementById('offerPrice');
-    const discountPercent = document.getElementById('discountPercent');
-    if (originalPrice && offerPrice && discountPercent) {
-        function updateOfferPrice() {
-            const hasDiscount = discountPercent.value !== '' || discountPercent.validity.badInput;
-            offerPrice.readOnly = hasDiscount;
-            offerPrice.required = !hasDiscount;
-            if (!hasDiscount) return;
-            offerPrice.value = '';
-            if (!originalPrice.value || !originalPrice.validity.valid || !discountPercent.validity.valid) return;
-            const originalCents = Math.round(originalPrice.valueAsNumber * 100);
-            const offerCents = Math.floor((originalCents * (100 - discountPercent.valueAsNumber) + 50) / 100);
-            offerPrice.value = (offerCents / 100).toFixed(2);
-        }
-        originalPrice.addEventListener('input', updateOfferPrice);
-        discountPercent.addEventListener('input', updateOfferPrice);
-        updateOfferPrice();
-    }
 })();

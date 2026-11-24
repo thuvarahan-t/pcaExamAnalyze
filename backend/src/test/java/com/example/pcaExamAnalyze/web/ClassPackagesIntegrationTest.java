@@ -84,26 +84,30 @@ class ClassPackagesIntegrationTest {
         assertNotNull(page.selectFirst("button#buyFeedMore[aria-controls=purchasesDialog]"));
         assertNotNull(page.selectFirst("#buyFeedViewport[tabindex=0]"));
     }
-    @Test void adminDiscountDeterminesThePriceAndSurvivesRounding() throws Exception {
+    @Test void adminSetsTheOfferPriceAndDiscountIndependently() throws Exception {
         Long id = fixture(20);
         var admin = admin();
         var editor = "/exam/admin/packages/" + id + "/edit";
         var csrf = token(get(admin, editor));
-        var fields = "name=Discount+Test&category=Theory&originalPrice=0.05&capacity=20&published=true";
-        var invalid = post(admin, editor, csrf, fields + "&discountPercent=101");
-        assertEquals(200, invalid.statusCode());
+        var fields = "name=Discount+Test&category=Theory&originalPrice=1234.56&capacity=20&published=true";
+        assertEquals(200, post(admin, editor, csrf, fields + "&discountPercent=101&offerPrice=789.01").statusCode());
+        assertEquals(200, post(admin, editor, csrf, fields + "&discountPercent=50").statusCode());
         assertNull(service.get(id).getDiscountPercent());
-        assertEquals(302, post(admin, editor, csrf, fields + "&discountPercent=50&offerPrice=0.01").statusCode());
+        assertEquals(new BigDecimal("1000.00"), service.get(id).getOfferPrice());
+
+        assertEquals(302, post(admin, editor, csrf, fields + "&discountPercent=50&offerPrice=789.01").statusCode());
         var pack = service.get(id);
         assertEquals(50, pack.getDiscountPercent());
-        assertEquals(new BigDecimal("0.03"), pack.getOfferPrice());
+        assertEquals(new BigDecimal("789.01"), pack.getOfferPrice());
         var publicCard = Jsoup.parse(get(client(), "/exam/packages").body())
             .selectFirst(".package-card[data-package-id=" + id + "]");
         assertNotNull(publicCard);
         assertEquals("50% OFF", publicCard.selectFirst(".discount-label").text());
-        assertEquals(302, post(admin, editor, csrf, fields + "&offerPrice=0.02").statusCode());
+        assertEquals("789.01", publicCard.selectFirst(".price strong").text());
+
+        assertEquals(302, post(admin, editor, csrf, fields + "&offerPrice=345.67").statusCode());
         assertNull(service.get(id).getDiscountPercent());
-        assertEquals(new BigDecimal("0.02"), service.get(id).getOfferPrice());
+        assertEquals(new BigDecimal("345.67"), service.get(id).getOfferPrice());
     }
     @Test void recentPurchaseNamesAreMaskedByLength() {
         assertEquals("K***a", ClassPackageService.maskName("Kavya"));

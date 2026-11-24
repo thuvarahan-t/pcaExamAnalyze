@@ -11,7 +11,7 @@
 <link rel="stylesheet" th:href="@{/css/exam-dialog.css(v=1)}">
 <script defer th:src="@{/js/exam-dialog.js(v=1)}"></script>
 <script defer th:src="@{/js/package-phone.js(v=1)}"></script>
-<script defer th:src="@{/js/package-admin.js(v=10)}"></script>
+<script defer th:src="@{/js/package-admin.js(v=11)}"></script>
 </head><body>
 <aside th:fragment="nav" th:replace="~{exam/admin/sidebar :: sidebar('offers')}"></aside>
 <th:block th:fragment="flash"><div class="flash success" role="status" th:if="${success}" th:text="${success}"></div><div class="flash error" role="alert" th:if="${error}" th:text="${error}"></div></th:block>

@@ -317,11 +317,9 @@ public class ClassPackageService {
         ClassPackage p = id == null ? new ClassPackage() : locked(id);
         var discount = f.getDiscountPercent();
         var offerPrice = f.getOfferPrice();
-        if (discount != null) {
-            if (discount < 0 || discount > 100) throw new IllegalArgumentException("Discount must be between 0 and 100.");
-            offerPrice = f.getOriginalPrice().multiply(BigDecimal.valueOf(100 - discount, 2)).setScale(2, RoundingMode.HALF_UP);
-        }
-        if (offerPrice == null) throw new IllegalArgumentException("Enter an offer price or a discount percentage.");
+        if (discount != null && (discount < 0 || discount > 100))
+            throw new IllegalArgumentException("Discount must be between 0 and 100.");
+        if (offerPrice == null) throw new IllegalArgumentException("Enter an offer price.");
         if (offerPrice.compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
         if (id != null && f.getCapacity() < purchases.countByClassPackageId(id))
             throw new IllegalArgumentException("Capacity cannot be lower than confirmed purchases.");
