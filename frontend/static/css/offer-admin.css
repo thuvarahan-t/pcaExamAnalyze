@@ -52,8 +52,9 @@
 .offer-admin-page .admin-pack-card .btn { min-height:34px; padding:7px 10px; font-size:11px; }
 .offer-admin-page .publication-tag { color:#1d4ed8; background:#dbeafe; }
 .offer-admin-page .publication-tag.draft { color:#876019; background:#fff3d8; }
-.offer-admin-page .editor-layout { grid-template-columns:minmax(0,1fr) 280px; }
+.offer-admin-page .editor-layout { grid-template-columns:minmax(0,1fr) minmax(320px, 38%); }
 .offer-admin-page .editor-preview { position:sticky; top:24px; }
+.editor-preview iframe { display:block; width:100%; min-height:420px; border:0; border-radius:14px; background:#d5e2ec; }
 .offer-admin-page .capacity-summary { padding:16px 20px; margin-bottom:22px; }
 .offer-admin-page .capacity-summary strong { color:var(--admin-blue); }
 .offer-admin-page .admin-table { min-width:620px; }
@@ -62,8 +63,10 @@
     .offer-admin-page .admin-card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .offer-admin-page .campaign-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .offer-admin-page .campaign-save { padding-top:0; }
+}
+@media(max-width:1000px) {
     .offer-admin-page .editor-layout { grid-template-columns:minmax(0,1fr); }
-    .offer-admin-page .editor-preview { position:static; max-width:360px; }
+    .offer-admin-page .editor-preview { position:static; width:100%; max-width:420px; }
 }
 @media(max-width:680px) {
     .offer-admin-page .admin-card-grid,.offer-admin-page .campaign-fields { grid-template-columns:minmax(0,1fr); }

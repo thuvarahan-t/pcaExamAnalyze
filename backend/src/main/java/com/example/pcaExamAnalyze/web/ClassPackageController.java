@@ -41,7 +41,9 @@ public class ClassPackageController {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         model.addAttribute("campaign", service.campaign()); model.addAttribute("packages", service.cards(false));
         model.addAttribute("serverNow", Instant.now()); model.addAttribute("details", details(request));
-        model.addAttribute("recent", service.recentPurchases());
+        var recent = service.recentPurchases();
+        model.addAttribute("recent", recent.items());
+        model.addAttribute("hasMoreRecent", recent.hasMore());
         model.addAttribute("events", content.events(false));
         model.addAttribute("feedback", content.feedback(false));
         model.addAttribute("districts", ExamReportService.DISTRICTS);
@@ -85,9 +87,10 @@ public class ClassPackageController {
     }
     @GetMapping("/status") @ResponseBody
     public ResponseEntity<?> status() {
+        var recent = service.recentPurchases();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of(
             "serverNow", Instant.now(), "endsAt", service.campaign().getEndsAt(), "packages", service.cards(false),
-            "recent", service.recentPurchases()));
+            "recent", recent.items(), "hasMoreRecent", recent.hasMore()));
     }
     @GetMapping("/purchases") @ResponseBody
     public ResponseEntity<?> purchases(@RequestParam(required = false) String beforeAt,

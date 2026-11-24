@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 const studentScript = await readFile(new URL('../static/js/class-packages.js', import.meta.url), 'utf8');
 const adminScript = await readFile(new URL('../static/js/package-admin.js', import.meta.url), 'utf8');
 const promoScript = await readFile(new URL('../static/js/offer-promo-video.js', import.meta.url), 'utf8');
+const feedScript = await readFile(new URL('../static/js/offer-feed.js', import.meta.url), 'utf8');
 
 test('promo only autoplays muted once when the player is ready and visible', () => {
     const calls = [];
@@ -249,16 +250,27 @@ test('student lists page independently in groups of ten and search across all pa
     assert.equal(lists.interested.status.textContent, 'Page 1 of 3');
 });
 
-test('recent purchases scroll through three visible rows and return to the top', async () => {
-    const feedScript = await readFile(new URL('../static/js/offer-feed.js', import.meta.url), 'utf8');
+const PURCHASE_TIME = '2026-11-12T10:00:00Z';
+const SERVER_TIME = '2026-11-12T10:30:00Z';
+const purchase = (id, name = 'Buyer ' + id) => ({ id, name, school: '', district: '',
+    packageName: 'Theory Study Pack', confirmedAt: PURCHASE_TIME });
+
+function purchasePage(seed, { hasMore = false, fetch } = {}) {
     const feed = new Element();
-    const viewport = Object.assign(new Element(), {
-        clientHeight: 150, scrollTop: 0,
-        replaceChildren(...children) { this.children = children; },
-        scrollTo({ top }) { this.scrollTop = top; },
-        querySelectorAll() { return this.children.map(row => row.querySelector('time')); }
-    });
-    Object.defineProperty(viewport, 'scrollHeight', { get: () => viewport.children.length * 50 });
+    const url = '/exam/packages/purchases';
+    feed.dataset = { url, hasMore: String(hasMore) };
+    const append = function (...children) { this.children.push(...children); };
+    function scrollArea() {
+        const element = Object.assign(new Element(), {
+            append, clientHeight: 300, scrollTop: 0,
+            replaceChildren(...children) { this.children = children; },
+            scrollTo({ top }) { this.scrollTop = top; },
+            querySelectorAll() { return this.children.map(row => row.querySelector('time')); }
+        });
+        Object.defineProperty(element, 'scrollHeight', { get: () => element.children.length * 50 });
+        return element;
+    }
+    const viewport = scrollArea(), rows = scrollArea();
     const template = { content: { firstElementChild: { cloneNode() {
         const row = Object.assign(new Element(), { offsetHeight: 50 });
         for (const selector of ['strong', '.buy-from', 'b', 'time', '.buy-avatar']) {
@@ -267,25 +279,44 @@ test('recent purchases scroll through three visible rows and return to the top',
         row.querySelector('.buy-avatar').style.setProperty = () => {};
         return row;
     } } } };
-    const seed = ['Kavya', 'Nilan', 'Uma', 'Arun', 'Priya'].map((name, index) => Object.assign(new Element(), {
-        dataset: { id: String(5 - index), name, pack: 'Theory Study Pack', at: '2026-11-12T10:00:00Z' }
+    const seedElements = seed.map(entry => Object.assign(new Element(), {
+        dataset: { id: String(entry.id), name: entry.name, pack: entry.packageName, at: entry.confirmedAt }
     }));
     const document = new Element();
-    document.getElementById = id => ({ buyFeed: feed, buyFeedViewport: viewport, buyFeedTemplate: template })[id];
-    document.lists.set('#buyFeedSeed li', seed);
+    document.createElement = () => Object.assign(new Element(), { append, style: { setProperty() {} } });
+    const status = () => Object.assign(new Element(), { classList: { toggle() {} } });
+    const dialog = new Element(), retry = new Element(), dialogStatus = status();
+    const viewAll = new Element();
+    dialog.dataset.url = url;
+    dialog.selectors.set('[data-close]', new Element());
+    const ids = { buyFeed: feed, buyFeedViewport: viewport, buyFeedTemplate: template, buyFeedMore: viewAll,
+        buyFeedStatus: status(), buyFeedRetry: new Element(), purchasesDialog: dialog, purchasesTitle: new Element(),
+        purchaseList: rows, purchaseListStatus: dialogStatus, purchaseListRetry: retry };
+    document.getElementById = id => ids[id];
+    document.lists.set('#buyFeedSeed li', seedElements);
     const window = new Element();
     const motion = { matches: false };
     window.matchMedia = () => motion;
-    let now = Date.parse('2026-11-12T10:30:00Z');
+    let now = Date.parse(SERVER_TIME);
     const intervals = [];
-    vm.runInContext(feedScript, vm.createContext({ document, window, Date: { now: () => now, parse: Date.parse },
+    vm.runInNewContext(feedScript, { document, window, URLSearchParams, fetch, Date: { now: () => now, parse: Date.parse },
         setInterval: (callback, delay) => {
             assert.equal(delay, 1000);
             intervals.push(callback);
-        } }));
-    const tick = () => intervals[0]();
-    const names = () => viewport.children.map(row => row.querySelector('strong').textContent);
-    assert.deepEqual(names().slice(0, 3), ['Kavya', 'Nilan', 'Uma']);
+        } });
+    return { feed, viewport, rows, retry, dialogStatus, viewAll, motion, tick: intervals[0],
+        advanceTime: ms => { now += ms; }, update: window.PcaOfferFeed.update,
+        names: () => viewport.children.map(row => row.querySelector('strong').textContent),
+        modalNames: () => rows.children.map(row => row.children[1].children[0].children[0].textContent) };
+}
+
+test('recent purchases scroll through six visible rows and return to the top', async () => {
+    const css = await readFile(new URL('../static/css/offer-page.css', import.meta.url), 'utf8');
+    assert.match(css, /\.buy-feed-viewport\s*\{[^}]*max-height: calc\(6 \* var\(--purchase-row-height\)\)/);
+    const firstNames = ['Kavya', 'Nilan', 'Uma', 'Arun', 'Priya', 'Nila', 'Kumar', 'Janani'];
+    const page = purchasePage(firstNames.map((name, i) => purchase(8 - i, name)));
+    const { feed, viewport, motion, tick, names, update } = page;
+    assert.deepEqual(names().slice(0, 6), firstNames.slice(0, 6));
     assert.equal(viewport.firstElementChild.querySelector('time').textContent, '30 mins ago');
     tick(); assert.equal(viewport.scrollTop, 50);
     tick(); assert.equal(viewport.scrollTop, 100);
@@ -294,16 +325,80 @@ test('recent purchases scroll through three visible rows and return to the top',
     await viewport.fire('wheel');
     viewport.scrollTop = 50;
     tick(); assert.equal(viewport.scrollTop, 50);
-    now += 4500;
+    page.advanceTime(4500);
     tick(); assert.equal(viewport.scrollTop, 100);
     motion.matches = true;
     tick(); assert.equal(viewport.scrollTop, 100);
 
-    window.PcaOfferFeed.update([{ id: 6, name: 'New buyer', school: 'Example school', district: 'Jaffna',
-        packageName: 'Practical Study Pack', confirmedAt: '2026-11-12T10:30:00Z' }], '2026-11-12T10:30:00Z');
+    update([{ id: 9, name: 'New buyer', school: 'Example school', district: 'Jaffna',
+        packageName: 'Practical Study Pack', confirmedAt: SERVER_TIME }], SERVER_TIME, false);
     assert.equal(viewport.scrollTop, 0);
     assert.deepEqual(names(), ['New buyer']);
     assert.equal(viewport.firstElementChild.querySelector('.buy-from').textContent, ' from Example school, Jaffna');
-    window.PcaOfferFeed.update([], '2026-11-12T10:30:00Z');
+    update([], SERVER_TIME, false);
     assert.equal(feed.hidden, true);
+});
+
+test('scrolling either purchase list reaches all 300 records without duplicates', async () => {
+    const all = Array.from({ length: 300 }, (_, index) => purchase(300 - index));
+    const requests = [];
+    let failNext = false;
+    const page = purchasePage(all.slice(0, 30), { hasMore: true, fetch: async url => {
+        const params = new URL(url, 'https://example.test').searchParams;
+        const before = Number(params.get('beforeId') ?? 301);
+        if (before !== 301) assert.equal(params.get('beforeAt'), PURCHASE_TIME);
+        requests.push(before);
+        if (failNext) { failNext = false; return { ok: false }; }
+        const size = Number(params.get('size'));
+        const items = all.filter(entry => entry.id < before).slice(0, size);
+        return { ok: true, json: async () => ({ items, hasMore: items.at(-1)?.id > 1 }) };
+    } });
+    async function scrollToEnd(list) {
+        list.scrollTop = list.scrollHeight - list.clientHeight;
+        await Promise.all([list.fire('scroll'), list.fire('scroll')]);
+    }
+
+    assert.deepEqual(requests, []);
+    for (let i = 0; i < 14; i++) await scrollToEnd(page.viewport);
+    assert.deepEqual(page.names(), all.map(entry => entry.name));
+    assert.equal(new Set(requests).size, 14);
+    const anchor = page.viewport.scrollTop;
+    page.update([purchase(301), ...all.slice(0, 29)], SERVER_TIME, true);
+    assert.equal(page.viewport.scrollTop, anchor + 50);
+    assert.deepEqual(page.names(), [purchase(301), ...all].map(entry => entry.name));
+    await scrollToEnd(page.viewport);
+    assert.equal(requests.length, 14);
+
+    await page.viewAll.fire('click');
+    assert.equal(page.rows.children.length, 20);
+    failNext = true;
+    await scrollToEnd(page.rows);
+    assert.equal(page.rows.children.length, 20);
+    assert.equal(page.retry.hidden, false);
+    await page.retry.fire('click');
+    assert.equal(page.retry.hidden, true);
+    assert.equal(page.rows.children.length, 40);
+    for (let i = 0; i < 13; i++) await scrollToEnd(page.rows);
+    assert.deepEqual(page.modalNames(), all.map(entry => entry.name));
+    const requestCount = requests.length;
+    await scrollToEnd(page.rows);
+    assert.equal(requests.length, requestCount);
+    assert.equal(page.dialogStatus.textContent, "That's everyone so far.");
+});
+
+test('a complete status response removes deleted purchases from loaded history', async () => {
+    const all = Array.from({ length: 32 }, (_, index) => purchase(32 - index));
+    const recent = all.slice(0, 30);
+    for (const remaining of [recent, all.slice(1, 31)]) {
+        const page = purchasePage(recent, { hasMore: true, fetch: async () => ({
+            ok: true,
+            json: async () => ({ items: all.slice(30), hasMore: false })
+        }) });
+        page.viewport.scrollTop = page.viewport.scrollHeight - page.viewport.clientHeight;
+        await page.viewport.fire('scroll');
+        assert.deepEqual(page.names(), all.map(entry => entry.name));
+
+        page.update(remaining, SERVER_TIME, false);
+        assert.deepEqual(page.names(), remaining.map(entry => entry.name));
+    }
 });

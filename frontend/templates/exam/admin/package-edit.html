@@ -1,17 +1,37 @@
 <!DOCTYPE html><html xmlns:th="http://www.thymeleaf.org" lang="en"><head th:replace="~{exam/admin/package-layout :: head('Package Editor')}"></head><body class="offer-admin-page"><div class="admin-shell">
 <aside th:replace="~{exam/admin/sidebar :: sidebar('offers')}"></aside><main class="admin-main">
-<div class="admin-page-head"><div><a class="eyebrow teal" th:href="@{/exam/admin/packages}">← ALL PACKAGES</a><h1 th:text="${packageId == null ? 'Create Offer Package' : 'Edit Offer Package'}"></h1></div></div>
+<div class="admin-page-head"><div><a class="eyebrow teal" th:href="@{/exam/admin/packages}">← ALL PACKAGES</a><h1 th:text="${duplicateSourceId != null ? 'Duplicate Offer Package' : (packageId == null ? 'Create Offer Package' : 'Edit Offer Package')}"></h1></div></div>
 <th:block th:replace="~{exam/admin/package-layout :: flash}"></th:block>
-<div class="editor-layout"><section class="glass-card admin-panel"><form th:action="${packageId == null} ? @{/exam/admin/packages/new} : @{/exam/admin/packages/{id}/edit(id=${packageId})}" method="post" enctype="multipart/form-data" th:object="${packageForm}">
+<div class="editor-layout"><section class="glass-card admin-panel"><form id="packageEditor" th:action="${duplicateSourceId != null} ? @{/exam/admin/packages/{id}/duplicate(id=${duplicateSourceId})} : (${packageId == null} ? @{/exam/admin/packages/new} : @{/exam/admin/packages/{id}/edit(id=${packageId})})" method="post" enctype="multipart/form-data" th:object="${packageForm}">
 <div class="flash error" th:if="${#fields.hasAnyErrors()}">Please check the highlighted fields. Select your poster again if you uploaded one.</div>
 <div class="admin-form-grid">
 <div class="admin-field full"><label for="name">Package name</label><input class="form-input" id="name" th:field="*{name}" required maxlength="160"><span class="error" th:errors="*{name}"></span></div>
 <div class="admin-field"><label for="category">Category</label><select class="form-input" id="category" th:field="*{category}"><option value="Theory">Theory</option><option value="Self Study">Self Study</option><option value="Practical">Practical</option><option value="Other">Other</option></select><span class="error" th:errors="*{category}"></span></div>
 <div class="admin-field"><label for="capacity">Total places</label><input class="form-input" id="capacity" type="number" th:field="*{capacity}" min="1" max="100000" required><span class="error" th:errors="*{capacity}"></span></div>
 <div class="admin-field"><label for="originalPrice">Original price (Rs.)</label><input class="form-input" id="originalPrice" type="number" th:field="*{originalPrice}" min="0" max="9999999999.99" step="0.01" required><span class="error" th:errors="*{originalPrice}"></span></div>
+<div class="admin-field"><label for="discountPercent">Discount (%)</label><input class="form-input" id="discountPercent" type="number" th:field="*{discountPercent}" min="0" max="100" step="1" aria-describedby="discountHelp"><small id="discountHelp">Set the percentage shown on the student card. Use 0 to hide the badge.</small><span class="error" th:errors="*{discountPercent}"></span></div>
 <div class="admin-field"><label for="offerPrice">Offer price (Rs.)</label><input class="form-input" id="offerPrice" type="number" th:field="*{offerPrice}" min="0" max="9999999999.99" step="0.01" required><span class="error" th:errors="*{offerPrice}"></span></div>
-<div class="admin-field full"><label for="posterUpload">Package poster</label><input class="form-input" id="posterUpload" name="poster" type="file" accept="image/jpeg,image/png" th:required="${packageId == null}"><small>JPEG / PNG · Max 5 MB</small><p class="error" id="posterError" role="alert"></p></div>
+<div class="admin-field full"><label for="posterUpload">Package poster</label><input class="form-input" id="posterUpload" name="poster" type="file" accept="image/jpeg,image/png" th:required="${posterPackageId == null}"><small th:text="${posterPackageId == null ? 'JPEG / PNG · Max 5 MB' : 'Optional replacement · JPEG / PNG · Max 5 MB'}">JPEG / PNG · Max 5 MB</small><p class="error" id="posterError" role="alert"></p></div>
 <div class="admin-field full"><label class="checkbox-label"><input type="checkbox" th:field="*{published}"> Publish on the student page</label></div>
 </div><div class="admin-form-buttons"><button class="btn primary" type="submit">Save package</button><a class="btn" th:href="@{/exam/admin/packages}">Cancel</a></div></form></section>
-<aside class="glass-card admin-panel editor-preview"><h2>Poster preview</h2><img id="posterPreview" th:src="${packageId != null} ? @{/exam/admin/packages/{id}/poster(id=${packageId})} : @{/img/logo.png}" alt="Package poster preview"></aside></div>
+<aside class="glass-card admin-panel editor-preview">
+    <h2>Live student card preview</h2>
+    <iframe id="studentCardPreview" title="Student package card preview" sandbox="allow-same-origin" tabindex="-1"
+            th:attr="data-purchased=${previewPurchased},data-ends-at=${previewDeadline}"></iframe>
+    <template id="studentCardTemplate" th:with="posterUrl=${posterPackageId != null} ? @{/exam/admin/packages/{id}/poster(id=${posterPackageId})} : @{/img/logo.png}">
+        <link rel="stylesheet" th:href="@{/css/tamil-fonts.css(v=1)}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+        <link rel="stylesheet" th:href="@{/css/offer-page.css(v=4)}">
+        <style>
+            html { overflow: hidden; }
+            .package-preview-inner { padding: 12px; }
+            .package-preview-inner .package-card { margin-bottom: 0; animation: none; }
+            .desktop-preview .packages-page .package-content > [data-preview] { display: block; }
+        </style>
+        <div class="package-preview-inner">
+            <article th:replace="~{exam/package-card :: card(null, ${posterUrl})}"></article>
+        </div>
+    </template>
+</aside></div>
+<script defer th:src="@{/js/offer-card-preview.js(v=1)}"></script>
 </main></div></body></html>

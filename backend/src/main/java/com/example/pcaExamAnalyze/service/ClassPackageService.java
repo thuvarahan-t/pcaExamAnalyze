@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.imageio.ImageIO;
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.*;
 import java.util.*;
 
@@ -42,10 +43,13 @@ public class ClassPackageService {
         return p;
     }
     public record Card(Long id, String name, String category, String batch, String description,
-                       BigDecimal originalPrice, BigDecimal offerPrice, int capacity, long purchased,
+                       BigDecimal originalPrice, BigDecimal offerPrice, Integer discountPercent, int capacity, long purchased,
                        int displayOrder, boolean published, long posterVersion) {
-        public int discount() { return originalPrice.signum() == 0 ? 0 :
-            100 - offerPrice.multiply(BigDecimal.valueOf(100)).divide(originalPrice, 0, java.math.RoundingMode.HALF_UP).intValue(); }
+        public int discount() {
+            if (discountPercent != null) return discountPercent;
+            return originalPrice.signum() == 0 ? 0 :
+                100 - offerPrice.multiply(BigDecimal.valueOf(100)).divide(originalPrice, 0, RoundingMode.HALF_UP).intValue();
+        }
         public long remaining() { return Math.max(0, capacity - purchased); }
         public int progress() { return (int) Math.min(100, purchased * 100 / capacity); }
     }
@@ -54,21 +58,20 @@ public class ClassPackageService {
         purchases.counts().forEach(c -> counts.put(c.getPackageId(), c.getTotal()));
         return (admin ? packages.findAllByOrderByDisplayOrderAscIdAsc() : packages.findByPublishedTrueOrderByDisplayOrderAscIdAsc())
             .stream().map(p -> new Card(p.getId(), p.getName(), p.getCategory(), p.getBatch(), p.getDescription(),
-                p.getOriginalPrice(), p.getOfferPrice(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
+                p.getOriginalPrice(), p.getOfferPrice(), p.getDiscountPercent(), p.getCapacity(), counts.getOrDefault(p.getId(), 0L),
                 p.getDisplayOrder(), p.isPublished(), p.getPosterVersion())).toList();
     }
     /** Public purchase feed: newest first, name and package only (registration IDs stay private). */
     public record RecentPurchase(Long id, String name, String school, String district, String packageName, Instant confirmedAt) {}
     public static final int RECENT_LIMIT = 30;
-    public List<RecentPurchase> recentPurchases() {
-        return purchases.recent(org.springframework.data.domain.PageRequest.of(0, RECENT_LIMIT)).stream()
-            .map(ClassPackageService::toRecent).toList();
+    public PurchasePage recentPurchases() {
+        return purchasePage(null, null, RECENT_LIMIT);
     }
     private static RecentPurchase toRecent(PackagePurchaseRepository.RecentPurchase r) {
         return new RecentPurchase(r.getId(), maskName(r.getStudentName()), nz(r.getSchool()), nz(r.getDistrict()),
             r.getPackageName(), r.getConfirmedAt());
     }
-    /** One page of the public "Recent purchases" popup; pass the last item's time + id to get the next page. */
+    /** One page of public purchases; pass the last item's time and ID to get the next page. */
     public record PurchasePage(List<RecentPurchase> items, boolean hasMore) {}
     public static final int PAGE_SIZE = 20;
     public PurchasePage purchasePage(Instant beforeAt, Long beforeId, int size) {
@@ -98,6 +101,7 @@ public class ClassPackageService {
         return out.toString();
     }
     public List<PackagePurchase> purchaseList(Long id) { get(id); return purchases.findByClassPackageIdOrderByConfirmedAtDescIdDesc(id); }
+    public long purchaseCount(Long id) { return purchases.countByClassPackageId(id); }
     public PackagePoster poster(Long id, boolean admin) {
         if (admin) get(id); else publicPackage(id);
         return posters.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -288,6 +292,7 @@ public class ClassPackageService {
         ClassPackageForm f = new ClassPackageForm();
         f.setName(p.getName()); f.setCategory(p.getCategory()); f.setBatch(p.getBatch()); f.setDescription(p.getDescription());
         f.setOriginalPrice(p.getOriginalPrice()); f.setOfferPrice(p.getOfferPrice()); f.setCapacity(p.getCapacity());
+        f.setDiscountPercent(p.getDiscountPercent());
         f.setDisplayOrder(p.getDisplayOrder()); f.setPublished(p.isPublished()); return f;
     }
     public PackageCampaignForm campaignForm() {
@@ -302,17 +307,37 @@ public class ClassPackageService {
     }
     @Transactional
     public Long save(Long id, ClassPackageForm f, MultipartFile upload) {
+        return savePackage(id, null, f, upload);
+    }
+    @Transactional
+    public Long saveDuplicate(Long sourceId, ClassPackageForm f, MultipartFile upload) {
+        return savePackage(null, locked(sourceId), f, upload);
+    }
+    private Long savePackage(Long id, ClassPackage source, ClassPackageForm f, MultipartFile upload) {
         ClassPackage p = id == null ? new ClassPackage() : locked(id);
-        if (f.getOfferPrice().compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
+        var discount = f.getDiscountPercent();
+        var offerPrice = f.getOfferPrice();
+        if (discount != null && (discount < 0 || discount > 100))
+            throw new IllegalArgumentException("Discount must be between 0 and 100.");
+        if (offerPrice == null) throw new IllegalArgumentException("Enter an offer price.");
+        if (offerPrice.compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
         if (id != null && f.getCapacity() < purchases.countByClassPackageId(id))
             throw new IllegalArgumentException("Capacity cannot be lower than confirmed purchases.");
         PackagePoster image = null;
         if (upload != null && !upload.isEmpty()) image = validatePoster(upload);
+        else if (source != null) image = copyPoster(source.getId());
         if (id == null && image == null) throw new IllegalArgumentException("Upload a poster for this package.");
         p.setName(f.getName().strip()); p.setCategory(f.getCategory());
-        if (f.getBatch() != null) p.setBatch(f.getBatch().strip()); else if (id == null) p.setBatch("");
-        if (f.getDescription() != null) p.setDescription(f.getDescription().strip()); else if (id == null) p.setDescription("");
-        p.setOriginalPrice(f.getOriginalPrice()); p.setOfferPrice(f.getOfferPrice());
+        if (source != null) {
+            p.setBatch(source.getBatch());
+            p.setDescription(source.getDescription());
+        } else if (id == null) {
+            p.setBatch("");
+            p.setDescription("");
+        }
+        if (f.getBatch() != null) p.setBatch(f.getBatch().strip());
+        if (f.getDescription() != null) p.setDescription(f.getDescription().strip());
+        p.setOriginalPrice(f.getOriginalPrice()); p.setOfferPrice(offerPrice); p.setDiscountPercent(discount);
         p.setCapacity(f.getCapacity()); p.setPublished(f.isPublished());
         if (f.getDisplayOrder() != null) p.setDisplayOrder(f.getDisplayOrder());
         else if (id == null) p.setDisplayOrder(packages.findFirstByOrderByDisplayOrderDescIdDesc().map(last -> last.getDisplayOrder() + 1).orElse(0));
@@ -320,6 +345,14 @@ public class ClassPackageService {
         packages.saveAndFlush(p);
         if (image != null) { image.setId(p.getId()); posters.save(image); }
         return p.getId();
+    }
+    private PackagePoster copyPoster(Long sourceId) {
+        var source = posters.findById(sourceId).orElse(null);
+        if (source == null) return null;
+        var copy = new PackagePoster();
+        copy.setContentType(source.getContentType());
+        copy.setData(source.getData().clone());
+        return copy;
     }
     private ClassPackage locked(Long id) {
         return packages.lockById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));

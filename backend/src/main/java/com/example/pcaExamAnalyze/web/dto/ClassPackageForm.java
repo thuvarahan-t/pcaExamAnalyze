@@ -12,7 +12,8 @@ public class ClassPackageForm {
     @Size(max = 100) private String batch;
     @Size(max = 2000) private String description;
     @NotNull @DecimalMin("0.00") @DecimalMax("9999999999.99") @Digits(integer = 10, fraction = 2) private BigDecimal originalPrice;
-    @NotNull @DecimalMin("0.00") @DecimalMax("9999999999.99") @Digits(integer = 10, fraction = 2) private BigDecimal offerPrice;
+    @NotNull(message = "Enter an offer price.") @DecimalMin("0.00") @DecimalMax("9999999999.99") @Digits(integer = 10, fraction = 2) private BigDecimal offerPrice;
+    @Min(0) @Max(100) private Integer discountPercent;
     @Min(1) @Max(100000) private int capacity = 111;
     @Min(0) @Max(100000) private Integer displayOrder;
     private boolean published;

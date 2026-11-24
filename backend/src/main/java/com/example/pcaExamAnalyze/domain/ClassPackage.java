@@ -16,6 +16,7 @@ public class ClassPackage {
     @Column(nullable = false, length = 2000) private String description;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal originalPrice;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal offerPrice;
+    private Integer discountPercent;
     @Column(nullable = false) private int capacity = 111;
     @Column(nullable = false) private int displayOrder;
     @Column(nullable = false) private boolean published;

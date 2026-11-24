@@ -67,16 +67,4 @@
         phone.addEventListener('input', showMatches);
         showMatches();
     }
-    const upload = document.getElementById('posterUpload');
-    if (!upload) return;
-    let objectUrl;
-    upload.addEventListener('change', () => {
-        const file = upload.files[0]; const error = document.getElementById('posterError'); error.textContent = ''; upload.setCustomValidity('');
-        if (!file) return;
-        if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-            error.textContent = 'Choose a JPEG or PNG poster, 5 MB or smaller.'; upload.setCustomValidity(error.textContent); return;
-        }
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        objectUrl = URL.createObjectURL(file); document.getElementById('posterPreview').src = objectUrl;
-    });
 })();
