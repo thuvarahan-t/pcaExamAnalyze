@@ -101,6 +101,7 @@ public class ClassPackageService {
         return out.toString();
     }
     public List<PackagePurchase> purchaseList(Long id) { get(id); return purchases.findByClassPackageIdOrderByConfirmedAtDescIdDesc(id); }
+    public long purchaseCount(Long id) { return purchases.countByClassPackageId(id); }
     public PackagePoster poster(Long id, boolean admin) {
         if (admin) get(id); else publicPackage(id);
         return posters.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));

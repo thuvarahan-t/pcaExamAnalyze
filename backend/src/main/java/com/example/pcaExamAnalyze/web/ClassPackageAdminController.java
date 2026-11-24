@@ -67,6 +67,8 @@ public class ClassPackageAdminController {
         model.addAttribute("packageId", id);
         model.addAttribute("duplicateSourceId", sourceId);
         model.addAttribute("posterPackageId", sourceId == null ? id : sourceId);
+        model.addAttribute("previewPurchased", id == null ? 0 : service.purchaseCount(id));
+        model.addAttribute("previewDeadline", service.campaign().getEndsAt());
         return "exam/admin/package-edit";
     }
     @PostMapping({"/new", "/{id}/edit", "/{sourceId}/duplicate"})

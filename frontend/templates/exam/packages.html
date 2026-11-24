@@ -19,7 +19,7 @@
     <script defer th:if="${campaign.hasPromoVideo()}" th:src="@{/js/offer-promo-video.js(v=9)}"></script>
     <script defer th:src="@{/js/offer-feed.js(v=7)}"></script>
     <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
-    <script defer th:src="@{/js/class-packages.js(v=16)}"></script>
+    <script defer th:src="@{/js/class-packages.js(v=17)}"></script>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
@@ -84,24 +84,9 @@
         <section class="packs" id="study-packs" aria-labelledby="packsHeading">
         <header class="showcase-header packs-header"><h2 id="packsHeading">Choose your study pack</h2></header>
         <div class="package-grid" th:if="${!#lists.isEmpty(packages)}">
-            <article class="package-card" th:each="pack : ${packages}" th:attr="data-package-id=${pack.id},data-name=${pack.name},data-category=${pack.category},data-original-price=${pack.originalPrice},data-offer-price=${pack.offerPrice},data-poster-version=${pack.posterVersion},data-capacity=${pack.capacity},data-purchased=${pack.purchased},data-low=${pack.remaining() * 4 <= pack.capacity},data-enquiry-url=@{/exam/packages/{id}/enquiry(id=${pack.id})}">
-                <div class="poster-area">
-                    <div class="poster-labels"><span class="category-label" th:text="${pack.category}"></span><span class="discount-label" th:if="${pack.discount() > 0}" th:text="|${pack.discount()}% OFF|"></span></div>
-                    <button type="button" class="poster-button" data-register th:attr="aria-label=|Register for ${pack.name}|">
-                        <img th:src="@{/exam/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})}" th:alt="|${pack.name} promotional poster|" width="1254" height="1254" loading="lazy">
-                        <span class="poster-hint">Get this package <i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
-                    </button>
-                </div>
-                <div class="package-content"><h3 th:text="${pack.name}"></h3>
-                    <div class="price-line"><div><span class="price-caption">SPECIAL OFFER</span><div class="price"><span>Rs.</span><strong th:text="${#numbers.formatDecimal(pack.offerPrice, 1, 'COMMA', 0, 'POINT')}"></strong></div></div><div class="was-price"><span>Regular price</span><del th:text="|Rs. ${#numbers.formatDecimal(pack.originalPrice, 1, 'COMMA', 0, 'POINT')}|"></del></div></div>
-                    <div class="availability"><div class="availability-line"><span class="availability-heading">CONFIRMED PURCHASES</span><span class="seats-left" th:text="|${pack.remaining()} places left|"></span></div>
-                        <div class="purchase-total"><strong class="purchased-count" th:text="${pack.purchased}"></strong><span class="purchase-capacity" th:text="| / ${pack.capacity}|"></span><span class="purchase-caption">students purchased</span></div>
-                        <div class="purchase-progress" role="progressbar" th:attr="aria-valuenow=${pack.purchased},aria-valuemax=${pack.capacity},aria-label=|Confirmed purchases for ${pack.name}|" aria-valuemin="0"><span th:style="|width: ${pack.progress()}%|"></span></div>
-                    </div>
-                    <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack.remaining() == 0}" ><span th:text="${pack.remaining() == 0 ? 'Fully booked' : 'Get this package'}"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
-                    <button class="poster-preview-link" type="button" data-preview>View full poster</button>
-                </div>
-            </article>
+            <th:block th:each="pack : ${packages}">
+                <article th:replace="~{exam/package-card :: card(${pack}, @{/exam/packages/{id}/poster(id=${pack.id},v=${pack.posterVersion})})}"></article>
+            </th:block>
         </div>
         <div class="pkg-empty" th:if="${#lists.isEmpty(packages)}"><h3>Good things are on the way.</h3><p>New class packages will appear here when they are available.</p></div>
         </section>

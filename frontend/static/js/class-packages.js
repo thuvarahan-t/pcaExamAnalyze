@@ -189,6 +189,7 @@
                 card.dataset.updated = String(card.dataset.name !== pack.name || card.dataset.category !== pack.category
                     || Number(card.dataset.originalPrice) !== Number(pack.originalPrice)
                     || Number(card.dataset.offerPrice) !== Number(pack.offerPrice)
+                    || (card.dataset.discountPercent ?? '') !== String(pack.discountPercent ?? '')
                     || Number(card.dataset.posterVersion) !== pack.posterVersion);
                 if (card.dataset.updated === 'true') catalogRefreshPending = true;
                 card.dataset.purchased = pack.purchased; card.dataset.capacity = pack.capacity;

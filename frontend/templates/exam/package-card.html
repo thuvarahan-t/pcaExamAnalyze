@@ -1,0 +1,46 @@
+<article xmlns:th="http://www.thymeleaf.org" class="package-card"
+         th:fragment="card(pack, posterUrl)"
+         th:with="name=${pack?.name ?: 'Package name'}, discount=${pack == null ? 0 : pack.discount()}, remaining=${pack == null ? 0 : pack.remaining()}"
+         th:attr="data-package-id=${pack?.id},data-name=${pack?.name},data-category=${pack?.category},data-original-price=${pack?.originalPrice},data-offer-price=${pack?.offerPrice},data-discount-percent=${pack?.discountPercent},data-poster-version=${pack?.posterVersion},data-capacity=${pack?.capacity},data-purchased=${pack?.purchased},data-low=${pack != null and remaining * 4 <= pack.capacity},data-enquiry-url=${pack == null} ? null : @{/exam/packages/{id}/enquiry(id=${pack.id})}">
+    <div class="poster-area">
+        <div class="poster-labels">
+            <span class="category-label" th:text="${pack?.category ?: 'Theory'}"></span>
+            <span class="discount-label" th:if="${pack == null or discount > 0}" th:hidden="${discount == 0}" th:text="|${discount}% OFF|"></span>
+        </div>
+        <button type="button" class="poster-button" data-register th:attr="aria-label=|Register for ${name}|">
+            <img th:src="${posterUrl}" th:alt="|${name} promotional poster|" width="1254" height="1254" loading="lazy">
+            <span class="poster-hint">Get this package <i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
+        </button>
+    </div>
+    <div class="package-content">
+        <h3 th:text="${name}"></h3>
+        <div class="price-line">
+            <div>
+                <span class="price-caption">SPECIAL OFFER</span>
+                <div class="price"><span>Rs.</span><strong th:text="${pack == null ? '—' : #numbers.formatDecimal(pack.offerPrice, 1, 'COMMA', pack.offerPrice.stripTrailingZeros().scale() > 0 ? 2 : 0, 'POINT')}"></strong></div>
+            </div>
+            <div class="was-price">
+                <span>Regular price</span>
+                <del th:text="${pack == null ? 'Rs. —' : 'Rs. ' + #numbers.formatDecimal(pack.originalPrice, 1, 'COMMA', pack.originalPrice.stripTrailingZeros().scale() > 0 ? 2 : 0, 'POINT')}"></del>
+            </div>
+        </div>
+        <div class="availability">
+            <div class="availability-line">
+                <span class="availability-heading">CONFIRMED PURCHASES</span>
+                <span class="seats-left" th:text="|${remaining} places left|"></span>
+            </div>
+            <div class="purchase-total">
+                <strong class="purchased-count" th:text="${pack?.purchased ?: 0}"></strong>
+                <span class="purchase-capacity" th:text="| / ${pack?.capacity ?: 111}|"></span>
+                <span class="purchase-caption">students purchased</span>
+            </div>
+            <div class="purchase-progress" role="progressbar" th:attr="aria-valuenow=${pack?.purchased ?: 0},aria-valuemax=${pack?.capacity ?: 111},aria-label=|Confirmed purchases for ${name}|" aria-valuemin="0">
+                <span th:style="|width: ${pack == null ? 0 : pack.progress()}%|"></span>
+            </div>
+        </div>
+        <button class="pkg-btn primary register-button" type="button" data-register th:disabled="${pack != null and remaining == 0}">
+            <span th:text="${pack != null and remaining == 0 ? 'Fully booked' : 'Get this package'}"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+        </button>
+        <button class="poster-preview-link" type="button" data-preview>View full poster</button>
+    </div>
+</article>
