@@ -53,17 +53,33 @@ public class ClassPackageAdminController {
         service.saveCampaign(form); redirect.addFlashAttribute("success", "Campaign settings updated."); return "redirect:/exam/admin/packages";
     }
     @GetMapping("/new")
-    public String newPackage(Model model) { model.addAttribute("packageForm", new ClassPackageForm()); return editor(null, model); }
+    public String newPackage(Model model) { model.addAttribute("packageForm", new ClassPackageForm()); return editor(null, null, model); }
     @GetMapping("/{id}/edit")
-    public String edit(@PathVariable Long id, Model model) { model.addAttribute("packageForm", service.form(id)); return editor(id, model); }
-    private String editor(Long id, Model model) { model.addAttribute("packageId", id); return "exam/admin/package-edit"; }
-    @PostMapping({"/new", "/{id}/edit"})
-    public String save(@PathVariable(required = false) Long id, @Valid @ModelAttribute("packageForm") ClassPackageForm form,
+    public String edit(@PathVariable Long id, Model model) { model.addAttribute("packageForm", service.form(id)); return editor(id, null, model); }
+    @GetMapping("/{sourceId}/duplicate")
+    public String duplicate(@PathVariable Long sourceId, Model model) {
+        var form = service.form(sourceId);
+        form.setPublished(false);
+        model.addAttribute("packageForm", form);
+        return editor(null, sourceId, model);
+    }
+    private String editor(Long id, Long sourceId, Model model) {
+        model.addAttribute("packageId", id);
+        model.addAttribute("duplicateSourceId", sourceId);
+        model.addAttribute("posterPackageId", sourceId == null ? id : sourceId);
+        return "exam/admin/package-edit";
+    }
+    @PostMapping({"/new", "/{id}/edit", "/{sourceId}/duplicate"})
+    public String save(@PathVariable(required = false) Long id, @PathVariable(required = false) Long sourceId,
+            @Valid @ModelAttribute("packageForm") ClassPackageForm form,
             BindingResult errors, @RequestParam(required = false) MultipartFile poster, Model model, RedirectAttributes redirect) {
-        if (errors.hasErrors()) return editor(id, model);
+        if (errors.hasErrors()) return editor(id, sourceId, model);
         try {
-            service.save(id, form, poster); redirect.addFlashAttribute("success", "Package saved."); return "redirect:/exam/admin/packages";
-        } catch (IllegalArgumentException e) { model.addAttribute("error", e.getMessage()); return editor(id, model); }
+            if (sourceId == null) service.save(id, form, poster);
+            else service.saveDuplicate(sourceId, form, poster);
+            redirect.addFlashAttribute("success", sourceId == null ? "Package saved." : "Duplicate package saved.");
+            return "redirect:/exam/admin/packages";
+        } catch (IllegalArgumentException e) { model.addAttribute("error", e.getMessage()); return editor(id, sourceId, model); }
     }
     @PostMapping("/{id}/toggle")
     public String toggle(@PathVariable Long id, RedirectAttributes redirect) {

@@ -315,6 +315,50 @@ class ClassPackagesIntegrationTest {
         var afterRemoval = Jsoup.parse(get(admin, "/exam/admin/packages/" + pack.id() + "/purchases").body());
         assertTrue(afterRemoval.select(".flash.success").isEmpty());
     }
+    @Test void adminCanDuplicateAPackageAsAnIndependentDraftWithItsPoster() throws Exception {
+        Long sourceId = fixture(111);
+        var source = service.get(sourceId);
+        service.recordInterest(sourceId, "Duplicate Enquiry", "DUP-IN-01");
+        service.addPurchase(sourceId, "DUP-BUY-01", "Duplicate Purchase");
+        var teacher = admin();
+        var student = client();
+        String path = "/exam/admin/packages/" + sourceId + "/duplicate";
+        assertEquals(302, get(student, path).statusCode());
+        assertNotNull(Jsoup.parse(get(teacher, "/exam/admin/packages").body()).selectFirst("a[href='" + path + "']"));
+
+        int before = service.cards(true).size();
+        var editor = get(teacher, path);
+        assertEquals(200, editor.statusCode());
+        var form = Jsoup.parse(editor.body()).selectFirst("form[action='" + path + "']");
+        assertNotNull(form);
+        assertEquals(source.getName(), form.selectFirst("#name").val());
+        assertFalse(form.selectFirst("input[name=published]").hasAttr("checked"));
+        assertFalse(form.selectFirst("#posterUpload").hasAttr("required"));
+        assertEquals(before, service.cards(true).size());
+
+        String details = "category=Practical&originalPrice=4000&offerPrice=1250&capacity=12";
+        var invalid = post(teacher, path, token(editor), "name=&" + details);
+        assertEquals(200, invalid.statusCode());
+        assertNotNull(Jsoup.parse(invalid.body()).selectFirst("form[action='" + path + "']"));
+        assertEquals(before, service.cards(true).size());
+
+        String duplicateName = "Duplicated Package " + UUID.randomUUID();
+        assertEquals(302, post(teacher, path, token(invalid), "name=" + enc(duplicateName) + "&" + details).statusCode());
+        var duplicate = service.cards(true).stream().filter(card -> card.name().equals(duplicateName)).findFirst().orElseThrow();
+        assertNotEquals(sourceId, duplicate.id());
+        assertFalse(duplicate.published());
+        assertEquals("Practical", duplicate.category());
+        assertEquals(12, duplicate.capacity());
+        assertEquals(new BigDecimal("1250.00"), duplicate.offerPrice());
+        assertEquals(source.getDescription(), duplicate.description());
+        assertEquals(source.getBatch(), duplicate.batch());
+        assertArrayEquals(service.poster(sourceId, true).getData(), service.poster(duplicate.id(), true).getData());
+        assertTrue(service.purchaseList(duplicate.id()).isEmpty());
+        assertTrue(service.interestedStudents(duplicate.id()).isEmpty());
+        assertEquals(1, service.purchaseList(sourceId).size());
+        assertEquals(source.getName(), service.get(sourceId).getName());
+        assertFalse(get(student, "/exam/packages").body().contains(duplicateName));
+    }
     @Test void confirmedStudentSearchAndRemovalPopupStayInsideThePurchaseList() throws Exception {
         Long id = fixture(111);
         service.addPurchase(id, "CONFIRMED-101", "Thuvrahan Kumar");

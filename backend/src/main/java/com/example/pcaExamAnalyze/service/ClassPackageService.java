@@ -302,16 +302,31 @@ public class ClassPackageService {
     }
     @Transactional
     public Long save(Long id, ClassPackageForm f, MultipartFile upload) {
+        return savePackage(id, null, f, upload);
+    }
+    @Transactional
+    public Long saveDuplicate(Long sourceId, ClassPackageForm f, MultipartFile upload) {
+        return savePackage(null, locked(sourceId), f, upload);
+    }
+    private Long savePackage(Long id, ClassPackage source, ClassPackageForm f, MultipartFile upload) {
         ClassPackage p = id == null ? new ClassPackage() : locked(id);
         if (f.getOfferPrice().compareTo(f.getOriginalPrice()) > 0) throw new IllegalArgumentException("Offer price cannot exceed original price.");
         if (id != null && f.getCapacity() < purchases.countByClassPackageId(id))
             throw new IllegalArgumentException("Capacity cannot be lower than confirmed purchases.");
         PackagePoster image = null;
         if (upload != null && !upload.isEmpty()) image = validatePoster(upload);
+        else if (source != null) image = copyPoster(source.getId());
         if (id == null && image == null) throw new IllegalArgumentException("Upload a poster for this package.");
         p.setName(f.getName().strip()); p.setCategory(f.getCategory());
-        if (f.getBatch() != null) p.setBatch(f.getBatch().strip()); else if (id == null) p.setBatch("");
-        if (f.getDescription() != null) p.setDescription(f.getDescription().strip()); else if (id == null) p.setDescription("");
+        if (source != null) {
+            p.setBatch(source.getBatch());
+            p.setDescription(source.getDescription());
+        } else if (id == null) {
+            p.setBatch("");
+            p.setDescription("");
+        }
+        if (f.getBatch() != null) p.setBatch(f.getBatch().strip());
+        if (f.getDescription() != null) p.setDescription(f.getDescription().strip());
         p.setOriginalPrice(f.getOriginalPrice()); p.setOfferPrice(f.getOfferPrice());
         p.setCapacity(f.getCapacity()); p.setPublished(f.isPublished());
         if (f.getDisplayOrder() != null) p.setDisplayOrder(f.getDisplayOrder());
@@ -320,6 +335,14 @@ public class ClassPackageService {
         packages.saveAndFlush(p);
         if (image != null) { image.setId(p.getId()); posters.save(image); }
         return p.getId();
+    }
+    private PackagePoster copyPoster(Long sourceId) {
+        var source = posters.findById(sourceId).orElse(null);
+        if (source == null) return null;
+        var copy = new PackagePoster();
+        copy.setContentType(source.getContentType());
+        copy.setData(source.getData().clone());
+        return copy;
     }
     private ClassPackage locked(Long id) {
         return packages.lockById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
