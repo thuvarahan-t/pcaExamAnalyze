@@ -81,8 +81,9 @@
                 const previous = live[index];
                 return Object.keys(entry).some(key => entry[key] !== previous[key]);
             });
+            const complete = hasMore === false;
             const previousTail = list.at(-1)?.id;
-            if (changed) {
+            if (changed || (complete && list.length > recent.length)) {
                 const known = new Set(live.map(entry => entry.id));
                 const hasNewPurchase = recent.some(entry => !known.has(entry.id));
                 const top = viewport.scrollTop;
@@ -90,8 +91,8 @@
                 const anchor = list[Math.floor(top / rowHeight)]?.id;
                 const reviewing = top > 0 && readingHistory();
                 const boundary = list.findIndex(entry => entry.id === recent.at(-1)?.id);
-                // Only keep loaded history when the refreshed recent rows overlap it.
-                const older = boundary < 0 ? [] : list.slice(boundary + 1);
+                // Keep loaded history only when the response is partial and overlaps it.
+                const older = complete || boundary < 0 ? [] : list.slice(boundary + 1);
                 list = [...recent, ...older];
                 live = recent;
                 render();

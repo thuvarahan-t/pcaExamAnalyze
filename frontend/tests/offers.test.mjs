@@ -385,3 +385,20 @@ test('scrolling either purchase list reaches all 300 records without duplicates'
     assert.equal(requests.length, requestCount);
     assert.equal(page.dialogStatus.textContent, "That's everyone so far.");
 });
+
+test('a complete status response removes deleted purchases from loaded history', async () => {
+    const all = Array.from({ length: 32 }, (_, index) => purchase(32 - index));
+    const recent = all.slice(0, 30);
+    for (const remaining of [recent, all.slice(1, 31)]) {
+        const page = purchasePage(recent, { hasMore: true, fetch: async () => ({
+            ok: true,
+            json: async () => ({ items: all.slice(30), hasMore: false })
+        }) });
+        page.viewport.scrollTop = page.viewport.scrollHeight - page.viewport.clientHeight;
+        await page.viewport.fire('scroll');
+        assert.deepEqual(page.names(), all.map(entry => entry.name));
+
+        page.update(remaining, SERVER_TIME, false);
+        assert.deepEqual(page.names(), remaining.map(entry => entry.name));
+    }
+});
