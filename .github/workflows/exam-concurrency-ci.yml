@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify offer page interactions
-        run: node --test frontend/tests/offers.test.mjs
+      - name: Verify frontend interactions
+        run: node --test frontend/tests/*.test.mjs
   java-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 25

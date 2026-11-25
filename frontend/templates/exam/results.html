@@ -13,6 +13,7 @@
     <link rel="stylesheet" th:href="@{/css/results-dashboard.css(v=3)}">
     <script defer th:src="@{/js/results-dashboard.js(v=3)}"></script>
     <script defer th:src="@{/js/student-report-download.js(v=2)}"></script>
+    <th:block th:replace="~{exam/pwa-head :: metadata}"></th:block>
 </head>
 <body class="pca-results" data-no-i18n>
 <a class="rd-skip" href="#resultsMain" data-ui="skip">Skip to results</a>

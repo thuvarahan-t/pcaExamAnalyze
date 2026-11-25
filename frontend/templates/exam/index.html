@@ -216,6 +216,7 @@
      "prefetch":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}]}
     </script>
     <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=26)}">
+    <th:block th:replace="~{exam/pwa-head :: metadata}"></th:block>
 </head>
 <body>
 <header class="topbar">

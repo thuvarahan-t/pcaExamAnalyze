@@ -21,6 +21,7 @@
     <script defer th:src="@{/js/offer-feed.js(v=8)}"></script>
     <script defer th:src="@{/js/package-phone.js(v=2)}"></script>
     <script defer th:src="@{/js/class-packages.js(v=17)}"></script>
+    <th:block th:replace="~{exam/pwa-head :: metadata}"></th:block>
 </head>
 <body class="packages-page" th:attr="data-status-url=@{/exam/packages/status},data-server-now=${serverNow},data-ends-at=${campaign.endsAt}">
 <header class="pkg-topbar"><nav class="pkg-container pkg-nav" aria-label="Main navigation">
