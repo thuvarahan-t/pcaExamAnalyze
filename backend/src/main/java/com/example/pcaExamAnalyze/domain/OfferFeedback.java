@@ -27,4 +27,9 @@ public class OfferFeedback {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     private Status status;
+    @Column(length = 80)
+    private String photoKey;
+    private Integer photoBytes;
+    private Integer photoWidth;
+    private Integer photoHeight;
 }

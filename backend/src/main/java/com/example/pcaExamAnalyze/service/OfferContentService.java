@@ -14,14 +14,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 @Service
 @Transactional(readOnly = true)
@@ -30,6 +34,7 @@ public class OfferContentService {
     private static final int PHOTO_CACHE_ENTRIES = 48;
     private static final Logger log = LoggerFactory.getLogger(OfferContentService.class);
     private final EntityManager db;
+    private final R2ImageStorage storage;
     private final Map<Long, EventPhotoRenditions> webPhotos = Collections.synchronizedMap(
         new LinkedHashMap<>(16, 0.75f, true) {
             @Override
@@ -38,8 +43,9 @@ public class OfferContentService {
             }
         });
 
-    public OfferContentService(EntityManager db) {
+    public OfferContentService(EntityManager db, R2ImageStorage storage) {
         this.db = db;
+        this.storage = storage;
     }
 
     public record EventCard(OfferEvent event, List<Long> photos) {}
@@ -157,6 +163,67 @@ public class OfferContentService {
     @Transactional
     public void addFeedback(FeedbackInput input, Status status) {
         db.persist(newFeedback(input, status));
+    }
+
+    @Transactional
+    public void submitFeedback(FeedbackInput input, List<MultipartFile> uploads) {
+        var feedback = newFeedback(input, Status.PENDING);
+        if (uploads != null && !uploads.isEmpty()) {
+            if (uploads.size() > 1) throw new IllegalArgumentException("You can attach one photo to your feedback.");
+            var upload = uploads.getFirst();
+            // Browsers may send an empty part when the optional picker has no selection.
+            if (!upload.isEmpty() || !"".equals(upload.getOriginalFilename())) {
+                saveFeedbackPhoto(feedback, FeedbackPhoto.compress(upload));
+            }
+        }
+        db.persist(feedback);
+    }
+
+    private void saveFeedbackPhoto(OfferFeedback feedback, FeedbackPhoto photo) {
+        if (!storage.enabled()) throw new FeedbackPhotoUnavailable(null);
+        String key = "offer-feedback/" + UUID.randomUUID() + ".jpg";
+
+        // Register before upload: a timeout could occur after R2 has received the bytes.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) Thread.startVirtualThread(() -> storage.deleteQuietly(key));
+            }
+        });
+        try {
+            storage.put(key, photo.bytes(), FeedbackPhoto.CONTENT_TYPE);
+        } catch (RuntimeException exception) {
+            log.warn("Unable to store Offer feedback photo ({})", exception.getClass().getSimpleName());
+            throw new FeedbackPhotoUnavailable(exception);
+        }
+
+        feedback.setPhotoKey(key);
+        feedback.setPhotoBytes(photo.bytes().length);
+        feedback.setPhotoWidth(photo.width());
+        feedback.setPhotoHeight(photo.height());
+    }
+
+    public byte[] feedbackPhoto(Long id, boolean admin) {
+        String key = db.createQuery("""
+            select f.photoKey from OfferFeedback f
+            where f.id = :id and f.photoKey is not null and (:admin = true or f.status = :published)
+            """, String.class).setParameter("id", id).setParameter("admin", admin)
+            .setParameter("published", Status.PUBLISHED).getResultStream().findFirst()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!storage.enabled()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+        try {
+            return storage.read(key);
+        } catch (NoSuchKeyException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        } catch (RuntimeException exception) {
+            log.warn("Unable to read Offer feedback photo {} ({})", id, exception.getClass().getSimpleName());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    public static class FeedbackPhotoUnavailable extends RuntimeException {
+        FeedbackPhotoUnavailable(Throwable cause) {
+            super("The photo could not be uploaded right now. Try again or remove the photo to send your feedback.", cause);
+        }
     }
 
     @Transactional
