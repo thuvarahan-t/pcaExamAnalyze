@@ -1,0 +1,63 @@
+package com.example.pcaExamAnalyze.service;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.net.URI;
+import java.time.Duration;
+
+@Service
+public class GroqFeedbackTranscriber {
+    private static final URI TRANSCRIPTIONS = URI.create("https://api.groq.com/openai/v1/audio/transcriptions");
+
+    private final boolean enabled;
+    private final String apiKey;
+    private final String model;
+    private final RestClient client;
+    private final URI endpoint;
+
+    @Autowired
+    public GroqFeedbackTranscriber(@Value("${pca.feedback.voice.enabled}") boolean enabled,
+                                  @Value("${pca.feedback.voice.groq.api-key}") String apiKey,
+                                  @Value("${pca.feedback.voice.groq.model}") String model) {
+        this(enabled, apiKey, model, FeedbackProviderClient.http(Duration.ofSeconds(12)), TRANSCRIPTIONS);
+    }
+
+    GroqFeedbackTranscriber(boolean enabled, String apiKey, String model, RestClient client, URI endpoint) {
+        this.enabled = enabled;
+        this.apiKey = apiKey.strip();
+        this.model = model.strip();
+        this.client = client;
+        this.endpoint = endpoint;
+    }
+
+    public boolean available() {
+        return enabled && !apiKey.isEmpty() && !model.isEmpty();
+    }
+
+    public String transcribe(FeedbackAudio format, byte[] audio) throws Failed {
+        if (!available()) throw new Failed();
+        var parts = new MultipartBodyBuilder();
+        parts.part("file", audio, format.mediaType()).filename(format.fileName());
+        parts.part("model", model);
+        parts.part("language", "ta");
+        parts.part("response_format", "json");
+
+        try {
+            var result = FeedbackProviderClient.json(client.post().uri(endpoint)
+                .headers(headers -> headers.setBearerAuth(apiKey))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(parts.build()));
+            return FeedbackProviderClient.plainText(result.path("text"));
+        } catch (FeedbackProviderClient.Unavailable e) {
+            throw new Failed();
+        }
+    }
+
+    public static final class Failed extends RuntimeException {}
+}

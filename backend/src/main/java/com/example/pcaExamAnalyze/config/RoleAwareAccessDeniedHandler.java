@@ -1,5 +1,6 @@
 package com.example.pcaExamAnalyze.config;
 
+import com.example.pcaExamAnalyze.web.OfferFeedbackVoiceController;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,14 @@ public class RoleAwareAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
         String offerPath = request.getContextPath() + "/exam/packages";
+        if (accessDeniedException instanceof CsrfException && "POST".equals(request.getMethod())
+                && request.getRequestURI().equals(request.getContextPath() + OfferFeedbackVoiceController.PATH)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.setHeader("Cache-Control", "no-store");
+            response.getWriter().write("{\"message\":\"Your feedback form expired. Reload the Offer page to use voice typing.\"}");
+            return;
+        }
         if (accessDeniedException instanceof CsrfException && "POST".equals(request.getMethod())
                 && request.getRequestURI().equals(offerPath + "/feedback")) {
             if ("true".equalsIgnoreCase(request.getHeader("X-Feedback-Upload"))) {
