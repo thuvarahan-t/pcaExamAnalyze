@@ -4,7 +4,7 @@ Work starts on `feat/offer-package-admin-purchase-feed` at `41dca5a`. The existi
 
 ## Implementation and automated verification
 
-- [ ] Document optional voice settings. Verify the tracked example contains blank credentials and safe defaults, the local file is ignored, and the app starts with no voice credentials.
+- [x] Document optional voice settings. Verified blank credentials and safe defaults in `backend/.env.example`, and `git check-ignore backend/.env .env` confirmed both paths are ignored. Added six missing local entries and verified the original file content was preserved. Credential-free startup is covered by the transcription check below.
 - [ ] Validate and compress feedback photos. Verify decoded dimensions, supported formats, EXIF orientation, metadata removal, input limits, and a final JPEG no larger than 100,000 bytes.
 - [ ] Store feedback photos in the private R2 bucket. Verify form validation precedes storage, nullable metadata preserves older records, upload errors preserve text-only submission, and rollback deletes the uploaded object. Use a mocked R2 client.
 - [ ] Add the photo picker, preview and removal, plus teacher and public images. Verify anonymous uploads enter `PENDING`, drafts survive recoverable failures, teacher previews require authentication, a public read succeeds only while published, and responses cannot be cached. Use isolated HTTP tests and mocked R2.
