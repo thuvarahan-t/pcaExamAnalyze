@@ -153,6 +153,7 @@
             }
             form.elements.district.dispatchEvent(new Event('change', { bubbles: true }));
             form.elements.comment.dispatchEvent(new Event('input', { bubbles: true }));
+            form.dispatchEvent(new Event('feedback:sent'));
             success.hidden = false;
             details.open = false;
             details.querySelector('summary').focus();

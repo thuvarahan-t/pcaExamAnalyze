@@ -317,6 +317,15 @@
 .feedback-photo-preview button { color: #163b53; font: inherit; text-decoration: underline; }
 .feedback-photo [hidden], .feedback-photo[hidden] { display: none; }
 .feedback-note { margin: 0; color: #445c6f; font-size: 13px; }
+.feedback-voice, .feedback-voice-draft, .feedback-comment { display: grid; gap: 8px; }
+.feedback-voice-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.feedback-voice-actions button {
+    min-height: 42px; padding: 6px 14px; border: 1px solid #a7bbcb; border-radius: 8px;
+    background: #f5fafc; color: #163b53; font: inherit; font-weight: 650; cursor: pointer;
+}
+.feedback-voice-actions button:disabled { opacity: .55; cursor: wait; }
+.feedback-voice-actions button[data-voice-stop] { background: #163b53; color: #fff; }
+.feedback-voice [hidden] { display: none; }
 .showcase-message, .showcase-error { margin: 0; padding: 14px 18px; border-radius: 14px; font-weight: 600; }
 .showcase-message { background: #d3f3ec; color: #075e55; }
 .showcase-error { background: #ffe3e4; color: #8e2333; }

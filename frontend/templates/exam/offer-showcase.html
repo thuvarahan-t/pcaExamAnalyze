@@ -107,7 +107,30 @@
                     <div th:replace="~{exam/district-picker :: picker('Choose district', false)}"></div>
                 </div>
             </div>
-            <label>Your feedback<textarea name="comment" required maxlength="600" rows="4" th:text="${feedbackDraft?.comment()}"></textarea></label>
+            <div class="feedback-voice" th:if="${feedbackVoiceAvailable == true}"
+                 th:attr="data-feedback-voice=@{/exam/packages/feedback/transcribe}">
+                <div class="feedback-voice-actions">
+                    <button type="button" data-voice-record aria-describedby="feedback-voice-note" hidden>Record Tamil</button>
+                    <button type="button" data-voice-stop hidden>Stop recording</button>
+                    <button type="button" data-voice-retry hidden>Retry transcription</button>
+                </div>
+                <p class="feedback-note" id="feedback-voice-note">Speak for up to 30 seconds. Your recording is sent for transcription when you stop.</p>
+                <p class="feedback-note" role="status" data-voice-status></p>
+                <div class="feedback-voice-draft" data-voice-overflow hidden>
+                    <label for="feedback-transcript">Transcript<textarea id="feedback-transcript" rows="3"></textarea></label>
+                    <div class="feedback-voice-actions">
+                        <button type="button" data-voice-add>Add to feedback</button>
+                        <button type="button" data-voice-discard>Discard transcript</button>
+                    </div>
+                </div>
+            </div>
+            <div class="feedback-comment">
+                <label for="feedback-comment">Your feedback
+                    <textarea id="feedback-comment" name="comment" required maxlength="600" rows="4"
+                              aria-describedby="feedback-comment-count" th:text="${feedbackDraft?.comment()}"></textarea>
+                </label>
+                <p id="feedback-comment-count" class="feedback-note" data-feedback-count>600-character limit</p>
+            </div>
             <div class="feedback-photo" data-feedback-photo hidden>
                 <label for="feedback-photo">Photo (optional)</label>
                 <input id="feedback-photo" type="file" accept="image/*" aria-describedby="feedback-photo-note">
