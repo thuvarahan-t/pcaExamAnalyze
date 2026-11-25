@@ -38,7 +38,8 @@ class OfferFeedbackVoiceIntegrationTest {
         context = new SpringApplicationBuilder(PcaExamAnalyzeApplication.class, TestProviders.class).run(
             "--spring.profiles.active=dev", "--server.port=0",
             "--spring.datasource.url=jdbc:h2:mem:offervoice;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-            "--pca.feedback.voice.groq.api-key=", "--pca.feedback.voice.enabled=false", "--logging.level.root=ERROR", "--debug=false");
+            "--pca.feedback.voice.groq.api-key=", "--pca.feedback.voice.enabled=false",
+            "--pca.feedback.voice.gemini.enabled=false", "--logging.level.root=ERROR", "--debug=false");
         provider = context.getBean("stubGroq", GroqFeedbackTranscriber.class);
         base = "http://localhost:" + ((ServletWebServerApplicationContext) context).getWebServer().getPort();
     }

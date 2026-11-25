@@ -4,6 +4,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -15,7 +16,7 @@ final class FeedbackProviderClient {
     static final int MAX_TEXT_LENGTH = 3_000;
     private static final int MAX_RESPONSE_BYTES = 32_768;
     private static final Pattern WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
-    private static final JsonMapper JSON = JsonMapper.shared();
+    static final JsonMapper JSON = JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
 
     private FeedbackProviderClient() {}
 
@@ -45,10 +46,17 @@ final class FeedbackProviderClient {
     static String plainText(JsonNode node) {
         if (!node.isString()) throw new Unavailable();
         String text = WHITESPACE.matcher(node.asString()).replaceAll(" ").strip();
-        if (text.length() > MAX_TEXT_LENGTH || text.codePoints().anyMatch(Character::isISOControl)) {
+        if (text.length() > MAX_TEXT_LENGTH || text.codePoints().anyMatch(FeedbackProviderClient::invalidCharacter)) {
             throw new Unavailable();
         }
         return text;
+    }
+
+    private static boolean invalidCharacter(int value) {
+        int type = Character.getType(value);
+        // Some Tamil text uses join controls, which are part of its spelling.
+        return Character.isISOControl(value) || type == Character.SURROGATE
+            || (type == Character.FORMAT && value != '\u200c' && value != '\u200d');
     }
 
     static final class Unavailable extends RuntimeException {}

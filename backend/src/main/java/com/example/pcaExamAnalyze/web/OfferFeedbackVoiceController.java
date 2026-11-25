@@ -1,6 +1,7 @@
 package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.FeedbackAudio;
+import com.example.pcaExamAnalyze.service.GeminiFeedbackCleanup;
 import com.example.pcaExamAnalyze.service.GroqFeedbackTranscriber;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.CacheControl;
@@ -26,13 +27,15 @@ public class OfferFeedbackVoiceController {
     private static final long MINUTE = Duration.ofMinutes(1).toNanos();
 
     private final GroqFeedbackTranscriber groq;
+    private final GeminiFeedbackCleanup gemini;
     private final Semaphore activeRequests = new Semaphore(4);
     private final Map<String, Integer> requestsBySession = new HashMap<>();
     private long windowStarted = System.nanoTime();
     private int requestsInWindow;
 
-    public OfferFeedbackVoiceController(GroqFeedbackTranscriber groq) {
+    public OfferFeedbackVoiceController(GroqFeedbackTranscriber groq, GeminiFeedbackCleanup gemini) {
         this.groq = groq;
+        this.gemini = gemini;
     }
 
     @PostMapping(path = PATH, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -66,7 +69,7 @@ public class OfferFeedbackVoiceController {
             if (text.isBlank()) {
                 return error(HttpStatus.UNPROCESSABLE_CONTENT, "No speech was recognized. Try recording again or type your feedback.");
             }
-            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Transcript(text));
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Transcript(gemini.clean(text)));
         } catch (IOException e) {
             return error(HttpStatus.BAD_REQUEST, "Could not read the recording. Try recording again.");
         } catch (GroqFeedbackTranscriber.Failed e) {
