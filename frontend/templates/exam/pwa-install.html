@@ -1,0 +1,24 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="controls">
+    <button type="button" class="pca-install-button" data-pca-install hidden>
+        <i class="bi bi-download" aria-hidden="true"></i> Install PCA Exam
+    </button>
+    <dialog class="pca-install-guide" data-pca-install-guide aria-labelledby="pca-install-heading">
+        <h2 id="pca-install-heading">Install PCA Exam</h2>
+        <p data-pca-safari hidden>Open this page in Safari. Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
+            Turn on <strong>Open as Web App</strong> if shown, then tap <strong>Add</strong>.</p>
+        <p data-pca-browser hidden>In Chrome or Edge, open the browser menu and choose <strong>Install PCA Exam</strong>
+            or <strong>Add to Home screen</strong> when available.</p>
+        <details data-pca-embedded>
+            <summary>Opened in another app?</summary>
+            <p>Choose <strong>Open in browser</strong> from the app menu, or copy this link and paste it into
+                <span data-pca-open-browser></span>.</p>
+            <div class="pca-install-link">
+                <label for="pca-install-url">Current page link</label>
+                <input id="pca-install-url" type="url" readonly>
+                <button type="button" data-pca-copy>Copy link</button>
+                <span data-pca-copy-status role="status"></span>
+            </div>
+        </details>
+        <button type="button" data-pca-install-done>Done</button>
+    </dialog>
+</th:block>

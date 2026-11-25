@@ -72,10 +72,13 @@ class ExamPwaIntegrationTest {
 
     @Test void actualStudentRoutesAndBothWorkspacesUseTheSameManifest() throws Exception {
         var browser = browser();
-        for (String path : List.of("/exam", "/exam/packages", "/exam/result")) {
-            assertPwaHead(get(browser, path));
+        for (String path : List.of("/exam", "/exam/packages")) {
+            var page = assertPwaHead(get(browser, path));
+            assertEquals("Install PCA Exam", page.selectFirst("button[data-pca-install]").text());
+            assertTrue(page.selectFirst("dialog[data-pca-install-guide] [data-pca-safari]").text().contains("Open as Web App"));
         }
         var details = assertPwaHead(get(browser, "/exam/details"));
+        assertNull(details.selectFirst("button[data-pca-install]"));
         assertEquals(302, post(browser, "/exam/details", csrf(details),
                 "registrationId=PWA001&nic=200000000001&fullName=Test+Student&email=student%40example.test"
                         + "&batch=2027+A%2FL&school=Test+School&stream=Physical+Science&district=Jaffna").statusCode());

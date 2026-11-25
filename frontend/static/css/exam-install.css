@@ -1,0 +1,79 @@
+.pca-install-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    min-height: 44px;
+    padding: .5rem 1rem;
+    border: 1px solid #ffffff70;
+    border-radius: 999px;
+    background: #ffffff14;
+    color: #fff;
+    font: inherit;
+    font-size: .875rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pca-install-button:hover { background: #ffffff29; }
+.pca-install-button:disabled { cursor: wait; }
+.pca-install-button[hidden], .pca-install-guide:not([open]), .pca-install-guide [hidden] { display: none; }
+.packages-page .pca-install-button { margin: 1.75rem 0 0 .5rem; }
+
+.pca-install-guide {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    box-sizing: border-box;
+    width: min(440px, 100% - 2rem);
+    max-height: 90vh;
+    height: fit-content;
+    margin: auto;
+    padding: 1.5rem;
+    overflow: auto;
+    border: 1px solid #d2dbea;
+    border-radius: 1rem;
+    background: #fff;
+    color: #0b1f3a;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 20px 60px #07172b40;
+}
+
+.pca-install-guide::backdrop { background: #081a30a6; }
+.pca-install-guide h2 { margin: 0 0 .75rem; font-size: 1.25rem; }
+.pca-install-guide p { margin: 0 0 1rem; line-height: 1.6; }
+.pca-install-guide details { margin-bottom: 1rem; }
+.pca-install-guide summary { margin-bottom: .5rem; font-weight: 600; cursor: pointer; }
+.pca-install-guide button {
+    min-height: 44px;
+    padding: .45rem .9rem;
+    border: 1px solid #bdcde4;
+    border-radius: .55rem;
+    background: #e9f2ff;
+    color: #0b1f3a;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pca-install-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .5rem;
+}
+
+.pca-install-link label, .pca-install-link [role='status'] { grid-column: 1 / -1; }
+.pca-install-link [role='status']:empty { display: none; }
+.pca-install-link input {
+    min-width: 0;
+    padding: .5rem;
+    border: 1px solid #bdcde4;
+    border-radius: .55rem;
+    font: inherit;
+    font-size: 1rem;
+}
+
+@media (max-width: 760px) {
+    .packages-page .pca-install-button { margin: .75rem 0 0; }
+}

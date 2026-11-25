@@ -216,6 +216,7 @@
      "prefetch":[{"where":{"and":[{"href_matches":"/exam/p/*"},{"not":{"href_matches":"/exam/p/*/result-lookup"}}]},"eagerness":"moderate"}]}
     </script>
     <link rel="stylesheet" th:href="@{/css/exam-portal.css(v=26)}">
+    <link rel="stylesheet" th:href="@{/css/exam-install.css(v=1)}">
     <th:block th:replace="~{exam/pwa-head :: metadata}"></th:block>
 </head>
 <body>
@@ -250,6 +251,9 @@
         <div class="hero-cta">
             <a class="cta primary" href="#papers">Browse papers <i class="bi bi-arrow-down"></i></a>
             <a class="cta ghost" th:href="@{/exam/result}"><i class="bi bi-bar-chart-fill"></i> My Result</a>
+            <th:block th:unless="${detailsModal == true or resultModal == true or adminLoginModal == true}">
+                <th:block th:replace="~{exam/pwa-install :: controls}"></th:block>
+            </th:block>
         </div>
     </div>
     <div class="hero-waves" aria-hidden="true"><svg class="wave" viewBox="0 0 2880 120" preserveAspectRatio="none"><path d="M0,70 C240,52 480,52 720,70 S1200,88 1440,70 C1680,52 1920,52 2160,70 S2640,88 2880,70 L2880,120 L0,120Z"/></svg></div>

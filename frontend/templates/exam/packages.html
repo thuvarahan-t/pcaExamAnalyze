@@ -11,6 +11,7 @@
     <link rel="stylesheet" th:href="@{/css/offer-page.css(v=4)}">
     <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=16)}">
     <link rel="stylesheet" th:href="@{/css/district-picker.css(v=3)}">
+    <link rel="stylesheet" th:href="@{/css/exam-install.css(v=1)}">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
     <script defer th:src="@{/js/sl-district-map.js}"></script>
     <script defer th:src="@{/js/district-map-init.js(v=9)}"></script>
@@ -37,6 +38,7 @@
                 <h1 th:text="${campaign.title == 'Your next step starts here.' or campaign.title == 'Offer ends in' ? 'PCA Mega Offer Packages' : campaign.title}">PCA Mega Offer Packages</h1>
                 <p>A little more understanding. A lot more confidence.</p>
                 <a class="hero-explore" href="#study-packs">Find your study pack <i class="bi bi-arrow-down" aria-hidden="true"></i></a>
+                <th:block th:replace="~{exam/pwa-install :: controls}"></th:block>
             </div>
             <div class="countdown-panel">
                 <div class="countdown-heading"><span class="eyebrow">LIMITED TIME. BIG POSSIBILITIES.</span><span class="offer-badge">SPECIAL OFFER</span></div>
