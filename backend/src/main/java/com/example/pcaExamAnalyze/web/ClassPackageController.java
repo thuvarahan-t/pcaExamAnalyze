@@ -2,9 +2,9 @@ package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.ClassPackageService;
 import com.example.pcaExamAnalyze.service.ClassPackageService.Contact;
-import com.example.pcaExamAnalyze.domain.OfferFeedback.Status;
 import com.example.pcaExamAnalyze.service.OfferContentService;
 import com.example.pcaExamAnalyze.service.OfferContentService.FeedbackInput;
+import com.example.pcaExamAnalyze.service.OfferContentService.FeedbackPhotoUnavailable;
 import com.example.pcaExamAnalyze.service.OfferContentService.PhotoVariant;
 import com.example.pcaExamAnalyze.report.ExamReportService;
 import jakarta.servlet.http.*;
@@ -13,6 +13,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -72,16 +73,23 @@ public class ClassPackageController {
     }
 
     @PostMapping("/feedback")
-    public String feedback(@RequestParam(defaultValue = "") String name,
+    public Object feedback(@RequestParam(defaultValue = "") String name,
             @RequestParam(defaultValue = "") String school, @RequestParam(defaultValue = "") String district,
-            @RequestParam(defaultValue = "") String comment, RedirectAttributes redirect) {
+            @RequestParam(defaultValue = "") String comment, @RequestParam(name = "photo", required = false) List<MultipartFile> photos,
+            @RequestHeader(name = "X-Feedback-Upload", defaultValue = "false") boolean json,
+            RedirectAttributes redirect) {
+        var input = new FeedbackInput(name, school, district, "", comment);
         try {
-            var input = new FeedbackInput(name, school, district, "", comment);
-            content.addFeedback(input, Status.PENDING);
+            content.submitFeedback(input, photos);
+            if (json) return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of());
             redirect.addFlashAttribute("feedbackSuccess", true);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | FeedbackPhotoUnavailable e) {
+            if (json) {
+                var status = e instanceof FeedbackPhotoUnavailable ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST;
+                return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(Map.of("message", e.getMessage()));
+            }
             redirect.addFlashAttribute("feedbackError", e.getMessage());
-            redirect.addFlashAttribute("feedbackDraft", new FeedbackInput(name, school, district, "", comment));
+            redirect.addFlashAttribute("feedbackDraft", input);
         }
         return "redirect:/exam/packages#student-feedback";
     }

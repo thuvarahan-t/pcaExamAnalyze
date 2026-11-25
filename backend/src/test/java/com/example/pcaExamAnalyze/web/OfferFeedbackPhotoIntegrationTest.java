@@ -5,13 +5,23 @@ import com.example.pcaExamAnalyze.domain.OfferFeedback;
 import com.example.pcaExamAnalyze.service.OfferContentService;
 import com.example.pcaExamAnalyze.service.OfferContentService.FeedbackInput;
 import com.example.pcaExamAnalyze.service.R2ImageStorage;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.ClassPathResource;
@@ -25,10 +35,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class OfferFeedbackPhotoIntegrationTest {
+    private static final String OFFER = "/exam/packages";
+    private static final String ADMIN = "/exam/admin/packages";
     private static final R2ImageStorage STORAGE = mock(R2ImageStorage.class);
     private static ConfigurableApplicationContext context;
     private static OfferContentService content;
     private static byte[] fixture;
+    private static String base;
 
     @BeforeAll static void boot() throws Exception {
         context = new SpringApplicationBuilder(PcaExamAnalyzeApplication.class)
@@ -40,6 +53,7 @@ class OfferFeedbackPhotoIntegrationTest {
                 "--pca.storage.r2.account-id=", "--logging.level.root=ERROR", "--debug=false");
         content = context.getBean(OfferContentService.class);
         fixture = new ClassPathResource("package-posters/theory.jpg").getContentAsByteArray();
+        base = "http://localhost:" + ((ServletWebServerApplicationContext) context).getWebServer().getPort();
     }
 
     @AfterAll static void stop() {
@@ -116,6 +130,130 @@ class OfferFeedbackPhotoIntegrationTest {
         verify(STORAGE).put(key.capture(), any(), eq("image/jpeg"));
         verify(STORAGE, timeout(5000)).deleteQuietly(key.getValue());
         assertNull(find(quote));
+    }
+
+    @Test void multipartFeedbackRequiresCsrfAndPhotoRoutesRespectTeacherAccessAndModeration() throws Exception {
+        String quote = "Feedback and photo through the public form.";
+        try (var student = browser(); var teacher = browser()) {
+            String token = csrf(get(student, OFFER));
+            var denied = upload(student, "expired-token", quote, fixture, true);
+            assertEquals(403, denied.statusCode());
+            assertTrue(denied.body().contains("feedback form expired"));
+            assertNull(find(quote));
+            verifyNoInteractions(STORAGE);
+
+            var accepted = upload(student, token, quote, fixture, true);
+            assertEquals(200, accepted.statusCode());
+            assertEquals("{}", accepted.body());
+            var entry = find(quote);
+            var bytes = ArgumentCaptor.forClass(byte[].class);
+            verify(STORAGE).put(eq(entry.getPhotoKey()), bytes.capture(), eq("image/jpeg"));
+            assertTrue(bytes.getValue().length <= 100_000);
+            when(STORAGE.read(entry.getPhotoKey())).thenReturn(bytes.getValue());
+            String publicPhoto = OFFER + "/feedback/" + entry.getId() + "/photo";
+            String teacherPhoto = ADMIN + "/feedback/" + entry.getId() + "/photo";
+            String status = ADMIN + "/feedback/" + entry.getId() + "/status";
+
+            assertEquals(404, get(student, publicPhoto).statusCode());
+            assertEquals(302, get(student, teacherPhoto).statusCode());
+            verify(STORAGE, never()).read(anyString());
+            String loginCsrf = csrf(get(teacher, "/exam/admin-login"));
+            assertEquals(302, post(teacher, "/login", loginCsrf,
+                "username=feedback-admin&password=FeedbackTest123%21").statusCode());
+            assertPhoto(getBytes(teacher, teacherPhoto), bytes.getValue());
+
+            String adminCsrf = csrf(get(teacher, ADMIN));
+            assertEquals(302, post(teacher, status, adminCsrf, "status=PUBLISHED").statusCode());
+            assertPhoto(getBytes(student, publicPhoto), bytes.getValue());
+            assertEquals(302, post(teacher, status, adminCsrf, "status=HIDDEN").statusCode());
+            var hidden = get(student, publicPhoto);
+            assertEquals(404, hidden.statusCode());
+            assertTrue(hidden.headers().firstValue("Cache-Control").orElseThrow().contains("no-store"));
+            verify(STORAGE, times(2)).read(entry.getPhotoKey());
+        }
+    }
+
+    @Test void multipartErrorsAreRecoverableAndNativeFeedbackRetainsTheDraft() throws Exception {
+        String quote = "Keep this draft when the photo fails.";
+        try (var student = browser()) {
+            String token = csrf(get(student, OFFER));
+            var invalid = upload(student, token, quote, new byte[]{1, 2, 3}, true);
+            assertEquals(400, invalid.statusCode());
+            assertTrue(invalid.body().contains("valid JPEG or PNG"));
+            verifyNoInteractions(STORAGE);
+
+            doThrow(new IllegalStateException("simulated outage")).when(STORAGE).put(anyString(), any(), anyString());
+            var unavailable = upload(student, token, quote, fixture, true);
+            assertEquals(503, unavailable.statusCode());
+            assertTrue(unavailable.body().contains("remove the photo"));
+            var nativePost = upload(student, token, quote, fixture, false);
+            assertEquals(302, nativePost.statusCode());
+            assertTrue(nativePost.headers().firstValue("Location").orElseThrow().endsWith(OFFER + "#student-feedback"));
+            var offer = Jsoup.parse(get(student, OFFER).body());
+            assertTrue(offer.selectFirst(".feedback-form [role=alert]").text().contains("remove the photo"));
+            assertEquals(quote, offer.selectFirst(".feedback-form textarea[name=comment]").val());
+            assertNull(find(quote));
+
+            assertEquals(302, post(student, OFFER + "/feedback", token,
+                "name=Feedback+Student&school=Test+School&district=Jaffna&comment=" + URLEncoder.encode(quote, StandardCharsets.UTF_8))
+                .statusCode());
+            assertNull(find(quote).getPhotoKey());
+            verify(STORAGE, timeout(5000).times(2)).deleteQuietly(startsWith("offer-feedback/"));
+        }
+    }
+
+    private static HttpClient browser() {
+        return HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+    }
+
+    private static HttpResponse<String> get(HttpClient browser, String path) throws Exception {
+        return browser.send(request(path).GET().build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<byte[]> getBytes(HttpClient browser, String path) throws Exception {
+        return browser.send(request(path).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    private static String csrf(HttpResponse<String> response) {
+        return Jsoup.parse(response.body()).selectFirst("input[name=_csrf]").val();
+    }
+
+    private static HttpResponse<String> post(HttpClient browser, String path, String token, String fields) throws Exception {
+        return browser.send(request(path).header("X-CSRF-TOKEN", token)
+                .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(fields)).build(),
+            HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<String> upload(HttpClient browser, String token, String quote, byte[] bytes, boolean json) throws Exception {
+        String boundary = "feedback-integration-boundary";
+        String fields = multipartField(boundary, "name", "Feedback Student") + multipartField(boundary, "school", "Test School")
+            + multipartField(boundary, "district", "Jaffna") + multipartField(boundary, "comment", quote);
+        var multipart = HttpRequest.BodyPublishers.concat(
+            HttpRequest.BodyPublishers.ofString(fields + "--" + boundary
+                + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"feedback.jpg\""
+                + "\r\nContent-Type: image/jpeg\r\n\r\n"),
+            HttpRequest.BodyPublishers.ofByteArray(bytes),
+            HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
+        var request = request(OFFER + "/feedback").header("X-CSRF-TOKEN", token)
+            .header("Content-Type", "multipart/form-data; boundary=" + boundary).POST(multipart);
+        if (json) request.header("X-Feedback-Upload", "true").header("Accept", "application/json");
+        return browser.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static String multipartField(String boundary, String name, String value) {
+        return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + name + "\"\r\n\r\n" + value + "\r\n";
+    }
+
+    private static HttpRequest.Builder request(String path) {
+        return HttpRequest.newBuilder(URI.create(base + path));
+    }
+
+    private static void assertPhoto(HttpResponse<byte[]> response, byte[] expected) {
+        assertEquals(200, response.statusCode());
+        assertArrayEquals(expected, response.body());
+        assertEquals("image/jpeg", response.headers().firstValue("Content-Type").orElseThrow());
+        assertTrue(response.headers().firstValue("Cache-Control").orElseThrow().contains("no-store"));
+        assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElseThrow());
     }
 
     private static FeedbackInput input(String quote) {

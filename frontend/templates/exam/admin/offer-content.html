@@ -119,6 +119,11 @@
         <small><span th:text="|${entry.school} · ${entry.district}|"></span><span
             th:if="${!#strings.isEmpty(entry.packageName)}" th:text="| · ${entry.packageName}|"></span></small>
         <p th:text="${entry.comment}"></p>
+        <a th:if="${entry.photoKey != null}" class="offer-moderation-photo"
+           th:href="@{/exam/admin/packages/feedback/{id}/photo(id=${entry.id})}">
+            <img th:src="@{/exam/admin/packages/feedback/{id}/photo(id=${entry.id})}"
+                 alt="Open attached feedback photo" loading="lazy" decoding="async">
+        </a>
         <form class="admin-actions" th:action="@{/exam/admin/packages/feedback/{id}/status(id=${entry.id})}" method="post">
             <button class="btn primary" type="submit" name="status" value="PUBLISHED" th:if="${status != 'PUBLISHED'}"
                     th:text="${status == 'PENDING' ? 'Approve &amp; publish' : 'Publish'}"></button>

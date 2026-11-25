@@ -222,6 +222,7 @@
 }
 .quote-package { margin-bottom: 6px; color: var(--quote-accent); font-size: 12.5px; font-weight: 700; }
 .student-quote blockquote { margin: 0 0 22px; color: #21394f; font-size: 15px; line-height: 1.75; white-space: pre-line; }
+.feedback-quote-photo { display: block; max-width: 100%; max-height: 200px; margin-bottom: 18px; border-radius: 12px; object-fit: contain; }
 .student-quote footer {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -310,6 +311,12 @@
 .feedback-district .gselect-search-wrap input { min-height: 44px; padding-left: 32px; }
 .feedback-district .gselect-option:focus-visible { outline-offset: -3px; }
 .feedback-form .pkg-btn { justify-self: start; min-width: 180px; }
+.feedback-photo { display: grid; gap: 8px; }
+.feedback-photo-preview { display: flex; align-items: flex-start; gap: 12px; }
+.feedback-photo-preview img { max-width: min(58%, 210px); max-height: 160px; border-radius: 10px; object-fit: contain; }
+.feedback-photo-preview button { color: #163b53; font: inherit; text-decoration: underline; }
+.feedback-photo [hidden], .feedback-photo[hidden] { display: none; }
+.feedback-note { margin: 0; color: #445c6f; font-size: 13px; }
 .showcase-message, .showcase-error { margin: 0; padding: 14px 18px; border-radius: 14px; font-weight: 600; }
 .showcase-message { background: #d3f3ec; color: #075e55; }
 .showcase-error { background: #ffe3e4; color: #8e2333; }
