@@ -23,7 +23,7 @@ class GroqFeedbackTranscriberTest {
     private volatile String authorization;
     private volatile String requestContentType;
     private volatile int status = 200;
-    private volatile String response = "{\"text\":\"  எனக்கு   PCA பிடிக்கும். \\n நன்றி! \"}";
+    private volatile String response = "{\"text\":\"  நான்   class-க்கு வரணும். \\n நன்றி! \"}";
     private volatile CountDownLatch waitForTimeout;
 
     @BeforeEach void start() throws IOException {
@@ -38,9 +38,9 @@ class GroqFeedbackTranscriberTest {
         provider.stop(0);
     }
 
-    @Test void sendsTamilHintAndAudioAndFormatsText() {
+    @Test void sendsMixedTamilEnglishPromptAndPreservesLatinWords() {
         var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
-        assertEquals("எனக்கு PCA பிடிக்கும். நன்றி!", transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
+        assertEquals("நான் class-க்கு வரணும். நன்றி!", transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
         assertEquals("Bearer test-key", authorization);
         assertTrue(requestContentType.startsWith("multipart/form-data;"));
         assertTrue(requestBody.contains("name=\"file\"; filename=\"feedback.ogg\""));
@@ -48,7 +48,15 @@ class GroqFeedbackTranscriberTest {
         assertTrue(requestBody.contains("OpusHead"));
         assertTrue(requestBody.contains("name=\"model\"") && requestBody.contains("whisper-large-v3"));
         assertTrue(requestBody.contains("name=\"language\"") && requestBody.contains("\r\n\r\nta\r\n"));
+        assertTrue(requestBody.contains("name=\"prompt\""));
+        assertTrue(requestBody.contains("இந்த class நல்லா இருந்தது. Physics paper-ல MCQ questions இருந்தது."));
         assertTrue(requestBody.contains("name=\"response_format\"") && requestBody.contains("\r\n\r\njson\r\n"));
+    }
+
+    @Test void keepsTamilWordsAsSpoken() {
+        response = "{\"text\":\"நான் வகுப்புக்கு வரணும்.\"}";
+        var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
+        assertEquals("நான் வகுப்புக்கு வரணும்.", transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
     }
 
     @Test void disabledOrMissingKeyNeverCallsGroq() {

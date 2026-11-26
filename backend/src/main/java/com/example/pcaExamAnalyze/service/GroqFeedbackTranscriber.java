@@ -13,6 +13,10 @@ import java.time.Duration;
 @Service
 public class GroqFeedbackTranscriber {
     private static final URI TRANSCRIPTIONS = URI.create("https://api.groq.com/openai/v1/audio/transcriptions");
+    private static final MediaType UTF8_TEXT = MediaType.parseMediaType("text/plain;charset=UTF-8");
+    // Whisper uses the prompt as a spelling and style example for mixed Tamil and English speech.
+    private static final String TAMIL_ENGLISH_EXAMPLE =
+        "இந்த class நல்லா இருந்தது. Physics paper-ல MCQ questions இருந்தது. PCA feedback.";
 
     private final boolean enabled;
     private final String apiKey;
@@ -45,6 +49,7 @@ public class GroqFeedbackTranscriber {
         parts.part("file", audio, format.mediaType()).filename(format.fileName());
         parts.part("model", model);
         parts.part("language", "ta");
+        parts.part("prompt", TAMIL_ENGLISH_EXAMPLE, UTF8_TEXT);
         parts.part("response_format", "json");
 
         try {
