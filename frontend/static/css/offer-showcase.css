@@ -49,6 +49,7 @@
     color: var(--ink);
     transition: color .2s, background-color .2s, scale .25s var(--ease-spring);
 }
+.showcase-controls [data-showcase-rotation] { font-size: 14px; }
 :is(.showcase-controls, .event-gallery-navigation) button:hover { border-color: transparent; background: var(--teal); color: #fff; }
 :is(.showcase-controls, .event-gallery-navigation) button:active { scale: .9; }
 

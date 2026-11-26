@@ -37,7 +37,7 @@
             </div>
         </article>
     </div>
-    <div th:replace="~{exam/offer-showcase :: controls('Event highlights')}"></div>
+    <div th:replace="~{exam/offer-showcase :: controls('Event highlights', false)}"></div>
 </section>
 
 <div th:fragment="video" th:if="${campaign.hasPromoVideo()}" class="showcase-video" id="offer-video">
@@ -90,7 +90,7 @@
             </footer>
         </article>
     </div>
-    <div th:replace="~{exam/offer-showcase :: controls('Student feedback')}"></div>
+    <div th:replace="~{exam/offer-showcase :: controls('Student feedback', true)}"></div>
     <dialog class="registration-dialog feedback-text-dialog" data-feedback-text-dialog
             aria-labelledby="feedback-text-title" th:if="${!#lists.isEmpty(feedback)}">
         <button class="dialog-close" type="button" aria-label="Close feedback" autofocus>×</button>
@@ -198,7 +198,10 @@
     </details>
 </div>
 
-<div th:fragment="controls(label)" class="showcase-controls" th:attr="aria-label=${label}" role="group" hidden>
+<div th:fragment="controls(label, feedback)" class="showcase-controls" th:attr="aria-label=${label}" role="group" hidden>
+    <button th:if="${feedback}" type="button" data-showcase-rotation aria-label="Pause feedback slideshow">
+        <span aria-hidden="true">Ⅱ</span>
+    </button>
     <button type="button" data-showcase-prev aria-label="Previous"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
     <span data-showcase-position aria-hidden="true"></span>
     <button type="button" data-showcase-next aria-label="Next"><i class="bi bi-arrow-right" aria-hidden="true"></i></button>

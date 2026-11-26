@@ -5,7 +5,7 @@
     const photoDelay = 1000;
     const photoWaitLimit = 3000;
     const eventDelay = 3500;
-    const feedbackDelay = 2000;
+    const feedbackDelay = 3500;
     const slideEasing = 'cubic-bezier(.22,1,.36,1)';
 
     function animateEntrance(element, transform, duration, delay = 0) {
@@ -210,6 +210,7 @@
         const rail = section.querySelector('.showcase-rail');
         const controls = section.querySelector('.showcase-controls');
         const position = controls.querySelector('[data-showcase-position]');
+        const rotation = controls.querySelector('[data-showcase-rotation]');
         const galleries = events ? slides.map(slide => eventGallery(slide, schedule)) : [];
         const refreshFeedbackReaders = events ? null : feedbackTextPreview(section, rail);
         let first = 0;
@@ -217,6 +218,7 @@
         let timer;
         let touching;
         let hovering = false;
+        let autoplayPreference;
         let inView = true;
         let hasEnteredView = false;
         let allVisible = false;
@@ -327,10 +329,29 @@
             animateEntrance(current, `translateX(${-24 * direction}px)`, timing.duration);
         }
 
+        function autoplayEnabled() {
+            return autoplayPreference ?? !reducedMotion.matches;
+        }
+
+        function updateRotationControl() {
+            if (!rotation) return;
+            const enabled = autoplayEnabled();
+            const label = enabled ? 'Pause feedback slideshow' : 'Start feedback slideshow';
+            rotation.title = label;
+            rotation.setAttribute('aria-label', label);
+            rotation.querySelector('span').textContent = enabled ? 'Ⅱ' : '▶';
+        }
+
+        function feedbackPaused() {
+            const focused = document.activeElement;
+            const keyboardInCarousel = focused && focused !== rotation && focused.matches(':focus-visible') &&
+                (rail.contains(focused) || controls.contains(focused));
+            return !autoplayEnabled() || hovering || keyboardInCarousel || section.querySelector('dialog[open]');
+        }
+
         function schedule() {
             clearTimeout(timer);
-            const holdFeedback = !events && (reducedMotion.matches || hovering ||
-                section.contains(document.activeElement));
+            const holdFeedback = !events && feedbackPaused();
             if (!rotates || holdFeedback || (!events && allVisible) || !inView || document.hidden || touching) return;
             const gallery = galleries[first];
             if (shouldAdvancePhoto(gallery)) {
@@ -375,13 +396,19 @@
         next.addEventListener('click', () => change(1));
         if (!events) {
             feedbackPhotoPreview(section);
-            section.addEventListener('pointerenter', event => {
+            rail.addEventListener('pointerenter', event => {
                 if (event.pointerType !== 'touch') hovering = true;
                 schedule();
             });
-            section.addEventListener('pointerleave', () => { hovering = false; schedule(); });
+            rail.addEventListener('pointerleave', () => { hovering = false; schedule(); });
             section.addEventListener('focusin', schedule);
             section.addEventListener('focusout', () => setTimeout(schedule, 0));
+            section.addEventListener('close', schedule, true);
+            rotation?.addEventListener('click', () => {
+                autoplayPreference = !autoplayEnabled();
+                updateRotationControl();
+                schedule();
+            });
         }
         rail.addEventListener('touchstart', event => {
             touching = {
@@ -426,7 +453,8 @@
         for (const query of [compact, medium]) query.addEventListener('change', () => { show(); schedule(); });
         window.addEventListener('resize', resizeRail);
         if (refreshFeedbackReaders) document.fonts?.ready.then(resizeRail);
-        reducedMotion.addEventListener('change', schedule);
+        reducedMotion.addEventListener('change', () => { updateRotationControl(); schedule(); });
+        updateRotationControl();
         show();
         schedule();
     }
