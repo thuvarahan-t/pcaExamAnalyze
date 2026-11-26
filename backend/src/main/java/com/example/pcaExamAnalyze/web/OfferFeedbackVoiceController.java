@@ -1,8 +1,7 @@
 package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.FeedbackAudio;
-import com.example.pcaExamAnalyze.service.GeminiFeedbackCleanup;
-import com.example.pcaExamAnalyze.service.GroqFeedbackTranscriber;
+import com.example.pcaExamAnalyze.service.GeminiFeedbackTranscriber;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -26,21 +25,19 @@ public class OfferFeedbackVoiceController {
     private static final int MAX_PER_MINUTE = 60;
     private static final long MINUTE = Duration.ofMinutes(1).toNanos();
 
-    private final GroqFeedbackTranscriber groq;
-    private final GeminiFeedbackCleanup gemini;
+    private final GeminiFeedbackTranscriber gemini;
     private final Semaphore activeRequests = new Semaphore(4);
     private final Map<String, Integer> requestsBySession = new HashMap<>();
     private long windowStarted = System.nanoTime();
     private int requestsInWindow;
 
-    public OfferFeedbackVoiceController(GroqFeedbackTranscriber groq, GeminiFeedbackCleanup gemini) {
-        this.groq = groq;
+    public OfferFeedbackVoiceController(GeminiFeedbackTranscriber gemini) {
         this.gemini = gemini;
     }
 
     @PostMapping(path = PATH, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> transcribe(HttpServletRequest request) {
-        if (!groq.available()) {
+        if (!gemini.available()) {
             return error(HttpStatus.SERVICE_UNAVAILABLE, "Voice typing is unavailable. You can type your feedback below.");
         }
         if (request.getContentLengthLong() > FeedbackAudio.MAX_BYTES) return tooLarge();
@@ -65,14 +62,14 @@ public class OfferFeedbackVoiceController {
             var session = request.getSession(false);
             if (!allow(session == null ? request.getRemoteAddr() : session.getId())) return busy("60");
 
-            String text = groq.transcribe(format, audio);
+            String text = gemini.transcribe(format, audio);
             if (text.isBlank()) {
                 return error(HttpStatus.UNPROCESSABLE_CONTENT, "No speech was recognized. Try recording again or type your feedback.");
             }
-            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Transcript(gemini.clean(text)));
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Transcript(text));
         } catch (IOException e) {
             return error(HttpStatus.BAD_REQUEST, "Could not read the recording. Try recording again.");
-        } catch (GroqFeedbackTranscriber.Failed e) {
+        } catch (GeminiFeedbackTranscriber.Failed e) {
             return error(HttpStatus.BAD_GATEWAY, "Could not transcribe the recording. Try again or type your feedback.");
         } finally {
             activeRequests.release();

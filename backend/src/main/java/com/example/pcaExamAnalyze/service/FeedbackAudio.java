@@ -4,20 +4,17 @@ import org.springframework.http.MediaType;
 
 /** Checks the container and audio tracks produced by the browser's MediaRecorder. */
 public enum FeedbackAudio {
-    WEBM("audio/webm", "webm"), OGG("audio/ogg", "ogg"), MP4("audio/mp4", "mp4");
+    WEBM("audio/webm"), OGG("audio/ogg"), MP4("audio/mp4");
 
     public static final int MAX_BYTES = 2_000_000;
 
     private final MediaType mediaType;
-    private final String extension;
 
-    FeedbackAudio(String mediaType, String extension) {
+    FeedbackAudio(String mediaType) {
         this.mediaType = MediaType.parseMediaType(mediaType);
-        this.extension = extension;
     }
 
     public MediaType mediaType() { return mediaType; }
-    public String fileName() { return "feedback." + extension; }
 
     public static FeedbackAudio forContentType(String value) {
         if (value == null) return null;

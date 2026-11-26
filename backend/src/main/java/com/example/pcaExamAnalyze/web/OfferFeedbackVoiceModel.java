@@ -1,19 +1,19 @@
 package com.example.pcaExamAnalyze.web;
 
-import com.example.pcaExamAnalyze.service.GroqFeedbackTranscriber;
+import com.example.pcaExamAnalyze.service.GeminiFeedbackTranscriber;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 @ControllerAdvice(assignableTypes = ClassPackageController.class)
 public class OfferFeedbackVoiceModel {
-    private final GroqFeedbackTranscriber groq;
+    private final GeminiFeedbackTranscriber gemini;
 
-    public OfferFeedbackVoiceModel(GroqFeedbackTranscriber groq) {
-        this.groq = groq;
+    public OfferFeedbackVoiceModel(GeminiFeedbackTranscriber gemini) {
+        this.gemini = gemini;
     }
 
     @ModelAttribute("feedbackVoiceAvailable")
     public boolean feedbackVoiceAvailable() {
-        return groq.available();
+        return gemini.available();
     }
 }

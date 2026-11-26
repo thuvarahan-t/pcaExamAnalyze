@@ -2,7 +2,7 @@ package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.PcaExamAnalyzeApplication;
 import com.example.pcaExamAnalyze.service.FeedbackAudio;
-import com.example.pcaExamAnalyze.service.GroqFeedbackTranscriber;
+import com.example.pcaExamAnalyze.service.GeminiFeedbackTranscriber;
 import org.jsoup.Jsoup;
 import org.junit.jupiter.api.*;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -28,19 +28,20 @@ import static org.mockito.Mockito.*;
 
 class OfferFeedbackVoiceIntegrationTest {
     private static final String OFFER = "/exam/packages";
+    private static final String TRANSCRIPT = "அருள் tuition-க்கு வாறன். I scored 87.5% in the PCA exam.";
     private static final byte[] RECORDING = HexFormat.of().parseHex("4f676753000200000000000000000000000000000000000000000113"
         + "4f707573486561640101000080bb0000000000");
     private static ConfigurableApplicationContext context;
-    private static GroqFeedbackTranscriber provider;
+    private static GeminiFeedbackTranscriber provider;
     private static String base;
 
     @BeforeAll static void boot() {
         context = new SpringApplicationBuilder(PcaExamAnalyzeApplication.class, TestProviders.class).run(
             "--spring.profiles.active=dev", "--server.port=0",
             "--spring.datasource.url=jdbc:h2:mem:offervoice;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-            "--pca.feedback.voice.groq.api-key=", "--pca.feedback.voice.enabled=false",
-            "--pca.feedback.voice.gemini.enabled=false", "--logging.level.root=ERROR", "--debug=false");
-        provider = context.getBean("stubGroq", GroqFeedbackTranscriber.class);
+            "--pca.feedback.voice.enabled=false", "--pca.feedback.voice.gemini.api-key=",
+            "--pca.feedback.voice.gemini.model=", "--logging.level.root=ERROR", "--debug=false");
+        provider = context.getBean("stubGemini", GeminiFeedbackTranscriber.class);
         base = "http://localhost:" + ((ServletWebServerApplicationContext) context).getWebServer().getPort();
     }
 
@@ -51,7 +52,7 @@ class OfferFeedbackVoiceIntegrationTest {
     @BeforeEach void stubProvider() {
         reset(provider);
         when(provider.available()).thenReturn(true);
-        when(provider.transcribe(eq(FeedbackAudio.OGG), any(byte[].class))).thenReturn("PCA தேர்வு நன்றாக இருந்தது.");
+        when(provider.transcribe(eq(FeedbackAudio.OGG), any(byte[].class))).thenReturn(TRANSCRIPT);
     }
 
     @Test void acceptsOnlyCsrfProtectedAudioAndReturnsTextWithoutCaching() throws Exception {
@@ -63,7 +64,7 @@ class OfferFeedbackVoiceIntegrationTest {
 
             var result = post(student, csrf, "audio/ogg;codecs=opus", bytes(RECORDING));
             assertEquals(200, result.statusCode());
-            assertEquals("PCA தேர்வு நன்றாக இருந்தது.", JsonMapper.shared().readTree(result.body()).path("text").asString());
+            assertEquals(TRANSCRIPT, JsonMapper.shared().readTree(result.body()).path("text").asString());
             assertEquals("no-store", result.headers().firstValue("cache-control").orElseThrow());
             verify(provider).transcribe(eq(FeedbackAudio.OGG), aryEqRecording());
         }
@@ -85,23 +86,34 @@ class OfferFeedbackVoiceIntegrationTest {
     }
 
     @Test void allowsTypedOfferFeedbackWhenVoiceIsUnavailableOrFails() throws Exception {
-        assertFalse(context.getBean("groqFeedbackTranscriber", GroqFeedbackTranscriber.class).available());
+        assertFalse(context.getBean("geminiFeedbackTranscriber", GeminiFeedbackTranscriber.class).available());
         try (var student = client()) {
-            var csrf = csrf(student);
             when(provider.available()).thenReturn(false);
+            var inactiveOffer = Jsoup.parse(getOffer(student));
+            var csrf = inactiveOffer.selectFirst("meta[name=_csrf]").attr("content");
+            assertNull(inactiveOffer.selectFirst("#student-feedback [data-voice-record]"));
+            assertNotNull(inactiveOffer.selectFirst("#student-feedback textarea[name=comment]"));
             assertEquals(503, post(student, csrf, "audio/ogg", bytes(RECORDING)).statusCode());
             verify(provider, never()).transcribe(any(), any());
 
             when(provider.available()).thenReturn(true);
-            when(provider.transcribe(any(), any())).thenThrow(new GroqFeedbackTranscriber.Failed()).thenReturn("");
-            assertEquals(502, post(student, csrf, "audio/ogg", bytes(RECORDING)).statusCode());
-            assertEquals(422, post(student, csrf, "audio/ogg", bytes(RECORDING)).statusCode());
+            var activeOffer = Jsoup.parse(getOffer(student));
+            assertNotNull(activeOffer.selectFirst("#student-feedback [data-voice-record]"));
+            assertEquals(OfferFeedbackVoiceController.PATH, activeOffer.selectFirst("#student-feedback [data-feedback-voice]")
+                .attr("data-feedback-voice"));
+            when(provider.transcribe(any(), any())).thenThrow(new GeminiFeedbackTranscriber.Failed()).thenReturn("");
+            var providerError = post(student, csrf, "audio/ogg", bytes(RECORDING));
+            assertEquals(502, providerError.statusCode());
+            assertTrue(JsonMapper.shared().readTree(providerError.body()).path("message").asString().contains("type your feedback"));
+            var silentRecording = post(student, csrf, "audio/ogg", bytes(RECORDING));
+            assertEquals(422, silentRecording.statusCode());
+            assertTrue(JsonMapper.shared().readTree(silentRecording.body()).path("message").asString().contains("No speech"));
             var typed = HttpRequest.newBuilder(URI.create(base + OFFER + "/feedback"))
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("X-CSRF-TOKEN", csrf).POST(HttpRequest.BodyPublishers.ofString(
                     "name=Voice+Test&school=Central+College&district=Jaffna&comment=Typed+feedback")).build();
             assertEquals(302, student.send(typed, HttpResponse.BodyHandlers.ofString()).statusCode());
-            assertNotNull(Jsoup.parse(getOffer(student)).selectFirst("#student-feedback .showcase-message[role=status]"));
+            assertNotNull(Jsoup.parse(getOffer(student)).selectFirst("#student-feedback [data-feedback-success]:not([hidden])"));
         }
     }
 
@@ -143,6 +155,6 @@ class OfferFeedbackVoiceIntegrationTest {
 
     @TestConfiguration(proxyBeanMethods = false)
     static class TestProviders {
-        @Bean @Primary GroqFeedbackTranscriber stubGroq() { return mock(GroqFeedbackTranscriber.class); }
+        @Bean @Primary GeminiFeedbackTranscriber stubGemini() { return mock(GeminiFeedbackTranscriber.class); }
     }
 }
