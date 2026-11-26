@@ -14,9 +14,8 @@ import java.time.Duration;
 public class GroqFeedbackTranscriber {
     private static final URI TRANSCRIPTIONS = URI.create("https://api.groq.com/openai/v1/audio/transcriptions");
     private static final MediaType UTF8_TEXT = MediaType.parseMediaType("text/plain;charset=UTF-8");
-    // Whisper uses the prompt as a spelling and style example for mixed Tamil and English speech.
-    private static final String TAMIL_ENGLISH_EXAMPLE =
-        "இந்த class நல்லா இருந்தது. Physics paper-ல MCQ questions இருந்தது. PCA feedback.";
+    // One mixed-language sentence models English spelling without suggesting a second rendering.
+    private static final String TAMIL_ENGLISH_EXAMPLE = "PCA class-ல Physics MCQ செய்தேன்.";
 
     private final boolean enabled;
     private final String apiKey;
