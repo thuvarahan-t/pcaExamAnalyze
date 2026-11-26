@@ -337,6 +337,7 @@
         }
 
         // Reflect any pre-selected value (e.g. after a validation-error re-render).
+        hidden.addEventListener('change', function () { setDistrict(hidden.value); });
         if (hidden.value) { setDistrict(hidden.value); }
         else { paintMap(null); if (label) { label.textContent = 'Tap your district'; } }
 

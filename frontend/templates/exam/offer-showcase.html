@@ -37,7 +37,7 @@
             </div>
         </article>
     </div>
-    <div th:replace="~{exam/offer-showcase :: controls('Event highlights')}"></div>
+    <div th:replace="~{exam/offer-showcase :: controls('Event highlights', false)}"></div>
 </section>
 
 <div th:fragment="video" th:if="${campaign.hasPromoVideo()}" class="showcase-video" id="offer-video">
@@ -62,34 +62,58 @@
 </div>
 
 <div th:fragment="feedback" class="student-voices">
-    <header class="showcase-header">
-        <h2 id="feedbackHeading">Hear from our students</h2>
-    </header>
     <div class="showcase-rail feedback-rail" th:if="${!#lists.isEmpty(feedback)}"
          th:attr="data-feedback-count=${#lists.size(feedback)}">
         <article class="student-quote" th:each="entry, loop : ${feedback}" data-showcase-slide
                  th:classappend="${loop.index < (campaign.hasPromoVideo() ? 1 : 3)} ? 'is-current'">
             <span class="quote-package" th:if="${!#strings.isEmpty(entry.packageName)}" th:text="${entry.packageName}"></span>
-            <blockquote th:text="${entry.comment}"></blockquote>
+            <blockquote>
+                <span data-feedback-excerpt th:text="${entry.comment}"></span>
+                <button type="button" data-feedback-read aria-haspopup="dialog"
+                        th:attr="aria-label=|Read full feedback from ${entry.studentName}|" hidden></button>
+            </blockquote>
             <footer>
-                <span class="quote-avatar" aria-hidden="true" th:if="${!#strings.isEmpty(entry.studentName)}" th:text="${#strings.toUpperCase(#strings.substring(entry.studentName, 0, 1))}"></span>
-                <strong th:text="${entry.studentName}"></strong>
-                <span th:text="|${entry.school} · ${entry.district}|"></span>
+                <div class="quote-author">
+                    <span class="quote-avatar" aria-hidden="true" th:if="${!#strings.isEmpty(entry.studentName)}" th:text="${#strings.toUpperCase(#strings.substring(entry.studentName, 0, 1))}"></span>
+                    <div class="quote-author-details">
+                        <strong th:text="${entry.studentName}"></strong>
+                        <span th:text="|${entry.school} · ${entry.district}|"></span>
+                    </div>
+                </div>
+                <div class="feedback-quote-photos" role="group" aria-label="Feedback photos" th:if="${entry.photoCount > 0}">
+                    <a data-feedback-photo aria-haspopup="dialog" th:each="index : ${#numbers.sequence(0, entry.photoCount - 1)}"
+                       th:with="photoUrl=@{/exam/packages/feedback/{id}/photo/{index}(id=${entry.id},index=${index})}"
+                       th:href="${photoUrl}" th:attr="aria-label=|View feedback photo ${index + 1}|">
+                        <img class="feedback-quote-photo" th:src="${photoUrl}" width="44" height="32" alt="" loading="lazy" decoding="async">
+                    </a>
+                </div>
             </footer>
         </article>
     </div>
-    <div th:replace="~{exam/offer-showcase :: controls('Student feedback')}"></div>
+    <div th:replace="~{exam/offer-showcase :: controls('Student feedback', true)}"></div>
+    <dialog class="registration-dialog feedback-text-dialog" data-feedback-text-dialog
+            aria-labelledby="feedback-text-title" th:if="${!#lists.isEmpty(feedback)}">
+        <button class="dialog-close" type="button" aria-label="Close feedback" autofocus>×</button>
+        <h2 id="feedback-text-title">Student feedback</h2>
+        <p data-feedback-full-text></p>
+        <div class="feedback-quote-photos" data-feedback-full-photos role="group" aria-label="Feedback photos" hidden></div>
+    </dialog>
+    <dialog class="poster-dialog" data-feedback-photo-dialog aria-label="Feedback photo" th:if="${!#lists.isEmpty(feedback)}">
+        <button class="dialog-close" type="button" aria-label="Close photo" autofocus>×</button>
+        <img alt="Photo shared with this feedback" decoding="async">
+    </dialog>
 </div>
 
 <div th:fragment="feedbackForm" class="offer-story-response">
-    <p class="showcase-message" role="status" th:if="${feedbackSuccess}">உங்கள் கருத்துக்கு நன்றி. பரிசீலனைக்குப் பிறகு அது வெளியிடப்படும்.</p>
+    <p class="showcase-message" role="status" lang="ta" data-feedback-success
+       th:hidden="${feedbackSuccess != true}">உங்கள் கருத்துக்கு நன்றி. பரிசீலனைக்குப் பிறகு அது வெளியிடப்படும்.</p>
     <details class="share-feedback" th:open="${feedbackError != null}">
         <summary>
             <i class="bi bi-chat-text feedback-cta-icon" aria-hidden="true"></i>
             <span lang="ta">Packages பற்றி உங்கள் கருத்துகளைப் பகிருங்கள்</span>
             <i class="bi bi-plus-lg feedback-cta-toggle" aria-hidden="true"></i>
         </summary>
-        <form th:action="@{/exam/packages/feedback}" method="post" class="feedback-form">
+        <form th:action="@{/exam/packages/feedback}" method="post" class="feedback-form" data-feedback-form>
             <p class="showcase-error" role="alert" th:if="${feedbackError}" th:text="${feedbackError}"></p>
             <div class="feedback-fields">
                 <label>Student name<input name="name" autocomplete="name" required minlength="3" maxlength="150" th:value="${feedbackDraft?.name()}"></label>
@@ -103,13 +127,81 @@
                     <div th:replace="~{exam/district-picker :: picker('Choose district', false)}"></div>
                 </div>
             </div>
-            <label>Your feedback<textarea name="comment" required maxlength="600" rows="4" th:text="${feedbackDraft?.comment()}"></textarea></label>
+            <div class="feedback-comment">
+                <label for="feedback-comment">Your feedback</label>
+                <div class="feedback-composer" data-feedback-composer>
+                    <textarea id="feedback-comment" name="comment" required maxlength="600" rows="4"
+                              aria-describedby="feedback-comment-count" placeholder="Write your feedback…"
+                              th:text="${feedbackDraft?.comment()}"></textarea>
+                    <div class="feedback-photo-preview" data-photo-preview role="group" aria-label="Attached photos" hidden>
+                        <template data-photo-item-template>
+                            <div class="feedback-photo-item">
+                                <img alt="">
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-remove-photo
+                                        aria-label="Remove photo" title="Remove photo"><span class="feedback-icon-symbol" aria-hidden="true">×</span></button>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="feedback-composer-toolbar">
+                        <div class="feedback-composer-tools">
+                            <div data-feedback-photo hidden>
+                                <input id="feedback-photo" type="file" accept="image/*" multiple hidden>
+                                <button class="feedback-composer-action" type="button" data-add-photo
+                                        title="Choose or drop up to 5 photos you can share publicly">
+                                    <span class="feedback-icon-photo" aria-hidden="true"></span><span>Add photos</span>
+                                </button>
+                            </div>
+                            <div class="feedback-voice" th:if="${feedbackVoiceAvailable == true}"
+                                 th:attr="data-feedback-voice=@{/exam/packages/feedback/transcribe}">
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-record hidden
+                                        aria-label="Record Tamil" title="Record Tamil for up to 30 seconds" aria-describedby="feedback-voice-note">
+                                    <span class="feedback-icon-mic" aria-hidden="true"></span>
+                                </button>
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-stop hidden
+                                        aria-label="Stop recording" title="Stop recording"><span class="feedback-icon-stop" aria-hidden="true"></span></button>
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-retry hidden
+                                        aria-label="Retry transcription" title="Retry transcription"><span class="feedback-icon-symbol" aria-hidden="true">↻</span></button>
+                                <span class="feedback-voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                                <span class="feedback-voice-spinner" aria-hidden="true"></span>
+                                <span id="feedback-voice-note" hidden>When you stop, your recording is sent for transcription. Gemini is the main provider and Groq is the backup.</span>
+                            </div>
+                        </div>
+                        <p id="feedback-comment-count" class="feedback-note feedback-composer-count">
+                            <span data-feedback-count th:text="|${#strings.length(feedbackDraft?.comment() ?: '')} / 600|">0 / 600</span>
+                            <span class="feedback-count-unit">characters</span>
+                        </p>
+                    </div>
+                    <div class="feedback-transcription" data-voice-progress th:if="${feedbackVoiceAvailable == true}" hidden>
+                        <span class="feedback-transcription-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                        <div class="feedback-transcription-copy">
+                            <p data-voice-progress-label aria-hidden="true"></p>
+                            <p class="feedback-note">Keep typing.</p>
+                        </div>
+                        <button class="feedback-composer-action" type="button" data-voice-cancel aria-label="Cancel transcription">Cancel</button>
+                        <span class="feedback-transcription-track" aria-hidden="true"></span>
+                    </div>
+                    <p class="feedback-note feedback-composer-status" role="status" data-voice-status th:if="${feedbackVoiceAvailable == true}"></p>
+                    <p class="feedback-note feedback-composer-status" role="status" data-photo-status></p>
+                    <p class="showcase-error feedback-composer-error" role="alert" data-photo-error hidden></p>
+                    <div class="feedback-voice-draft" data-voice-overflow th:if="${feedbackVoiceAvailable == true}" hidden>
+                        <label for="feedback-transcript">Transcript<textarea id="feedback-transcript" rows="3"></textarea></label>
+                        <div class="feedback-voice-actions">
+                            <button class="feedback-composer-action" type="button" data-voice-add>Add to feedback</button>
+                            <button class="feedback-composer-action" type="button" data-voice-discard>Discard transcript</button>
+                        </div>
+                    </div>
+                    <div class="feedback-drop-label" aria-hidden="true">Drop up to 5 photos here</div>
+                </div>
+            </div>
             <button type="submit" class="pkg-btn primary">Send feedback</button>
         </form>
     </details>
 </div>
 
-<div th:fragment="controls(label)" class="showcase-controls" th:attr="aria-label=${label}" role="group" hidden>
+<div th:fragment="controls(label, feedback)" class="showcase-controls" th:attr="aria-label=${label}" role="group" hidden>
+    <button th:if="${feedback}" type="button" data-showcase-rotation aria-label="Pause feedback slideshow">
+        <span aria-hidden="true">Ⅱ</span>
+    </button>
     <button type="button" data-showcase-prev aria-label="Previous"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
     <span data-showcase-position aria-hidden="true"></span>
     <button type="button" data-showcase-next aria-label="Next"><i class="bi bi-arrow-right" aria-hidden="true"></i></button>

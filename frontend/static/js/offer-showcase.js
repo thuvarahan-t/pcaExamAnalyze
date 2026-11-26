@@ -5,12 +5,72 @@
     const photoDelay = 1000;
     const photoWaitLimit = 3000;
     const eventDelay = 3500;
-    const feedbackDelay = 2000;
+    const feedbackDelay = 3500;
     const slideEasing = 'cubic-bezier(.22,1,.36,1)';
 
     function animateEntrance(element, transform, duration, delay = 0) {
         return element.animate([{ opacity: 0, transform }, { opacity: 1, transform: 'none' }],
             { duration, delay, easing: slideEasing, fill: 'backwards' });
+    }
+
+    function previewOpener(dialog) {
+        if (typeof dialog?.showModal !== 'function') return null;
+        let opener;
+        dialog.querySelector('button').addEventListener('click', () => dialog.close());
+        dialog.addEventListener('click', event => {
+            if (event.target === dialog) dialog.close();
+        });
+        dialog.addEventListener('close', () => {
+            opener?.focus({ preventScroll: true });
+            opener = undefined;
+        });
+        return trigger => {
+            opener = trigger;
+            dialog.showModal();
+        };
+    }
+
+    function feedbackPhotoPreview(section) {
+        const dialog = section.querySelector('[data-feedback-photo-dialog]');
+        const open = previewOpener(dialog);
+        if (!open) return;
+        const image = dialog.querySelector('img');
+        section.addEventListener('click', event => {
+            const link = event.target.closest('a[data-feedback-photo]');
+            if (!link || event.defaultPrevented || event.button !== 0
+                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            image.src = link.href;
+            open(link);
+        });
+    }
+
+    function feedbackTextPreview(section, rail) {
+        const dialog = section.querySelector('[data-feedback-text-dialog]');
+        const open = previewOpener(dialog);
+        if (!open) return null;
+        const heading = dialog.querySelector('h2');
+        const text = dialog.querySelector('[data-feedback-full-text]');
+        const photos = dialog.querySelector('[data-feedback-full-photos]');
+        rail.classList.add('has-feedback-reader');
+        rail.addEventListener('click', event => {
+            const button = event.target.closest('[data-feedback-read]');
+            if (!button || button.hidden) return;
+            const card = button.closest('.student-quote');
+            heading.textContent = `Feedback from ${card.querySelector('footer strong').textContent}`;
+            text.textContent = card.querySelector('[data-feedback-excerpt]').textContent;
+            const thumbnails = card.querySelectorAll('a[data-feedback-photo]');
+            photos.replaceChildren(...Array.from(thumbnails, thumbnail => thumbnail.cloneNode(true)));
+            photos.hidden = thumbnails.length === 0;
+            open(button);
+            dialog.scrollTop = 0;
+        });
+        return () => {
+            for (const excerpt of rail.querySelectorAll('.is-current [data-feedback-excerpt]')) {
+                excerpt.parentElement.querySelector('[data-feedback-read]').hidden =
+                    excerpt.scrollHeight <= excerpt.clientHeight + 1;
+            }
+        };
     }
 
     function eventGallery(slide, onPick) {
@@ -150,12 +210,15 @@
         const rail = section.querySelector('.showcase-rail');
         const controls = section.querySelector('.showcase-controls');
         const position = controls.querySelector('[data-showcase-position]');
+        const rotation = controls.querySelector('[data-showcase-rotation]');
         const galleries = events ? slides.map(slide => eventGallery(slide, schedule)) : [];
+        const refreshFeedbackReaders = events ? null : feedbackTextPreview(section, rail);
         let first = 0;
         let photosAdvanced = 0;
         let timer;
         let touching;
         let hovering = false;
+        let autoplayPreference;
         let inView = true;
         let hasEnteredView = false;
         let allVisible = false;
@@ -164,6 +227,7 @@
         function show(direction = 0) {
             const visibleCount = Math.min(slides.length,
                 events || compact.matches || section.dataset.feedbackLayout === 'single' ? 1 : medium.matches ? 2 : 3);
+            if (!events) rail.classList.toggle('is-single-card', visibleCount === 1);
             allVisible = slides.length <= visibleCount;
             controls.hidden = allVisible;
             const previous = slides[first];
@@ -185,12 +249,13 @@
             }
             position.textContent = `${first + 1} / ${slides.length}`;
             if (animate && events) slideEvent(previous, slides[first], direction);
-            holdHeight();
+            resizeRail();
             if (feedbackPositions) slideFeedback(feedbackPositions, outgoing, direction);
         }
 
         // Slides differ in height. The rail only ever grows, so rotation never moves the page below it.
-        function holdHeight() {
+        function resizeRail() {
+            refreshFeedbackReaders?.();
             if (rail.offsetWidth !== railWidth) {
                 railWidth = rail.offsetWidth;
                 rail.style.minHeight = '';
@@ -264,10 +329,29 @@
             animateEntrance(current, `translateX(${-24 * direction}px)`, timing.duration);
         }
 
+        function autoplayEnabled() {
+            return autoplayPreference ?? !reducedMotion.matches;
+        }
+
+        function updateRotationControl() {
+            if (!rotation) return;
+            const enabled = autoplayEnabled();
+            const label = enabled ? 'Pause feedback slideshow' : 'Start feedback slideshow';
+            rotation.title = label;
+            rotation.setAttribute('aria-label', label);
+            rotation.querySelector('span').textContent = enabled ? 'Ⅱ' : '▶';
+        }
+
+        function feedbackPaused() {
+            const focused = document.activeElement;
+            const keyboardInCarousel = focused && focused !== rotation && focused.matches(':focus-visible') &&
+                (rail.contains(focused) || controls.contains(focused));
+            return !autoplayEnabled() || hovering || keyboardInCarousel || section.querySelector('dialog[open]');
+        }
+
         function schedule() {
             clearTimeout(timer);
-            const holdFeedback = !events && (reducedMotion.matches || hovering ||
-                section.contains(document.activeElement));
+            const holdFeedback = !events && feedbackPaused();
             if (!rotates || holdFeedback || (!events && allVisible) || !inView || document.hidden || touching) return;
             const gallery = galleries[first];
             if (shouldAdvancePhoto(gallery)) {
@@ -311,18 +395,25 @@
         previous.addEventListener('click', () => change(-1));
         next.addEventListener('click', () => change(1));
         if (!events) {
-            section.addEventListener('pointerenter', event => {
+            feedbackPhotoPreview(section);
+            rail.addEventListener('pointerenter', event => {
                 if (event.pointerType !== 'touch') hovering = true;
                 schedule();
             });
-            section.addEventListener('pointerleave', () => { hovering = false; schedule(); });
+            rail.addEventListener('pointerleave', () => { hovering = false; schedule(); });
             section.addEventListener('focusin', schedule);
             section.addEventListener('focusout', () => setTimeout(schedule, 0));
+            section.addEventListener('close', schedule, true);
+            rotation?.addEventListener('click', () => {
+                autoplayPreference = !autoplayEnabled();
+                updateRotationControl();
+                schedule();
+            });
         }
         rail.addEventListener('touchstart', event => {
             touching = {
                 start: event.touches[0],
-                browsingPhotos: events && event.target.closest('.event-thumbnails'),
+                browsingPhotos: event.target.closest(events ? '.event-thumbnails' : '.feedback-quote-photos'),
                 gallery: events && event.target.closest('.event-cover') ? galleries[first] : null
             };
             schedule();
@@ -360,8 +451,10 @@
             }).observe(rail);
         }
         for (const query of [compact, medium]) query.addEventListener('change', () => { show(); schedule(); });
-        window.addEventListener('resize', holdHeight);
-        reducedMotion.addEventListener('change', schedule);
+        window.addEventListener('resize', resizeRail);
+        if (refreshFeedbackReaders) document.fonts?.ready.then(resizeRail);
+        reducedMotion.addEventListener('change', () => { updateRotationControl(); schedule(); });
+        updateRotationControl();
         show();
         schedule();
     }

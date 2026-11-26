@@ -1,8 +1,11 @@
 package com.example.pcaExamAnalyze.config;
 
+import com.example.pcaExamAnalyze.web.OfferFeedbackVoiceController;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,7 +30,22 @@ public class RoleAwareAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
         String offerPath = request.getContextPath() + "/exam/packages";
         if (accessDeniedException instanceof CsrfException && "POST".equals(request.getMethod())
+                && request.getRequestURI().equals(request.getContextPath() + OfferFeedbackVoiceController.PATH)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.setHeader("Cache-Control", "no-store");
+            response.getWriter().write("{\"message\":\"Your feedback form expired. Reload the Offer page to use voice typing.\"}");
+            return;
+        }
+        if (accessDeniedException instanceof CsrfException && "POST".equals(request.getMethod())
                 && request.getRequestURI().equals(offerPath + "/feedback")) {
+            if ("true".equalsIgnoreCase(request.getHeader("X-Feedback-Upload"))) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+                response.getWriter().write("{\"message\":\"Your feedback form expired. Copy your feedback and refresh the page to try again.\"}");
+                return;
+            }
             var retry = new FlashMap();
             retry.setTargetRequestPath(offerPath);
             retry.put("feedbackError", "Your feedback form expired. Please fill it in again and resend.");
