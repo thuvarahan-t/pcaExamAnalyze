@@ -38,7 +38,7 @@ class GroqFeedbackTranscriberTest {
         provider.stop(0);
     }
 
-    @Test void sendsMixedTamilEnglishPromptAndPreservesLatinWords() {
+    @Test void sendsSriLankanTamilVocabularyAndPreservesLatinWords() {
         var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
         assertEquals("நான் class-க்கு வரணும். நன்றி!", transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
         assertEquals("Bearer test-key", authorization);
@@ -46,10 +46,11 @@ class GroqFeedbackTranscriberTest {
         assertTrue(requestBody.contains("name=\"file\"; filename=\"feedback.ogg\""));
         assertTrue(requestBody.contains("Content-Type: audio/ogg"));
         assertTrue(requestBody.contains("OpusHead"));
-        assertTrue(requestBody.contains("name=\"model\"") && requestBody.contains("\r\n\r\nwhisper-large-v3-turbo\r\n"));
+        assertTrue(requestBody.contains("name=\"model\"") && requestBody.contains("\r\n\r\nwhisper-large-v3\r\n"));
         assertTrue(requestBody.contains("name=\"language\"") && requestBody.contains("\r\n\r\nta\r\n"));
         assertTrue(requestBody.contains("name=\"prompt\""));
-        assertTrue(requestBody.contains("\r\n\r\nPCA class-ல Physics MCQ செய்தேன்.\r\n"));
+        assertTrue(requestBody.contains("இலங்கைத் தமிழ். tuition, class, notes, MCQ, Physics, PCA."));
+        assertTrue(requestBody.contains("விளங்குது, கிழமை, வாறன், ஒண்டும், படிப்பிச்சீங்க, எண்டா."));
         assertTrue(requestBody.contains("name=\"response_format\"") && requestBody.contains("\r\n\r\njson\r\n"));
     }
 
@@ -58,6 +59,13 @@ class GroqFeedbackTranscriberTest {
         var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
         assertEquals("MCQ செய்த நாள் நல்லா இருந்தது. ஆனால் கொஞ்சம் தாமதமாக வந்தது.",
             transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
+    }
+
+    @Test void preservesColloquialTamilAndTuitionWithoutRewritingTheTranscript() {
+        String spoken = "ரெண்டு கிழமையா tuition-க்கு வாறன். ஒண்டும் விளங்குது இல்ல. ஒழுங்கா படிப்பிச்சீங்க எண்டா நல்லா இருக்கும்.";
+        response = "{\"text\":\"" + spoken + "\"}";
+        assertEquals(spoken, transcriber(true, "test-key", Duration.ofSeconds(3))
+            .transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
     }
 
     @Test void preservesAFullEnglishSentenceWhenTheProviderTranscribesOne() {
@@ -99,7 +107,7 @@ class GroqFeedbackTranscriberTest {
     }
 
     private GroqFeedbackTranscriber transcriber(boolean enabled, String key, Duration timeout) {
-        return new GroqFeedbackTranscriber(enabled, key, "whisper-large-v3-turbo", FeedbackProviderClient.http(timeout), endpoint);
+        return new GroqFeedbackTranscriber(enabled, key, "whisper-large-v3", FeedbackProviderClient.http(timeout), endpoint);
     }
 
     private void respond(HttpExchange exchange) throws IOException {

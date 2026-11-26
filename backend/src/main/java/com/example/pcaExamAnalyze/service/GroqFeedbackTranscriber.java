@@ -14,8 +14,9 @@ import java.time.Duration;
 public class GroqFeedbackTranscriber {
     private static final URI TRANSCRIPTIONS = URI.create("https://api.groq.com/openai/v1/audio/transcriptions");
     private static final MediaType UTF8_TEXT = MediaType.parseMediaType("text/plain;charset=UTF-8");
-    // One mixed-language sentence models English spelling without suggesting a second rendering.
-    private static final String TAMIL_ENGLISH_EXAMPLE = "PCA class-ல Physics MCQ செய்தேன்.";
+    // A spelling vocabulary guides the decoder without giving it a sentence to copy.
+    private static final String SRI_LANKAN_TAMIL_VOCABULARY =
+        "இலங்கைத் தமிழ். tuition, class, notes, MCQ, Physics, PCA. விளங்குது, கிழமை, வாறன், ஒண்டும், படிப்பிச்சீங்க, எண்டா.";
 
     private final boolean enabled;
     private final String apiKey;
@@ -48,7 +49,7 @@ public class GroqFeedbackTranscriber {
         parts.part("file", audio, format.mediaType()).filename(format.fileName());
         parts.part("model", model);
         parts.part("language", "ta");
-        parts.part("prompt", TAMIL_ENGLISH_EXAMPLE, UTF8_TEXT);
+        parts.part("prompt", SRI_LANKAN_TAMIL_VOCABULARY, UTF8_TEXT);
         parts.part("response_format", "json");
 
         try {
