@@ -9,28 +9,41 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 function voicePage({ typed = '', denied = false, supported = true, available = true, fetch } = {}) {
     class Element extends EventTarget {
         value = '';
-        hidden = true;
+        hidden = false;
+        disabled = false;
         textContent = '';
-        click() { this.dispatchEvent(new Event('click')); }
-        focus() {}
+        click() {
+            if (this.hidden || this.disabled) return;
+            this.focus();
+            this.dispatchEvent(new Event('click'));
+        }
+        focus() { document.activeElement = this; }
     }
     const nodes = Object.fromEntries(['count', 'record', 'stop', 'retry', 'status', 'overflow', 'draft', 'add', 'discard'].map(
         name => [name, new Element()]
     ));
+    for (const name of ['record', 'stop', 'retry', 'overflow']) nodes[name].hidden = true;
     const comment = new Element();
     comment.value = typed;
     comment.maxLength = 600;
+    const school = new Element();
+    const details = new Element();
+    details.open = true;
     const form = new Element();
-    form.elements = { comment };
-    form.closest = () => new Element();
-    form.querySelector = selector => selector === '[data-feedback-count]' ? nodes.count : available ? voice : null;
+    form.elements = { comment, school };
+    form.closest = () => details;
     const voice = {
         dataset: { feedbackVoice: '/exam/packages/feedback/transcribe' },
-        querySelector: selector => nodes[selector.match(/\[data-voice-(.*)\]/)[1]]
+        querySelector: selector => ({ '[data-voice-record]': nodes.record,
+            '[data-voice-stop]': nodes.stop, '[data-voice-retry]': nodes.retry })[selector] || null
     };
+    form.querySelector = selector => ({ '[data-feedback-count]': nodes.count,
+        '[data-feedback-voice]': available ? voice : null, '[data-voice-status]': available ? nodes.status : null,
+        '[data-voice-overflow]': available ? nodes.overflow : null })[selector] || null;
     nodes.overflow.querySelector = selector => ({ textarea: nodes.draft,
         '[data-voice-add]': nodes.add, '[data-voice-discard]': nodes.discard })[selector];
-    const document = { querySelector: selector => ({ '[data-feedback-form]': form,
+    const body = new Element();
+    const document = { body, activeElement: body, querySelector: selector => ({ '[data-feedback-form]': form,
         'meta[name="_csrf"]': { content: 'csrf' }, 'meta[name="_csrf_header"]': { content: 'X-CSRF-TOKEN' } })[selector] };
     let releaseCount = 0;
     class MediaRecorder extends EventTarget {
@@ -57,7 +70,8 @@ function voicePage({ typed = '', denied = false, supported = true, available = t
     vm.runInNewContext(script, { document, window, navigator, fetch, Blob, Event, AbortController,
         setTimeout(callback, duration) { timers.set(duration, callback); return duration; },
         clearTimeout(duration) { timers.delete(duration); } });
-    return { ...nodes, comment, timers, released: () => releaseCount };
+    return { ...nodes, comment, school, details, timers, released: () => releaseCount,
+        voiceState: () => voice.dataset.voiceState, focused: () => document.activeElement };
 }
 
 test('records supported audio, stops at 30 seconds and appends editable Tamil without replacing typing', async () => {
@@ -68,34 +82,47 @@ test('records supported audio, stops at 30 seconds and appends editable Tamil wi
         assert.equal(await request.body.text(), 'sample');
         return { ok: true, json: async () => ({ text: 'நன்றி.' }) };
     } });
+    assert.equal(page.voiceState(), 'ready');
     page.record.click();
+    assert.equal(page.voiceState(), 'permission');
+    assert.equal(page.record.disabled, true);
     await settle();
+    assert.equal(page.voiceState(), 'recording');
     assert.equal(page.stop.hidden, false);
+    assert.equal(page.focused(), page.stop);
     page.timers.get(30_000)();
+    assert.equal(page.voiceState(), 'processing');
+    assert.equal(page.stop.hidden, true);
     await settle();
+    assert.equal(page.voiceState(), 'ready');
+    assert.equal(page.focused(), page.comment);
     assert.equal(page.released(), 1);
     assert.equal(page.comment.value, 'I liked the lab. நன்றி.');
-    assert.equal(page.count.textContent, `${page.comment.value.length} / 600 characters`);
+    assert.equal(page.count.textContent, `${page.comment.value.length} / 600`);
 });
 
 test('keeps typing available when microphone permission fails, recording is unsupported or keys are missing', async () => {
     const denied = voicePage({ typed: 'Original draft', denied: true, fetch: () => assert.fail('Uploaded audio') });
     denied.record.click();
     await settle();
+    assert.equal(denied.voiceState(), 'ready');
+    assert.equal(denied.record.disabled, false);
     assert.match(denied.status.textContent, /denied/);
     assert.equal(denied.comment.value, 'Original draft');
     const unsupported = voicePage({ supported: false });
+    assert.equal(unsupported.voiceState(), 'unavailable');
+    assert.equal(unsupported.record.hidden, true);
     assert.match(unsupported.status.textContent, /unavailable/);
     const unconfigured = voicePage({ available: false, typed: 'Always editable' });
-    assert.equal(unconfigured.count.textContent, '15 / 600 characters');
+    assert.equal(unconfigured.count.textContent, '15 / 600');
     assert.equal(unconfigured.record.hidden, true);
 });
 
 test('retries the same recording and keeps a transcript editable when it exceeds the feedback limit', async () => {
-    let attempts = 0;
-    const page = voicePage({ typed: 'a'.repeat(599), fetch: async () => {
-        attempts += 1;
-        return attempts === 1
+    const recordings = [];
+    const page = voicePage({ typed: 'a'.repeat(599), fetch: async (url, request) => {
+        recordings.push(request.body);
+        return recordings.length === 1
             ? { ok: false, json: async () => ({ message: 'Try again shortly.' }) }
             : { ok: true, json: async () => ({ text: 'நன்றி.' }) };
     } });
@@ -103,16 +130,62 @@ test('retries the same recording and keeps a transcript editable when it exceeds
     await settle();
     page.stop.click();
     await settle();
+    assert.equal(page.voiceState(), 'retry');
     assert.equal(page.retry.hidden, false);
     assert.equal(page.status.textContent, 'Try again shortly.');
+    assert.equal(page.focused(), page.retry);
     page.retry.click();
+    assert.equal(page.voiceState(), 'processing');
     await settle();
-    assert.equal(attempts, 2);
+    assert.equal(recordings.length, 2);
+    assert.equal(recordings[1], recordings[0]);
+    assert.equal(page.voiceState(), 'ready');
     assert.equal(page.comment.value.length, 599);
     assert.equal(page.overflow.hidden, false);
+    assert.equal(page.record.disabled, true);
     assert.equal(page.draft.value, 'நன்றி.');
+    assert.equal(page.focused(), page.draft);
     page.comment.value = 'Shorter draft';
     page.add.click();
     assert.equal(page.comment.value, 'Shorter draft நன்றி.');
     assert.equal(page.overflow.hidden, true);
+    assert.equal(page.record.disabled, false);
+});
+
+test('keeps another field focused while a recording starts and returns a transcript', async () => {
+    const page = voicePage({ fetch: async () => ({ ok: true, json: async () => ({ text: 'நன்றி.' }) }) });
+    page.record.click();
+    page.school.focus();
+    await settle();
+    assert.equal(page.voiceState(), 'recording');
+    assert.equal(page.focused(), page.school);
+    page.timers.get(30_000)();
+    await settle();
+    assert.equal(page.voiceState(), 'ready');
+    assert.equal(page.comment.value, 'நன்றி.');
+    assert.equal(page.focused(), page.school);
+});
+
+test('closing the form clears processing state and ignores a late transcript', async () => {
+    let finish;
+    let signal;
+    const page = voicePage({ typed: 'Original draft', fetch: (url, request) => {
+        signal = request.signal;
+        return new Promise(resolve => { finish = resolve; });
+    } });
+    page.record.click();
+    await settle();
+    page.stop.click();
+    await settle();
+    assert.equal(page.voiceState(), 'processing');
+    assert.equal(signal.aborted, false);
+    page.details.open = false;
+    page.details.dispatchEvent(new Event('toggle'));
+    assert.equal(signal.aborted, true);
+    assert.equal(page.voiceState(), 'ready');
+    assert.equal(page.status.textContent, '');
+    finish({ ok: true, json: async () => ({ text: 'நன்றி.' }) });
+    await settle();
+    assert.equal(page.comment.value, 'Original draft');
+    assert.equal(page.voiceState(), 'ready');
 });

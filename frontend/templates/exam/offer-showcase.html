@@ -107,40 +107,58 @@
                     <div th:replace="~{exam/district-picker :: picker('Choose district', false)}"></div>
                 </div>
             </div>
-            <div class="feedback-voice" th:if="${feedbackVoiceAvailable == true}"
-                 th:attr="data-feedback-voice=@{/exam/packages/feedback/transcribe}">
-                <div class="feedback-voice-actions">
-                    <button type="button" data-voice-record aria-describedby="feedback-voice-note" hidden>Record Tamil</button>
-                    <button type="button" data-voice-stop hidden>Stop recording</button>
-                    <button type="button" data-voice-retry hidden>Retry transcription</button>
-                </div>
-                <p class="feedback-note" id="feedback-voice-note">Speak for up to 30 seconds. Your recording is sent for transcription when you stop.</p>
-                <p class="feedback-note" role="status" data-voice-status></p>
-                <div class="feedback-voice-draft" data-voice-overflow hidden>
-                    <label for="feedback-transcript">Transcript<textarea id="feedback-transcript" rows="3"></textarea></label>
-                    <div class="feedback-voice-actions">
-                        <button type="button" data-voice-add>Add to feedback</button>
-                        <button type="button" data-voice-discard>Discard transcript</button>
-                    </div>
-                </div>
-            </div>
             <div class="feedback-comment">
-                <label for="feedback-comment">Your feedback
+                <label for="feedback-comment">Your feedback</label>
+                <div class="feedback-composer" data-feedback-composer>
                     <textarea id="feedback-comment" name="comment" required maxlength="600" rows="4"
-                              aria-describedby="feedback-comment-count" th:text="${feedbackDraft?.comment()}"></textarea>
-                </label>
-                <p id="feedback-comment-count" class="feedback-note" data-feedback-count>600-character limit</p>
-            </div>
-            <div class="feedback-photo" data-feedback-photo hidden>
-                <label for="feedback-photo">Photo (optional)</label>
-                <input id="feedback-photo" type="file" accept="image/*" aria-describedby="feedback-photo-note">
-                <p id="feedback-photo-note" class="feedback-note">Choose one photo you have permission to share publicly.</p>
-                <div class="feedback-photo-preview" data-photo-preview hidden>
-                    <img alt="Selected feedback photo" hidden>
-                    <button type="button" data-remove-photo>Remove photo</button>
+                              aria-describedby="feedback-comment-count" placeholder="Write your feedback…"
+                              th:text="${feedbackDraft?.comment()}"></textarea>
+                    <div class="feedback-photo-preview" data-photo-preview hidden>
+                        <img alt="Selected feedback photo" hidden>
+                        <button class="feedback-composer-action feedback-composer-icon" type="button" data-remove-photo
+                                aria-label="Remove photo" title="Remove photo"><span class="feedback-icon-symbol" aria-hidden="true">×</span></button>
+                    </div>
+                    <div class="feedback-composer-toolbar">
+                        <div class="feedback-composer-tools">
+                            <div data-feedback-photo hidden>
+                                <input id="feedback-photo" type="file" accept="image/*" hidden>
+                                <button class="feedback-composer-action" type="button" data-add-photo
+                                        aria-label="Add photo" title="Choose or drop one photo you can share publicly">
+                                    <span class="feedback-icon-photo" aria-hidden="true"></span><span>Add photo</span>
+                                </button>
+                            </div>
+                            <div class="feedback-voice" th:if="${feedbackVoiceAvailable == true}"
+                                 th:attr="data-feedback-voice=@{/exam/packages/feedback/transcribe}">
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-record hidden
+                                        aria-label="Record Tamil" title="Record Tamil for up to 30 seconds" aria-describedby="feedback-voice-note">
+                                    <span class="feedback-icon-mic" aria-hidden="true"></span>
+                                </button>
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-stop hidden
+                                        aria-label="Stop recording" title="Stop recording"><span class="feedback-icon-stop" aria-hidden="true"></span></button>
+                                <button class="feedback-composer-action feedback-composer-icon" type="button" data-voice-retry hidden
+                                        aria-label="Retry transcription" title="Retry transcription"><span class="feedback-icon-symbol" aria-hidden="true">↻</span></button>
+                                <span class="feedback-voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                                <span class="feedback-voice-spinner" aria-hidden="true"></span>
+                                <span id="feedback-voice-note" hidden>Audio is sent for transcription when you stop recording.</span>
+                            </div>
+                        </div>
+                        <p id="feedback-comment-count" class="feedback-note feedback-composer-count">
+                            <span data-feedback-count th:text="|${#strings.length(feedbackDraft?.comment() ?: '')} / 600|">0 / 600</span>
+                            <span class="feedback-count-unit">characters</span>
+                        </p>
+                    </div>
+                    <p class="feedback-note feedback-composer-status" role="status" data-voice-status th:if="${feedbackVoiceAvailable == true}"></p>
+                    <p class="feedback-note feedback-composer-status" role="status" data-photo-status></p>
+                    <p class="showcase-error feedback-composer-error" role="alert" data-photo-error hidden></p>
+                    <div class="feedback-voice-draft" data-voice-overflow th:if="${feedbackVoiceAvailable == true}" hidden>
+                        <label for="feedback-transcript">Transcript<textarea id="feedback-transcript" rows="3"></textarea></label>
+                        <div class="feedback-voice-actions">
+                            <button class="feedback-composer-action" type="button" data-voice-add>Add to feedback</button>
+                            <button class="feedback-composer-action" type="button" data-voice-discard>Discard transcript</button>
+                        </div>
+                    </div>
+                    <div class="feedback-drop-label" aria-hidden="true">Drop one photo here</div>
                 </div>
-                <p class="feedback-note" role="status" data-photo-status></p>
-                <p class="showcase-error" role="alert" data-photo-error hidden></p>
             </div>
             <button type="submit" class="pkg-btn primary">Send feedback</button>
         </form>

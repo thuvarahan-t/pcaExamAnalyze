@@ -7,15 +7,17 @@
 
     const csrf = document.querySelector('meta[name="_csrf"]');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]');
-    const picker = form.querySelector('[data-feedback-photo]');
+    const composer = form.querySelector('[data-feedback-composer]');
+    const picker = composer?.querySelector('[data-feedback-photo]');
     if (!csrf || !csrfHeader || !picker) return;
 
-    const input = picker.querySelector('input');
-    const quickPreview = picker.querySelector('[data-photo-preview]');
+    const input = picker.querySelector('input[type="file"]');
+    const add = picker.querySelector('[data-add-photo]');
+    const quickPreview = composer.querySelector('[data-photo-preview]');
     const image = quickPreview.querySelector('img');
-    const remove = picker.querySelector('[data-remove-photo]');
-    const status = picker.querySelector('[data-photo-status]');
-    const error = picker.querySelector('[data-photo-error]');
+    const remove = quickPreview.querySelector('[data-remove-photo]');
+    const status = composer.querySelector('[data-photo-status]');
+    const error = composer.querySelector('[data-photo-error]');
     const submit = form.querySelector('[type="submit"]');
     const feedback = form.closest('.offer-story-response');
     const success = feedback.querySelector('[data-feedback-success]');
@@ -24,8 +26,9 @@
     let photo = null;
     let previewUrl;
     let selection = 0;
-    let preparing = false;
+    let hasSelection = false;
     let sending = false;
+    let dragDepth = 0;
 
     function showError(message = '') {
         error.textContent = message;
@@ -78,9 +81,14 @@
         }
     }
 
-    async function preparePhoto(file, current) {
+    async function selectPhoto(file) {
+        if (sending) return;
+        const current = ++selection;
         const sourceLabel = 'Choose another photo or remove it to send feedback with text only.';
-        preparing = true;
+        hasSelection = true;
+        clearPreview();
+        showError();
+        quickPreview.hidden = false;
         status.textContent = 'Preparing photo…';
         try {
             const compressed = await compress(file);
@@ -94,8 +102,6 @@
             if (current !== selection) return;
             status.textContent = '';
             showError(`${failure.message || 'The photo could not be prepared.'} ${sourceLabel}`);
-        } finally {
-            if (current === selection) preparing = false;
         }
     }
 
@@ -104,36 +110,74 @@
         input.value = '';
         clearPreview();
         quickPreview.hidden = true;
-        preparing = false;
+        hasSelection = false;
         status.textContent = '';
         showError();
     }
 
+    function isFileDrag(event) {
+        const transfer = event.dataTransfer;
+        return transfer && (transfer.files?.length > 0 || Array.from(transfer.types || []).includes('Files'));
+    }
+
+    function clearDrag() {
+        dragDepth = 0;
+        composer.classList.toggle('is-photo-dragging', false);
+    }
+
+    add.addEventListener('click', () => input.click());
     input.addEventListener('change', () => {
         const file = input.files[0];
-        if (!file) {
-            removePhoto();
-            return;
-        }
-        clearPreview();
-        showError();
-        quickPreview.hidden = false;
-        preparePhoto(file, ++selection);
+        input.value = '';
+        if (file) selectPhoto(file);
     });
 
     remove.addEventListener('click', () => {
         removePhoto();
-        input.focus();
+        add.focus();
+    });
+
+    composer.addEventListener('dragenter', event => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        if (sending) return;
+        dragDepth += 1;
+        composer.classList.toggle('is-photo-dragging', true);
+    });
+
+    composer.addEventListener('dragover', event => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = sending ? 'none' : 'copy';
+    });
+
+    composer.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) clearDrag();
+    });
+
+    composer.addEventListener('drop', event => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        clearDrag();
+        if (sending) return;
+        const files = event.dataTransfer.files;
+        if (files.length > 1) {
+            showError('Attach one photo at a time.');
+        } else if (files.length === 1) {
+            selectPhoto(files[0]);
+        }
     });
 
     form.addEventListener('submit', async event => {
-        if (!input.files.length && !sending) return;
+        if (!hasSelection && !sending) return;
         event.preventDefault();
-        if (preparing || sending || !photo) return;
+        if (sending || !photo) return;
 
         const body = new FormData(form);
         body.set('photo', photo, 'feedback.jpg');
-        submit.disabled = input.disabled = remove.disabled = sending = true;
+        submit.disabled = input.disabled = add.disabled = remove.disabled = sending = true;
+        clearDrag();
         status.textContent = 'Sending feedback…';
         success.hidden = true;
         showError();
@@ -161,7 +205,7 @@
             showError('Feedback could not be sent. Try again or remove the photo to send text only.');
         } finally {
             status.textContent = '';
-            submit.disabled = input.disabled = remove.disabled = sending = false;
+            submit.disabled = input.disabled = add.disabled = remove.disabled = sending = false;
         }
     });
 
