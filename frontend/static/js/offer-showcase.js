@@ -225,6 +225,7 @@
         function show(direction = 0) {
             const visibleCount = Math.min(slides.length,
                 events || compact.matches || section.dataset.feedbackLayout === 'single' ? 1 : medium.matches ? 2 : 3);
+            if (!events) rail.classList.toggle('is-single-card', visibleCount === 1);
             allVisible = slides.length <= visibleCount;
             controls.hidden = allVisible;
             const previous = slides[first];
