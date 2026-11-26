@@ -13,20 +13,9 @@
             { duration, delay, easing: slideEasing, fill: 'backwards' });
     }
 
-    function feedbackPhotoPreview(section, rail) {
-        const dialog = section.querySelector('[data-feedback-photo-dialog]');
-        if (typeof dialog?.showModal !== 'function') return;
-        const image = dialog.querySelector('img');
+    function previewOpener(dialog) {
+        if (typeof dialog?.showModal !== 'function') return null;
         let opener;
-        rail.addEventListener('click', event => {
-            const link = event.target.closest('[data-feedback-photo]');
-            if (!link || event.defaultPrevented || event.button !== 0
-                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-            event.preventDefault();
-            opener = link;
-            image.src = link.href;
-            dialog.showModal();
-        });
         dialog.querySelector('button').addEventListener('click', () => dialog.close());
         dialog.addEventListener('click', event => {
             if (event.target === dialog) dialog.close();
@@ -35,6 +24,48 @@
             opener?.focus({ preventScroll: true });
             opener = undefined;
         });
+        return trigger => {
+            opener = trigger;
+            dialog.showModal();
+        };
+    }
+
+    function feedbackPhotoPreview(section, rail) {
+        const dialog = section.querySelector('[data-feedback-photo-dialog]');
+        const open = previewOpener(dialog);
+        if (!open) return;
+        const image = dialog.querySelector('img');
+        rail.addEventListener('click', event => {
+            const link = event.target.closest('[data-feedback-photo]');
+            if (!link || event.defaultPrevented || event.button !== 0
+                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            image.src = link.href;
+            open(link);
+        });
+    }
+
+    function feedbackTextPreview(section, rail) {
+        const dialog = section.querySelector('[data-feedback-text-dialog]');
+        const open = previewOpener(dialog);
+        if (!open) return null;
+        const heading = dialog.querySelector('h2');
+        const text = dialog.querySelector('[data-feedback-full-text]');
+        rail.classList.add('has-feedback-reader');
+        rail.addEventListener('click', event => {
+            const button = event.target.closest('[data-feedback-read]');
+            if (!button || button.hidden) return;
+            const card = button.closest('.student-quote');
+            heading.textContent = `Feedback from ${card.querySelector('footer strong').textContent}`;
+            text.textContent = card.querySelector('[data-feedback-excerpt]').textContent;
+            open(button);
+        });
+        return () => {
+            for (const excerpt of rail.querySelectorAll('.is-current [data-feedback-excerpt]')) {
+                excerpt.parentElement.querySelector('[data-feedback-read]').hidden =
+                    excerpt.scrollHeight <= excerpt.clientHeight + 1;
+            }
+        };
     }
 
     function eventGallery(slide, onPick) {
@@ -175,6 +206,7 @@
         const controls = section.querySelector('.showcase-controls');
         const position = controls.querySelector('[data-showcase-position]');
         const galleries = events ? slides.map(slide => eventGallery(slide, schedule)) : [];
+        const refreshFeedbackReaders = events ? null : feedbackTextPreview(section, rail);
         let first = 0;
         let photosAdvanced = 0;
         let timer;
@@ -209,12 +241,13 @@
             }
             position.textContent = `${first + 1} / ${slides.length}`;
             if (animate && events) slideEvent(previous, slides[first], direction);
-            holdHeight();
+            resizeRail();
             if (feedbackPositions) slideFeedback(feedbackPositions, outgoing, direction);
         }
 
         // Slides differ in height. The rail only ever grows, so rotation never moves the page below it.
-        function holdHeight() {
+        function resizeRail() {
+            refreshFeedbackReaders?.();
             if (rail.offsetWidth !== railWidth) {
                 railWidth = rail.offsetWidth;
                 rail.style.minHeight = '';
@@ -385,7 +418,8 @@
             }).observe(rail);
         }
         for (const query of [compact, medium]) query.addEventListener('change', () => { show(); schedule(); });
-        window.addEventListener('resize', holdHeight);
+        window.addEventListener('resize', resizeRail);
+        if (refreshFeedbackReaders) document.fonts?.ready.then(resizeRail);
         reducedMotion.addEventListener('change', schedule);
         show();
         schedule();

@@ -70,7 +70,11 @@
         <article class="student-quote" th:each="entry, loop : ${feedback}" data-showcase-slide
                  th:classappend="${loop.index < (campaign.hasPromoVideo() ? 1 : 3)} ? 'is-current'">
             <span class="quote-package" th:if="${!#strings.isEmpty(entry.packageName)}" th:text="${entry.packageName}"></span>
-            <blockquote th:text="${entry.comment}"></blockquote>
+            <blockquote>
+                <span data-feedback-excerpt th:text="${entry.comment}"></span>
+                <button type="button" data-feedback-read aria-haspopup="dialog"
+                        th:attr="aria-label=|Read full feedback from ${entry.studentName}|" hidden></button>
+            </blockquote>
             <div class="feedback-quote-photos" th:if="${entry.photoCount > 0}">
                 <a data-feedback-photo aria-haspopup="dialog" th:each="index : ${#numbers.sequence(0, entry.photoCount - 1)}"
                    th:with="photoUrl=@{/exam/packages/feedback/{id}/photo/{index}(id=${entry.id},index=${index})}"
@@ -86,6 +90,12 @@
         </article>
     </div>
     <div th:replace="~{exam/offer-showcase :: controls('Student feedback')}"></div>
+    <dialog class="registration-dialog feedback-text-dialog" data-feedback-text-dialog
+            aria-labelledby="feedback-text-title" th:if="${!#lists.isEmpty(feedback)}">
+        <button class="dialog-close" type="button" aria-label="Close feedback" autofocus>×</button>
+        <h2 id="feedback-text-title">Student feedback</h2>
+        <p data-feedback-full-text></p>
+    </dialog>
     <dialog class="poster-dialog" data-feedback-photo-dialog aria-label="Feedback photo" th:if="${!#lists.isEmpty(feedback)}">
         <button class="dialog-close" type="button" aria-label="Close photo" autofocus>×</button>
         <img alt="Photo shared with this feedback" decoding="async">

@@ -221,7 +221,25 @@
     opacity: .55;
 }
 .quote-package { margin-bottom: 6px; color: var(--quote-accent); font-size: 12.5px; font-weight: 700; }
-.student-quote blockquote { margin: 0 0 22px; color: #21394f; font-size: 15px; line-height: 1.75; white-space: pre-line; }
+.student-quote blockquote { position: relative; width: 100%; margin: 0 0 22px; color: #21394f; font-size: 15px; line-height: 1.75; white-space: pre-line; }
+.has-feedback-reader [data-feedback-excerpt] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+[data-feedback-read] {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+}
+[data-feedback-read]:hover { background: #0e8f840d; }
+.feedback-text-dialog { overflow-wrap: anywhere; }
+.feedback-text-dialog p { margin: 16px 0 0; color: #21394f; line-height: 1.7; white-space: pre-wrap; }
 /* Use the existing space below the quote for photos so the card keeps the same height. */
 .student-quote blockquote:has(+ .feedback-quote-photos) { margin-bottom: 0; }
 .feedback-quote-photos { display: flex; flex: 0 0 22px; gap: 5px; width: 100%; }
