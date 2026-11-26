@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 @Service
 public class GroqFeedbackTranscriber {
@@ -17,7 +18,10 @@ public class GroqFeedbackTranscriber {
     // Short spelling hints give English terms and Tamil suffixes without providing a sentence to copy.
     private static final String SRI_LANKAN_TAMIL_SPELLINGS =
         "இலங்கைத் தமிழ். tuition-க்கு, class-ல, notes, MCQ, Physics, PCA. "
-        + "ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா.";
+        + "ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா. இல்ல, class-க்கு.";
+    // Match the reported class spelling in the context of coming to class.
+    private static final Pattern CLASS_ARRIVAL_MISSPELLING = Pattern.compile(
+        "(?<![\\p{L}\\p{M}\\p{N}])கிழாசிக்கு(?=[,\\s]+(?:வாறன்|வாரன்)(?![\\p{L}\\p{M}\\p{N}]))");
 
     private final boolean enabled;
     private final String apiKey;
@@ -59,7 +63,8 @@ public class GroqFeedbackTranscriber {
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(parts.build()));
-            return FeedbackProviderClient.plainText(result.path("text"));
+            String transcript = FeedbackProviderClient.plainText(result.path("text"));
+            return CLASS_ARRIVAL_MISSPELLING.matcher(transcript).replaceAll("class-க்கு");
         } catch (FeedbackProviderClient.Unavailable e) {
             throw new Failed();
         }

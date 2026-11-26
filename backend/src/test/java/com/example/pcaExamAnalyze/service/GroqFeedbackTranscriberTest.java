@@ -50,7 +50,7 @@ class GroqFeedbackTranscriberTest {
         assertTrue(requestBody.contains("name=\"language\"") && requestBody.contains("\r\n\r\nta\r\n"));
         assertTrue(requestBody.contains("name=\"prompt\""));
         assertTrue(requestBody.contains("இலங்கைத் தமிழ். tuition-க்கு, class-ல, notes, MCQ, Physics, PCA."));
-        assertTrue(requestBody.contains("ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா."));
+        assertTrue(requestBody.contains("ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா. இல்ல, class-க்கு."));
         assertTrue(requestBody.contains("name=\"response_format\"") && requestBody.contains("\r\n\r\njson\r\n"));
     }
 
@@ -74,6 +74,28 @@ class GroqFeedbackTranscriberTest {
         response = "{\"text\":\"" + mixed + "\"}";
         assertEquals(mixed, transcriber(true, "test-key", Duration.ofSeconds(3))
             .transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
+    }
+
+    @Test void restoresTheReportedClassSpellingAndKeepsTheRestOfTheTranscript() {
+        var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
+        for (String separator : new String[] { " ", ", " }) {
+            String rest = separator + "வாறன், ஒண்டுமே நல்லா இல்ல, எதாவது இன்புர்ப்பு செய்னீங்கது நல்லா இருக்கும்.";
+            response = "{\"text\":\"ரெண்டு கிழமையா, கிழாசிக்கு" + rest + "\"}";
+            assertEquals("ரெண்டு கிழமையா, class-க்கு" + rest,
+                transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
+        }
+    }
+
+    @Test void keepsTamilClassGlassAndUnconfirmedSpellings() {
+        var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
+        for (String spoken : new String[] {
+            "இந்த glass-க்கு தண்ணி ஊத்துங்க. அந்த கிளாஸுக்கு தண்ணி ஊத்தினேன்.",
+            "நான் வகுப்புக்கு வாறன். பிறகு கிழக்குக்கு வாறன்.",
+            "கிழாசிக்கு தண்ணி ஊத்துங்க. முன்கிழாசிக்கு வாறன். கிழாசிக்கு வாறனுக்கு கொடுத்தேன்."
+        }) {
+            response = "{\"text\":\"" + spoken + "\"}";
+            assertEquals(spoken, transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
+        }
     }
 
     @Test void disabledOrMissingKeyNeverCallsGroq() {
