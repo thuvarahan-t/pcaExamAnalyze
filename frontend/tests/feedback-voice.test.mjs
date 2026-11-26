@@ -19,7 +19,8 @@ function voicePage({ typed = '', denied = false, supported = true, available = t
         }
         focus() { document.activeElement = this; }
     }
-    const nodes = Object.fromEntries(['count', 'record', 'stop', 'retry', 'status', 'overflow', 'draft', 'add', 'discard'].map(
+    const nodes = Object.fromEntries(['count', 'record', 'stop', 'retry', 'status', 'progress', 'progressLabel',
+        'cancel', 'overflow', 'draft', 'add', 'discard'].map(
         name => [name, new Element()]
     ));
     for (const name of ['record', 'stop', 'retry', 'overflow']) nodes[name].hidden = true;
@@ -39,7 +40,11 @@ function voicePage({ typed = '', denied = false, supported = true, available = t
     };
     form.querySelector = selector => ({ '[data-feedback-count]': nodes.count,
         '[data-feedback-voice]': available ? voice : null, '[data-voice-status]': available ? nodes.status : null,
+        '[data-voice-progress]': available ? nodes.progress : null,
         '[data-voice-overflow]': available ? nodes.overflow : null })[selector] || null;
+    nodes.progress.querySelector = selector => ({
+        '[data-voice-progress-label]': nodes.progressLabel, '[data-voice-cancel]': nodes.cancel
+    })[selector];
     nodes.overflow.querySelector = selector => ({ textarea: nodes.draft,
         '[data-voice-add]': nodes.add, '[data-voice-discard]': nodes.discard })[selector];
     const body = new Element();
@@ -70,7 +75,7 @@ function voicePage({ typed = '', denied = false, supported = true, available = t
     vm.runInNewContext(script, { document, window, navigator, fetch, Blob, Event, AbortController,
         setTimeout(callback, duration) { timers.set(duration, callback); return duration; },
         clearTimeout(duration) { timers.delete(duration); } });
-    return { ...nodes, comment, school, details, timers, released: () => releaseCount,
+    return { ...nodes, comment, school, form, details, timers, released: () => releaseCount,
         voiceState: () => voice.dataset.voiceState, focused: () => document.activeElement };
 }
 
@@ -93,8 +98,10 @@ test('records supported audio, stops at 30 seconds and appends editable Tamil wi
     page.timers.get(30_000)();
     assert.equal(page.voiceState(), 'processing');
     assert.equal(page.stop.hidden, true);
+    assert.equal(page.progress.hidden, false);
     await settle();
     assert.equal(page.voiceState(), 'ready');
+    assert.equal(page.progress.hidden, true);
     assert.equal(page.focused(), page.comment);
     assert.equal(page.released(), 1);
     assert.equal(page.comment.value, 'I liked the lab. நன்றி.');
@@ -179,6 +186,9 @@ test('closing the form clears processing state and ignores a late transcript', a
     await settle();
     assert.equal(page.voiceState(), 'processing');
     assert.equal(signal.aborted, false);
+    assert.equal(page.progressLabel.textContent, 'Transcribing…');
+    page.timers.get(8_000)();
+    assert.equal(page.progressLabel.textContent, 'Still transcribing…');
     page.details.open = false;
     page.details.dispatchEvent(new Event('toggle'));
     assert.equal(signal.aborted, true);
@@ -188,4 +198,31 @@ test('closing the form clears processing state and ignores a late transcript', a
     await settle();
     assert.equal(page.comment.value, 'Original draft');
     assert.equal(page.voiceState(), 'ready');
+});
+
+test('canceling an active transcription keeps typed feedback and returns focus to the mic', async () => {
+    let complete;
+    let signal;
+    const page = voicePage({ typed: 'Original feedback', fetch: (url, request) => {
+        signal = request.signal;
+        return new Promise(resolve => { complete = resolve; });
+    } });
+    page.record.click();
+    await settle();
+    page.stop.click();
+    await settle();
+    assert.equal(page.focused(), page.cancel);
+    page.comment.value += ' with more details';
+    const submittedWhileTranscribing = new Event('submit', { cancelable: true });
+    assert.equal(page.form.dispatchEvent(submittedWhileTranscribing), false);
+    assert.match(page.progressLabel.textContent, /cancel to send/);
+    page.cancel.click();
+    assert.equal(signal.aborted, true);
+    assert.equal(page.progress.hidden, true);
+    assert.equal(page.focused(), page.record);
+    assert.equal(page.form.dispatchEvent(new Event('submit', { cancelable: true })), true);
+    complete({ ok: true, json: async () => ({ text: 'நன்றி.' }) });
+    await settle();
+    assert.equal(page.comment.value, 'Original feedback with more details');
+    assert.equal(page.status.textContent, 'Transcription canceled.');
 });

@@ -156,6 +156,15 @@
                             <span class="feedback-count-unit">characters</span>
                         </p>
                     </div>
+                    <div class="feedback-transcription" data-voice-progress th:if="${feedbackVoiceAvailable == true}" hidden>
+                        <span class="feedback-transcription-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                        <div class="feedback-transcription-copy">
+                            <p data-voice-progress-label aria-hidden="true"></p>
+                            <p class="feedback-note">Keep typing.</p>
+                        </div>
+                        <button class="feedback-composer-action" type="button" data-voice-cancel aria-label="Cancel transcription">Cancel</button>
+                        <span class="feedback-transcription-track" aria-hidden="true"></span>
+                    </div>
                     <p class="feedback-note feedback-composer-status" role="status" data-voice-status th:if="${feedbackVoiceAvailable == true}"></p>
                     <p class="feedback-note feedback-composer-status" role="status" data-photo-status></p>
                     <p class="showcase-error feedback-composer-error" role="alert" data-photo-error hidden></p>

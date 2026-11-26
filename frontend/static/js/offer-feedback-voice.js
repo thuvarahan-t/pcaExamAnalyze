@@ -19,11 +19,14 @@
     const stop = voice.querySelector('[data-voice-stop]');
     const retry = voice.querySelector('[data-voice-retry]');
     const status = form.querySelector('[data-voice-status]');
+    const progress = form.querySelector('[data-voice-progress]');
+    const progressLabel = progress.querySelector('[data-voice-progress-label]');
+    const cancelButton = progress.querySelector('[data-voice-cancel]');
     const overflow = form.querySelector('[data-voice-overflow]');
     const draft = overflow.querySelector('textarea');
     const addDraft = overflow.querySelector('[data-voice-add]');
     const discardDraft = overflow.querySelector('[data-voice-discard]');
-    const voiceControls = [record, stop, retry, addDraft, discardDraft];
+    const voiceControls = [record, stop, retry, cancelButton, addDraft, discardDraft];
     const csrf = document.querySelector('meta[name="_csrf"]')?.content;
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
 
@@ -48,6 +51,8 @@
         record.disabled = mode === 'permission' || !overflow.hidden;
         stop.hidden = mode !== 'recording';
         retry.hidden = mode !== 'retry';
+        progress.hidden = mode !== 'processing';
+        progressLabel.textContent = progress.hidden ? '' : message;
         status.textContent = message;
     }
 
@@ -91,9 +96,13 @@
 
     async function transcribe() {
         const current = generation;
-        show('processing', 'Transcribing Tamil…');
+        show('processing', 'Transcribing…');
+        moveVoiceFocus(cancelButton);
         const controller = new AbortController();
         upload = controller;
+        const waiting = setTimeout(() => {
+            if (current === generation) show('processing', 'Still transcribing…');
+        }, 8_000);
         const deadline = setTimeout(() => controller.abort(), 30_000);
         try {
             const response = await fetch(voice.dataset.feedbackVoice, {
@@ -115,6 +124,7 @@
                 moveVoiceFocus(retry);
             }
         } finally {
+            clearTimeout(waiting);
             clearTimeout(deadline);
             if (upload === controller) upload = undefined;
         }
@@ -124,6 +134,7 @@
         if (recorder?.state !== 'recording') return;
         clearTimeout(timer);
         show('processing', 'Preparing recording…');
+        moveVoiceFocus(cancelButton);
         recorder.stop();
     }
 
@@ -199,6 +210,11 @@
     record.addEventListener('click', startRecording);
     stop.addEventListener('click', stopRecording);
     retry.addEventListener('click', transcribe);
+    cancelButton.addEventListener('click', () => {
+        cancel();
+        show('ready', 'Transcription canceled.');
+        moveVoiceFocus(record);
+    });
     addDraft.addEventListener('click', () => {
         if (draft.value.trim()) applyTranscript(draft.value.trim());
     });
@@ -207,6 +223,21 @@
         show('ready');
         record.focus();
     });
+    form.addEventListener('submit', event => {
+        const state = voice.dataset.voiceState;
+        if (state === 'processing') {
+            event.preventDefault();
+            show('processing', 'Wait for transcription or cancel to send.');
+            cancelButton.focus();
+        } else if (state === 'recording') {
+            event.preventDefault();
+            show('recording', 'Stop recording before sending.');
+            stop.focus();
+        } else if (state === 'permission') {
+            event.preventDefault();
+            show('permission', 'Finish the microphone prompt before sending.');
+        }
+    }, { capture: true });
     form.addEventListener('feedback:sent', () => {
         clearDraft();
         cancel();
