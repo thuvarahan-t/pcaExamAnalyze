@@ -38,7 +38,7 @@ class GroqFeedbackTranscriberTest {
         provider.stop(0);
     }
 
-    @Test void sendsSriLankanTamilVocabularyAndPreservesLatinWords() {
+    @Test void sendsSriLankanTamilSpellingHintsAndPreservesLatinWords() {
         var transcriber = transcriber(true, "test-key", Duration.ofSeconds(3));
         assertEquals("நான் class-க்கு வரணும். நன்றி!", transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
         assertEquals("Bearer test-key", authorization);
@@ -49,8 +49,8 @@ class GroqFeedbackTranscriberTest {
         assertTrue(requestBody.contains("name=\"model\"") && requestBody.contains("\r\n\r\nwhisper-large-v3\r\n"));
         assertTrue(requestBody.contains("name=\"language\"") && requestBody.contains("\r\n\r\nta\r\n"));
         assertTrue(requestBody.contains("name=\"prompt\""));
-        assertTrue(requestBody.contains("இலங்கைத் தமிழ். tuition, class, notes, MCQ, Physics, PCA."));
-        assertTrue(requestBody.contains("விளங்குது, கிழமை, வாறன், ஒண்டும், படிப்பிச்சீங்க, எண்டா."));
+        assertTrue(requestBody.contains("இலங்கைத் தமிழ். tuition-க்கு, class-ல, notes, MCQ, Physics, PCA."));
+        assertTrue(requestBody.contains("ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா."));
         assertTrue(requestBody.contains("name=\"response_format\"") && requestBody.contains("\r\n\r\njson\r\n"));
     }
 
@@ -61,8 +61,9 @@ class GroqFeedbackTranscriberTest {
             transcriber.transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));
     }
 
-    @Test void preservesColloquialTamilAndTuitionWithoutRewritingTheTranscript() {
-        String spoken = "ரெண்டு கிழமையா tuition-க்கு வாறன். ஒண்டும் விளங்குது இல்ல. ஒழுங்கா படிப்பிச்சீங்க எண்டா நல்லா இருக்கும்.";
+    @Test void preservesColloquialTamilAndEnglishLoanwordsWithoutRewritingTheTranscript() {
+        String spoken = "ரெண்டு கிழமையா tuition-க்கு வாறன், ஆனா class-ல ஒண்டும் விளங்குது இல்ல. "
+            + "ஒழுங்கா படிப்பிச்சீங்க எண்டா நல்லா இருக்கும்.";
         response = "{\"text\":\"" + spoken + "\"}";
         assertEquals(spoken, transcriber(true, "test-key", Duration.ofSeconds(3))
             .transcribe(FeedbackAudio.OGG, FeedbackAudioTest.oggOpus()));

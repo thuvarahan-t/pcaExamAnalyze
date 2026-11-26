@@ -14,9 +14,10 @@ import java.time.Duration;
 public class GroqFeedbackTranscriber {
     private static final URI TRANSCRIPTIONS = URI.create("https://api.groq.com/openai/v1/audio/transcriptions");
     private static final MediaType UTF8_TEXT = MediaType.parseMediaType("text/plain;charset=UTF-8");
-    // A spelling vocabulary guides the decoder without giving it a sentence to copy.
-    private static final String SRI_LANKAN_TAMIL_VOCABULARY =
-        "இலங்கைத் தமிழ். tuition, class, notes, MCQ, Physics, PCA. விளங்குது, கிழமை, வாறன், ஒண்டும், படிப்பிச்சீங்க, எண்டா.";
+    // Short spelling hints give English terms and Tamil suffixes without providing a sentence to copy.
+    private static final String SRI_LANKAN_TAMIL_SPELLINGS =
+        "இலங்கைத் தமிழ். tuition-க்கு, class-ல, notes, MCQ, Physics, PCA. "
+        + "ரெண்டு நாள், ஒரு கிழமையா, போன கிழமை, வாறன், ஒண்டும், விளங்குது, படிப்பிச்சீங்க, எண்டா.";
 
     private final boolean enabled;
     private final String apiKey;
@@ -49,7 +50,7 @@ public class GroqFeedbackTranscriber {
         parts.part("file", audio, format.mediaType()).filename(format.fileName());
         parts.part("model", model);
         parts.part("language", "ta");
-        parts.part("prompt", SRI_LANKAN_TAMIL_VOCABULARY, UTF8_TEXT);
+        parts.part("prompt", SRI_LANKAN_TAMIL_SPELLINGS, UTF8_TEXT);
         parts.part("response_format", "json");
 
         try {
