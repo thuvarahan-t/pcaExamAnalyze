@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 
@@ -39,19 +38,17 @@ public class GeminiFeedbackTranscriber {
         "required", List.of("transcript"), "additionalProperties", false);
 
     private final String apiKey;
-    private final RestClient client;
     private final URI endpoint;
 
     @Autowired
     public GeminiFeedbackTranscriber(@Value("${pca.feedback.voice.enabled:false}") boolean enabled,
                                      @Value("${pca.feedback.voice.gemini.api-key:}") String apiKey,
                                      @Value("${pca.feedback.voice.gemini.model:gemini-3.5-flash-lite}") String model) {
-        this(enabled, apiKey, model, FeedbackProviderClient.http(Duration.ofSeconds(20)), MODELS);
+        this(enabled, apiKey, model, MODELS);
     }
 
-    GeminiFeedbackTranscriber(boolean enabled, String apiKey, String model, RestClient client, URI models) {
+    GeminiFeedbackTranscriber(boolean enabled, String apiKey, String model, URI models) {
         this.apiKey = apiKey.strip();
-        this.client = client;
         String modelId = model.strip();
         this.endpoint = enabled && !this.apiKey.isEmpty() && MODEL.matcher(modelId).matches()
             ? models.resolve("./" + modelId + ":generateContent") : null;
@@ -61,7 +58,7 @@ public class GeminiFeedbackTranscriber {
         return endpoint != null;
     }
 
-    public String transcribe(FeedbackAudio format, byte[] audio) throws Failed {
+    String transcribe(FeedbackAudio format, byte[] audio, Duration timeout) throws Failed {
         if (!available() || format == null || audio == null || audio.length == 0 || audio.length > FeedbackAudio.MAX_BYTES) {
             throw new Failed();
         }
@@ -76,7 +73,7 @@ public class GeminiFeedbackTranscriber {
         try {
             // Jackson encodes the audio as base64. Send bytes so request debug logs omit the payload.
             byte[] body = FeedbackProviderClient.JSON.writeValueAsBytes(payload);
-            var response = FeedbackProviderClient.json(client.post().uri(endpoint).header("x-goog-api-key", apiKey)
+            var response = FeedbackProviderClient.json(FeedbackProviderClient.http(timeout).post().uri(endpoint).header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).body(body));
             var candidates = response.path("candidates");
             if (!candidates.isArray() || candidates.size() != 1) throw new Failed();
@@ -94,10 +91,20 @@ public class GeminiFeedbackTranscriber {
             String transcript = FeedbackProviderClient.plainText(result.path("transcript"));
             if (transcript.contains("```")) throw new Failed();
             return transcript;
-        } catch (FeedbackProviderClient.Unavailable | JacksonException | IllegalArgumentException e) {
+        } catch (FeedbackProviderClient.Unavailable e) {
+            throw new Failed(e.temporary());
+        } catch (JacksonException | IllegalArgumentException e) {
             throw new Failed();
         }
     }
 
-    public static final class Failed extends RuntimeException {}
+    static final class Failed extends RuntimeException {
+        private final boolean temporary;
+
+        Failed() { this(false); }
+
+        Failed(boolean temporary) { this.temporary = temporary; }
+
+        boolean temporary() { return temporary; }
+    }
 }

@@ -1,7 +1,7 @@
 package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.service.FeedbackAudio;
-import com.example.pcaExamAnalyze.service.GeminiFeedbackTranscriber;
+import com.example.pcaExamAnalyze.service.OfferFeedbackTranscriber;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -25,19 +25,19 @@ public class OfferFeedbackVoiceController {
     private static final int MAX_PER_MINUTE = 60;
     private static final long MINUTE = Duration.ofMinutes(1).toNanos();
 
-    private final GeminiFeedbackTranscriber gemini;
+    private final OfferFeedbackTranscriber transcriber;
     private final Semaphore activeRequests = new Semaphore(4);
     private final Map<String, Integer> requestsBySession = new HashMap<>();
     private long windowStarted = System.nanoTime();
     private int requestsInWindow;
 
-    public OfferFeedbackVoiceController(GeminiFeedbackTranscriber gemini) {
-        this.gemini = gemini;
+    public OfferFeedbackVoiceController(OfferFeedbackTranscriber transcriber) {
+        this.transcriber = transcriber;
     }
 
     @PostMapping(path = PATH, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> transcribe(HttpServletRequest request) {
-        if (!gemini.available()) {
+        if (!transcriber.available()) {
             return error(HttpStatus.SERVICE_UNAVAILABLE, "Voice typing is unavailable. You can type your feedback below.");
         }
         if (request.getContentLengthLong() > FeedbackAudio.MAX_BYTES) return tooLarge();
@@ -62,14 +62,14 @@ public class OfferFeedbackVoiceController {
             var session = request.getSession(false);
             if (!allow(session == null ? request.getRemoteAddr() : session.getId())) return busy("60");
 
-            String text = gemini.transcribe(format, audio);
+            String text = transcriber.transcribe(format, audio);
             if (text.isBlank()) {
                 return error(HttpStatus.UNPROCESSABLE_CONTENT, "No speech was recognized. Try recording again or type your feedback.");
             }
             return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Transcript(text));
         } catch (IOException e) {
             return error(HttpStatus.BAD_REQUEST, "Could not read the recording. Try recording again.");
-        } catch (GeminiFeedbackTranscriber.Failed e) {
+        } catch (OfferFeedbackTranscriber.Failed e) {
             return error(HttpStatus.BAD_GATEWAY, "Could not transcribe the recording. Try again or type your feedback.");
         } finally {
             activeRequests.release();

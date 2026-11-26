@@ -1,6 +1,7 @@
 package com.example.pcaExamAnalyze.service;
 
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.core.JacksonException;
@@ -16,13 +17,13 @@ final class FeedbackProviderClient {
     static final int MAX_TEXT_LENGTH = 3_000;
     private static final int MAX_RESPONSE_BYTES = 32_768;
     private static final Pattern WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
+    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     static final JsonMapper JSON = JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
 
     private FeedbackProviderClient() {}
 
     static RestClient http(Duration responseTimeout) {
-        var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
-        var factory = new JdkClientHttpRequestFactory(client);
+        var factory = new JdkClientHttpRequestFactory(HTTP);
         factory.setReadTimeout(responseTimeout);
         return RestClient.builder().requestFactory(factory).build();
     }
@@ -30,13 +31,18 @@ final class FeedbackProviderClient {
     static JsonNode json(RestClient.RequestHeadersSpec<?> request) {
         try {
             return request.exchange((sent, response) -> {
-                if (!response.getStatusCode().is2xxSuccessful()) throw new Unavailable();
+                var status = response.getStatusCode();
+                if (!status.is2xxSuccessful()) {
+                    throw new Unavailable(status.value() == 408 || status.value() == 429 || status.is5xxServerError());
+                }
                 byte[] body = response.getBody().readNBytes(MAX_RESPONSE_BYTES + 1);
                 if (body.length > MAX_RESPONSE_BYTES) throw new Unavailable();
                 var json = JSON.readTree(body);
                 if (json == null || !json.isObject()) throw new Unavailable();
                 return json;
             });
+        } catch (ResourceAccessException e) {
+            throw new Unavailable(!Thread.currentThread().isInterrupted());
         } catch (RestClientException | JacksonException e) {
             // Neither credentials nor provider bodies should appear in app errors or logs.
             throw new Unavailable();
@@ -59,5 +65,13 @@ final class FeedbackProviderClient {
             || (type == Character.FORMAT && value != '\u200c' && value != '\u200d');
     }
 
-    static final class Unavailable extends RuntimeException {}
+    static final class Unavailable extends RuntimeException {
+        private final boolean temporary;
+
+        Unavailable() { this(false); }
+
+        Unavailable(boolean temporary) { this.temporary = temporary; }
+
+        boolean temporary() { return temporary; }
+    }
 }

@@ -2,7 +2,7 @@ package com.example.pcaExamAnalyze.web;
 
 import com.example.pcaExamAnalyze.PcaExamAnalyzeApplication;
 import com.example.pcaExamAnalyze.service.FeedbackAudio;
-import com.example.pcaExamAnalyze.service.GeminiFeedbackTranscriber;
+import com.example.pcaExamAnalyze.service.OfferFeedbackTranscriber;
 import org.jsoup.Jsoup;
 import org.junit.jupiter.api.*;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -32,7 +32,7 @@ class OfferFeedbackVoiceIntegrationTest {
     private static final byte[] RECORDING = HexFormat.of().parseHex("4f676753000200000000000000000000000000000000000000000113"
         + "4f707573486561640101000080bb0000000000");
     private static ConfigurableApplicationContext context;
-    private static GeminiFeedbackTranscriber provider;
+    private static OfferFeedbackTranscriber provider;
     private static String base;
 
     @BeforeAll static void boot() {
@@ -41,7 +41,7 @@ class OfferFeedbackVoiceIntegrationTest {
             "--spring.datasource.url=jdbc:h2:mem:offervoice;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
             "--pca.feedback.voice.enabled=false", "--pca.feedback.voice.gemini.api-key=",
             "--pca.feedback.voice.gemini.model=", "--logging.level.root=ERROR", "--debug=false");
-        provider = context.getBean("stubGemini", GeminiFeedbackTranscriber.class);
+        provider = context.getBean("stubTranscriber", OfferFeedbackTranscriber.class);
         base = "http://localhost:" + ((ServletWebServerApplicationContext) context).getWebServer().getPort();
     }
 
@@ -86,7 +86,7 @@ class OfferFeedbackVoiceIntegrationTest {
     }
 
     @Test void allowsTypedOfferFeedbackWhenVoiceIsUnavailableOrFails() throws Exception {
-        assertFalse(context.getBean("geminiFeedbackTranscriber", GeminiFeedbackTranscriber.class).available());
+        assertFalse(context.getBean("offerFeedbackTranscriber", OfferFeedbackTranscriber.class).available());
         try (var student = client()) {
             when(provider.available()).thenReturn(false);
             var inactiveOffer = Jsoup.parse(getOffer(student));
@@ -101,7 +101,7 @@ class OfferFeedbackVoiceIntegrationTest {
             assertNotNull(activeOffer.selectFirst("#student-feedback [data-voice-record]"));
             assertEquals(OfferFeedbackVoiceController.PATH, activeOffer.selectFirst("#student-feedback [data-feedback-voice]")
                 .attr("data-feedback-voice"));
-            when(provider.transcribe(any(), any())).thenThrow(new GeminiFeedbackTranscriber.Failed()).thenReturn("");
+            when(provider.transcribe(any(), any())).thenThrow(new OfferFeedbackTranscriber.Failed()).thenReturn("");
             var providerError = post(student, csrf, "audio/ogg", bytes(RECORDING));
             assertEquals(502, providerError.statusCode());
             assertTrue(JsonMapper.shared().readTree(providerError.body()).path("message").asString().contains("type your feedback"));
@@ -155,6 +155,6 @@ class OfferFeedbackVoiceIntegrationTest {
 
     @TestConfiguration(proxyBeanMethods = false)
     static class TestProviders {
-        @Bean @Primary GeminiFeedbackTranscriber stubGemini() { return mock(GeminiFeedbackTranscriber.class); }
+        @Bean @Primary OfferFeedbackTranscriber stubTranscriber() { return mock(OfferFeedbackTranscriber.class); }
     }
 }

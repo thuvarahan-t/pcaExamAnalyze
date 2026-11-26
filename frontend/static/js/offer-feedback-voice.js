@@ -94,7 +94,7 @@
         show('processing', 'Transcribing Tamil…');
         const controller = new AbortController();
         upload = controller;
-        const deadline = setTimeout(() => controller.abort(), 24_000);
+        const deadline = setTimeout(() => controller.abort(), 30_000);
         try {
             const response = await fetch(voice.dataset.feedbackVoice, {
                 method: 'POST', redirect: 'error', body: lastAudio, signal: controller.signal,
