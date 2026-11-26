@@ -244,7 +244,7 @@
     opacity: .55;
 }
 .quote-package { margin-bottom: 6px; color: var(--quote-accent); font-size: 12.5px; font-weight: 700; }
-.student-quote blockquote { position: relative; width: 100%; margin: 0 0 34px; color: #21394f; font-size: 15px; line-height: 1.65; }
+.student-quote blockquote { position: relative; width: 100%; margin: 0 0 14px; color: #21394f; font-size: 15px; line-height: 1.65; }
 [data-feedback-excerpt] { display: block; white-space: pre-line; }
 .has-feedback-reader [data-feedback-excerpt] {
     display: -webkit-box;
@@ -264,34 +264,40 @@
 [data-feedback-read]:hover { background: #0e8f840d; }
 .feedback-text-dialog { overflow-wrap: anywhere; }
 .feedback-text-dialog p { margin: 16px 0 0; color: #21394f; line-height: 1.7; white-space: pre-wrap; }
-/* Reserve the same space below each quote whether it has a photo row or not. */
-.student-quote blockquote:has(+ .feedback-quote-photos) { margin-bottom: 6px; }
-.student-quote > .feedback-quote-photos { margin-bottom: 6px; }
-.feedback-quote-photos { display: flex; flex: 0 0 22px; gap: 5px; width: 100%; }
-.feedback-quote-photos a { flex: 0 1 34px; min-width: 0; border-radius: 5px; cursor: zoom-in; }
-.feedback-quote-photo { display: block; width: 100%; height: 22px; border-radius: inherit; object-fit: cover; }
+.feedback-quote-photos { display: flex; gap: 6px; min-width: 0; }
+.feedback-quote-photos a { border-radius: 6px; cursor: zoom-in; }
+.feedback-quote-photo { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .feedback-text-dialog [data-feedback-full-photos] { flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.feedback-text-dialog [data-feedback-full-photos] a { flex: 0 1 68px; }
-.feedback-text-dialog [data-feedback-full-photos] img { height: 56px; }
+.feedback-text-dialog [data-feedback-full-photos] a { flex: 0 1 68px; height: 56px; }
 .student-quote footer {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 13px;
+    display: flex;
+    gap: 12px;
     align-items: center;
-    align-content: center;
     width: 100%;
     min-height: 64px;
     margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid var(--hairline);
 }
+.quote-author { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.quote-author-details { display: grid; gap: 2px; min-width: 0; }
+.student-quote footer > .feedback-quote-photos {
+    flex: 0 0 auto;
+    width: max-content;
+    max-width: max(44px, min(54%, calc(100% - 140px)));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+}
+.student-quote footer > .feedback-quote-photos a { flex: 0 0 44px; width: 44px; height: 32px; }
+.student-quote footer > .feedback-quote-photos a:focus-visible { outline-offset: -3px; }
 .student-quote footer strong { font-size: 14.5px; line-height: 1.35; }
 .student-quote footer span { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .feedback-rail.is-single-card .student-quote { justify-content: center; }
 .feedback-rail.is-single-card .student-quote footer { margin-top: 0; }
 .student-quote footer .quote-avatar {
     display: grid;
-    grid-row: span 2;
+    flex: none;
     place-items: center;
     width: 42px;
     height: 42px;
@@ -595,6 +601,7 @@
     .showcase-events { grid-template-columns: minmax(0, 1fr); }
     .showcase-events > .showcase-controls { grid-area: 3 / 1; justify-self: center; margin-top: 18px; }
     .student-voices > .showcase-controls { justify-self: center; }
+    .student-quote footer .quote-avatar { width: 36px; height: 36px; }
     .event-gallery-navigation { margin-top: 12px; gap: 6px; }
     .event-thumbnails { gap: 7px; }
     .event-thumbnails a { flex-basis: 54px; height: 44px; }

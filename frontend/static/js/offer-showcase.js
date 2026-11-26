@@ -386,7 +386,7 @@
         rail.addEventListener('touchstart', event => {
             touching = {
                 start: event.touches[0],
-                browsingPhotos: events && event.target.closest('.event-thumbnails'),
+                browsingPhotos: event.target.closest(events ? '.event-thumbnails' : '.feedback-quote-photos'),
                 gallery: events && event.target.closest('.event-cover') ? galleries[first] : null
             };
             schedule();

@@ -72,17 +72,21 @@
                 <button type="button" data-feedback-read aria-haspopup="dialog"
                         th:attr="aria-label=|Read full feedback from ${entry.studentName}|" hidden></button>
             </blockquote>
-            <div class="feedback-quote-photos" th:if="${entry.photoCount > 0}">
-                <a data-feedback-photo aria-haspopup="dialog" th:each="index : ${#numbers.sequence(0, entry.photoCount - 1)}"
-                   th:with="photoUrl=@{/exam/packages/feedback/{id}/photo/{index}(id=${entry.id},index=${index})}"
-                   th:href="${photoUrl}" th:attr="aria-label=|View feedback photo ${index + 1}|">
-                    <img class="feedback-quote-photo" th:src="${photoUrl}" width="34" height="22" alt="" loading="lazy" decoding="async">
-                </a>
-            </div>
             <footer>
-                <span class="quote-avatar" aria-hidden="true" th:if="${!#strings.isEmpty(entry.studentName)}" th:text="${#strings.toUpperCase(#strings.substring(entry.studentName, 0, 1))}"></span>
-                <strong th:text="${entry.studentName}"></strong>
-                <span th:text="|${entry.school} · ${entry.district}|"></span>
+                <div class="quote-author">
+                    <span class="quote-avatar" aria-hidden="true" th:if="${!#strings.isEmpty(entry.studentName)}" th:text="${#strings.toUpperCase(#strings.substring(entry.studentName, 0, 1))}"></span>
+                    <div class="quote-author-details">
+                        <strong th:text="${entry.studentName}"></strong>
+                        <span th:text="|${entry.school} · ${entry.district}|"></span>
+                    </div>
+                </div>
+                <div class="feedback-quote-photos" role="group" aria-label="Feedback photos" th:if="${entry.photoCount > 0}">
+                    <a data-feedback-photo aria-haspopup="dialog" th:each="index : ${#numbers.sequence(0, entry.photoCount - 1)}"
+                       th:with="photoUrl=@{/exam/packages/feedback/{id}/photo/{index}(id=${entry.id},index=${index})}"
+                       th:href="${photoUrl}" th:attr="aria-label=|View feedback photo ${index + 1}|">
+                        <img class="feedback-quote-photo" th:src="${photoUrl}" width="44" height="32" alt="" loading="lazy" decoding="async">
+                    </a>
+                </div>
             </footer>
         </article>
     </div>
