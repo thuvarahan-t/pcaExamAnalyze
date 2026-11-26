@@ -26,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class GeminiFeedbackCleanupTest {
     private static final String GROQ_TEXT = "அருள் PCA-Exam இல் 87.5% பெற்றார் நல்ல வகுப்பு";
     private static final String CLEAN_TEXT = "அருள் PCA-Exam இல் 87.5% பெற்றார். நல்ல வகுப்பு!";
+    private static final String TAMIL_SCRIPT_TERMS = "இண்டைக்கு கிளாஸ்ல நோட்ஸ் எடுத்தன். அடுத்த கிழமை ட்யூஷனுக்கு வாறன்.";
+    private static final String LATIN_SCRIPT_TERMS = "இண்டைக்கு class-ல notes எடுத்தன். அடுத்த கிழமை tuition-க்கு வாறன்.";
     private static final String GROQ_PATH = "/openai/v1/audio/transcriptions";
     private static final String GEMINI_PATH = "/v1beta/models/gemini-test:generateContent";
     private HttpServer providers;
@@ -97,6 +99,54 @@ class GeminiFeedbackCleanupTest {
         String edited = "கோபி 2.5 % சொன்னார்.";
         geminiResponse = finished(edited);
         assertEquals(edited, cleaner.clean(original));
+    }
+
+    @Test void writesKnownAcademicLoanwordsInLatinScriptWithTheirTamilSuffixes() {
+        geminiResponse = finished(LATIN_SCRIPT_TERMS);
+        var cleaner = cleaner(true, "gemini-key", "gemini-test", Duration.ofSeconds(3));
+        assertEquals(LATIN_SCRIPT_TERMS, cleaner.clean(TAMIL_SCRIPT_TERMS));
+    }
+
+    @Test void distinguishesClassAndGlassUsingContextInTheSameSentence() {
+        var cleaner = cleaner(true, "gemini-key", "gemini-test", Duration.ofSeconds(3));
+        String waterContext = "இந்த கிளாஸுக்கு தண்ணி ஊத்துங்க.";
+        String waterEdit = "இந்த glass-க்கு தண்ணி ஊத்துங்க.";
+        geminiResponse = finished(waterEdit);
+        assertEquals(waterEdit, cleaner.clean(waterContext));
+
+        String academicContext = "இந்த கிளாஸ்ல நோட்ஸ் எடுத்தன். கொஞ்சம் தண்ணி குடிச்சன்.";
+        String academicEdit = "இந்த class-ல notes எடுத்தன். கொஞ்சம் தண்ணி குடிச்சன்.";
+        geminiResponse = finished(academicEdit);
+        assertEquals(academicEdit, cleaner.clean(academicContext));
+        geminiResponse = finished(academicEdit.replace("class-ல", "glass-ல"));
+        assertEquals(academicContext, cleaner.clean(academicContext));
+
+        String waterWithAcademicNeighbor = waterContext + " நேத்து ஆசிரியர் பாடம் படிப்பிச்சார்.";
+        geminiResponse = finished(waterWithAcademicNeighbor.replace("கிளாஸுக்கு", "class-க்கு"));
+        assertEquals(waterWithAcademicNeighbor, cleaner.clean(waterWithAcademicNeighbor));
+    }
+
+    @Test void keepsRawTextWhenALoanwordEditChangesASuffixOrTamilDialect() {
+        var cleaner = cleaner(true, "gemini-key", "gemini-test", Duration.ofSeconds(3));
+        for (String rewrite : List.of(LATIN_SCRIPT_TERMS.replace("class-ல", "class-க்கு"),
+                LATIN_SCRIPT_TERMS.replace("class-ல", "class"),
+                LATIN_SCRIPT_TERMS.replace("tuition-க்கு", "tuition"),
+                LATIN_SCRIPT_TERMS.replace("இண்டைக்கு", "இன்றைக்கு"))) {
+            geminiResponse = finished(rewrite);
+            assertEquals(TAMIL_SCRIPT_TERMS, cleaner.clean(TAMIL_SCRIPT_TERMS), rewrite);
+        }
+    }
+
+    @Test void keepsNativeTamilUnknownWordsAndExistingEnglishSpelling() {
+        var cleaner = cleaner(true, "gemini-key", "gemini-test", Duration.ofSeconds(3));
+        var rewrites = Map.of(
+            "நாளைக்கு வகுப்புக்கு வாறன்.", "நாளைக்கு class-க்கு வாறன்.",
+            "இந்த இன்புர்ப்பு நல்லா இருந்தது.", "இந்த improvement நல்லா இருந்தது.",
+            "நாளைக்கு Physics class-க்கு வாறன்.", "நாளைக்கு Physics glass-க்கு வாறன்.");
+        rewrites.forEach((original, edited) -> {
+            geminiResponse = finished(edited);
+            assertEquals(original, cleaner.clean(original), edited);
+        });
     }
 
     @Test void keepsRawTextOnBlockedInvalidOrUnavailableCleanup() {
