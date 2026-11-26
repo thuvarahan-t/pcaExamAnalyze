@@ -13,6 +13,30 @@
             { duration, delay, easing: slideEasing, fill: 'backwards' });
     }
 
+    function feedbackPhotoPreview(section, rail) {
+        const dialog = section.querySelector('[data-feedback-photo-dialog]');
+        if (typeof dialog?.showModal !== 'function') return;
+        const image = dialog.querySelector('img');
+        let opener;
+        rail.addEventListener('click', event => {
+            const link = event.target.closest('[data-feedback-photo]');
+            if (!link || event.defaultPrevented || event.button !== 0
+                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            opener = link;
+            image.src = link.href;
+            dialog.showModal();
+        });
+        dialog.querySelector('button').addEventListener('click', () => dialog.close());
+        dialog.addEventListener('click', event => {
+            if (event.target === dialog) dialog.close();
+        });
+        dialog.addEventListener('close', () => {
+            opener?.focus({ preventScroll: true });
+            opener = undefined;
+        });
+    }
+
     function eventGallery(slide, onPick) {
         const gallery = slide.querySelector('[data-event-gallery]');
         const thumbnails = gallery?.querySelector('.event-thumbnails');
@@ -311,6 +335,7 @@
         previous.addEventListener('click', () => change(-1));
         next.addEventListener('click', () => change(1));
         if (!events) {
+            feedbackPhotoPreview(section, rail);
             section.addEventListener('pointerenter', event => {
                 if (event.pointerType !== 'touch') hovering = true;
                 schedule();
