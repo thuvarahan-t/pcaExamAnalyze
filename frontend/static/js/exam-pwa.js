@@ -9,10 +9,6 @@
     if (!install) return;
 
     const guide = document.querySelector('[data-pca-install-guide]');
-    const installNow = guide.querySelector('[data-pca-install-now]');
-    const readyMessage = guide.querySelector('[data-pca-ready]');
-    const safariInstructions = guide.querySelector('[data-pca-safari]');
-    const browserInstructions = guide.querySelector('[data-pca-browser]');
     const standalone = window.matchMedia('(display-mode: standalone)');
     const userAgent = navigator.userAgent;
     const appleMobile = /iPhone|iPad|iPod/i.test(userAgent)
@@ -24,18 +20,13 @@
     let installed = false;
     let prompting = false;
 
+    guide.querySelector('[data-pca-safari]').hidden = !appleMobile;
+    guide.querySelector('[data-pca-browser]').hidden = appleMobile;
     guide.querySelector('[data-pca-android]').hidden = !android;
     guide.querySelector('[data-pca-desktop]').hidden = android;
 
     function canPrompt() {
         return useWebInstall || Boolean(nativePrompt);
-    }
-
-    function syncGuide() {
-        const ready = canPrompt();
-        installNow.hidden = readyMessage.hidden = !ready;
-        safariInstructions.hidden = ready || !appleMobile;
-        browserInstructions.hidden = ready || appleMobile;
     }
 
     function dismissGuide() {
@@ -46,12 +37,10 @@
     function syncVisibility() {
         install.hidden = standalone.matches || navigator.standalone === true || installed;
         if (install.hidden) dismissGuide();
-        syncGuide();
     }
 
     function showGuide() {
         if (install.hidden || guide.open) return;
-        syncGuide();
         if (typeof guide.showModal === 'function') guide.showModal();
         else guide.setAttribute('open', '');
         try {
@@ -71,9 +60,9 @@
 
     window.addEventListener('beforeinstallprompt', event => {
         if (install.hidden) return;
-        event.preventDefault();
+        // Keep Chrome's own install promotion available alongside the page button.
         nativePrompt = event;
-        syncGuide();
+        if (guide.open) dismissGuide();
     });
     window.addEventListener('appinstalled', () => {
         installed = true;
@@ -90,7 +79,7 @@
             return;
         }
         prompting = true;
-        install.disabled = installNow.disabled = true;
+        install.disabled = true;
         try {
             if (useWebInstall) {
                 await navigator.install();
@@ -104,20 +93,21 @@
         } catch (error) {
             if (error?.name !== 'AbortError') {
                 useWebInstall = false;
-                showGuide();
+                if (!canPrompt()) showGuide();
             }
         } finally {
             prompting = false;
-            install.disabled = installNow.disabled = false;
+            install.disabled = false;
             syncVisibility();
         }
     }
 
-    install.addEventListener('click', showGuide);
-    installNow.addEventListener('click', requestInstall);
+    install.addEventListener('click', requestInstall);
     guide.querySelector('[data-pca-install-done]').addEventListener('click', dismissGuide);
 
-    if (!guideWasShown() && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]:not([hidden])')) {
+    // A browser that supports beforeinstallprompt may dispatch it after the page loads.
+    if (!canPrompt() && !('onbeforeinstallprompt' in window) && !guideWasShown()
+        && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]:not([hidden])')) {
         showGuide();
     }
 })();
