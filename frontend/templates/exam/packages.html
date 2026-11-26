@@ -9,7 +9,7 @@
     <link rel="preload" th:href="@{/fonts/sora-latin.woff2}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" th:href="@{/css/offer-page.css(v=4)}">
-    <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=24)}">
+    <link rel="stylesheet" th:href="@{/css/offer-showcase.css(v=241)}">
     <link rel="stylesheet" th:href="@{/css/district-picker.css(v=3)}">
     <link rel="stylesheet" th:href="@{/css/exam-install.css(v=1)}">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
@@ -82,6 +82,9 @@
                  aria-labelledby="feedbackHeading" data-showcase="feedback"
                  th:classappend="${campaign.hasPromoVideo()} ? 'with-promo'"
                  th:attr="data-feedback-layout=${campaign.hasPromoVideo() ? 'single' : 'grid'}">
+            <header class="showcase-header student-stories-heading">
+                <h2 id="feedbackHeading">Hear from our students</h2>
+            </header>
             <div th:replace="~{exam/offer-showcase :: video}"></div>
             <div th:replace="~{exam/offer-showcase :: feedback}"></div>
             <div th:replace="~{exam/offer-showcase :: feedbackForm}"></div>

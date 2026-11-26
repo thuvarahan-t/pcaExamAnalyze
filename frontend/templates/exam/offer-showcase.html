@@ -62,9 +62,6 @@
 </div>
 
 <div th:fragment="feedback" class="student-voices">
-    <header class="showcase-header">
-        <h2 id="feedbackHeading">Hear from our students</h2>
-    </header>
     <div class="showcase-rail feedback-rail" th:if="${!#lists.isEmpty(feedback)}"
          th:attr="data-feedback-count=${#lists.size(feedback)}">
         <article class="student-quote" th:each="entry, loop : ${feedback}" data-showcase-slide
