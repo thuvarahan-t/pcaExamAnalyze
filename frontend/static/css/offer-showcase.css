@@ -245,6 +245,9 @@
 .feedback-quote-photos { display: flex; flex: 0 0 22px; gap: 5px; width: 100%; }
 .feedback-quote-photos a { flex: 0 1 34px; min-width: 0; border-radius: 5px; cursor: zoom-in; }
 .feedback-quote-photo { display: block; width: 100%; height: 22px; border-radius: inherit; object-fit: cover; }
+.feedback-text-dialog [data-feedback-full-photos] { flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.feedback-text-dialog [data-feedback-full-photos] a { flex: 0 1 68px; }
+.feedback-text-dialog [data-feedback-full-photos] img { height: 56px; }
 .student-quote footer {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

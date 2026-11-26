@@ -95,6 +95,7 @@
         <button class="dialog-close" type="button" aria-label="Close feedback" autofocus>×</button>
         <h2 id="feedback-text-title">Student feedback</h2>
         <p data-feedback-full-text></p>
+        <div class="feedback-quote-photos" data-feedback-full-photos role="group" aria-label="Feedback photos" hidden></div>
     </dialog>
     <dialog class="poster-dialog" data-feedback-photo-dialog aria-label="Feedback photo" th:if="${!#lists.isEmpty(feedback)}">
         <button class="dialog-close" type="button" aria-label="Close photo" autofocus>×</button>

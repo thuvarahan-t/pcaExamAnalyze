@@ -30,13 +30,13 @@
         };
     }
 
-    function feedbackPhotoPreview(section, rail) {
+    function feedbackPhotoPreview(section) {
         const dialog = section.querySelector('[data-feedback-photo-dialog]');
         const open = previewOpener(dialog);
         if (!open) return;
         const image = dialog.querySelector('img');
-        rail.addEventListener('click', event => {
-            const link = event.target.closest('[data-feedback-photo]');
+        section.addEventListener('click', event => {
+            const link = event.target.closest('a[data-feedback-photo]');
             if (!link || event.defaultPrevented || event.button !== 0
                 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             event.preventDefault();
@@ -51,6 +51,7 @@
         if (!open) return null;
         const heading = dialog.querySelector('h2');
         const text = dialog.querySelector('[data-feedback-full-text]');
+        const photos = dialog.querySelector('[data-feedback-full-photos]');
         rail.classList.add('has-feedback-reader');
         rail.addEventListener('click', event => {
             const button = event.target.closest('[data-feedback-read]');
@@ -58,7 +59,11 @@
             const card = button.closest('.student-quote');
             heading.textContent = `Feedback from ${card.querySelector('footer strong').textContent}`;
             text.textContent = card.querySelector('[data-feedback-excerpt]').textContent;
+            const thumbnails = card.querySelectorAll('a[data-feedback-photo]');
+            photos.replaceChildren(...Array.from(thumbnails, thumbnail => thumbnail.cloneNode(true)));
+            photos.hidden = thumbnails.length === 0;
             open(button);
+            dialog.scrollTop = 0;
         });
         return () => {
             for (const excerpt of rail.querySelectorAll('.is-current [data-feedback-excerpt]')) {
@@ -368,7 +373,7 @@
         previous.addEventListener('click', () => change(-1));
         next.addEventListener('click', () => change(1));
         if (!events) {
-            feedbackPhotoPreview(section, rail);
+            feedbackPhotoPreview(section);
             section.addEventListener('pointerenter', event => {
                 if (event.pointerType !== 'touch') hovering = true;
                 schedule();
