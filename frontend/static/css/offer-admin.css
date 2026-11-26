@@ -31,8 +31,10 @@
 .event-photo-count { color: var(--admin-muted); font-size: 12px; font-weight: 500; margin-left: 8px; }
 .offer-moderation header { display: flex; align-items: center; gap: 9px; }
 .offer-moderation p { white-space: pre-line; margin: 6px 0; }
-.offer-moderation-photo { display: inline-block; margin: 6px 0; }
+.offer-moderation-photos { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.offer-moderation-photo { display: block; max-width: 100%; }
 .offer-moderation-photo img { display: block; max-width: min(100%, 220px); max-height: 180px; border-radius: 8px; }
+.offer-moderation-photo:not(:only-child) img { width: 86px; height: 76px; object-fit: cover; }
 .offer-moderation form.admin-actions { display: flex; }
 .offer-student-search { position:relative; margin:16px 0 20px; }
 .offer-student-search>label { display:block; margin-bottom:6px; color:var(--admin-ink); font-size:12px; font-weight:700; }

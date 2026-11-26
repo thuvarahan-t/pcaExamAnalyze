@@ -18,19 +18,19 @@ public class OfferFeedbackPhotoController {
         this.content = content;
     }
 
-    @GetMapping("/exam/packages/feedback/{id}/photo")
-    public ResponseEntity<byte[]> publishedPhoto(@PathVariable Long id) {
-        return photo(id, false);
+    @GetMapping({"/exam/packages/feedback/{id}/photo", "/exam/packages/feedback/{id}/photo/{index}"})
+    public ResponseEntity<byte[]> publishedPhoto(@PathVariable Long id, @PathVariable(required = false) Integer index) {
+        return photo(id, index, false);
     }
 
-    @GetMapping("/exam/admin/packages/feedback/{id}/photo")
-    public ResponseEntity<byte[]> teacherPhoto(@PathVariable Long id) {
-        return photo(id, true);
+    @GetMapping({"/exam/admin/packages/feedback/{id}/photo", "/exam/admin/packages/feedback/{id}/photo/{index}"})
+    public ResponseEntity<byte[]> teacherPhoto(@PathVariable Long id, @PathVariable(required = false) Integer index) {
+        return photo(id, index, true);
     }
 
-    private ResponseEntity<byte[]> photo(Long id, boolean teacher) {
+    private ResponseEntity<byte[]> photo(Long id, Integer index, boolean teacher) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
-            .contentType(MediaType.IMAGE_JPEG).body(content.feedbackPhoto(id, teacher));
+            .contentType(MediaType.IMAGE_JPEG).body(content.feedbackPhoto(id, index == null ? 0 : index, teacher));
     }
 
     @ExceptionHandler(ResponseStatusException.class)

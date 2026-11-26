@@ -1,4 +1,5 @@
 (() => {
+    const maxPhotos = 5;
     const maxPhotoBytes = 100_000;
     const maxSourceBytes = 15 * 1024 * 1024;
     const maxSourcePixels = 50_000_000;
@@ -14,8 +15,8 @@
     const input = picker.querySelector('input[type="file"]');
     const add = picker.querySelector('[data-add-photo]');
     const quickPreview = composer.querySelector('[data-photo-preview]');
-    const image = quickPreview.querySelector('img');
-    const remove = quickPreview.querySelector('[data-remove-photo]');
+    const photoItem = quickPreview.querySelector('[data-photo-item-template]')?.content.firstElementChild;
+    if (!photoItem) return;
     const status = composer.querySelector('[data-photo-status]');
     const error = composer.querySelector('[data-photo-error]');
     const submit = form.querySelector('[type="submit"]');
@@ -23,10 +24,8 @@
     const success = feedback.querySelector('[data-feedback-success]');
     const details = form.closest('details');
 
-    let photo = null;
-    let previewUrl;
-    let selection = 0;
-    let hasSelection = false;
+    const photos = [];
+    let preparing = false;
     let sending = false;
     let dragDepth = 0;
 
@@ -35,12 +34,41 @@
         error.hidden = !message;
     }
 
-    function clearPreview() {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        previewUrl = undefined;
-        image.removeAttribute('src');
-        image.hidden = true;
-        photo = null;
+    function syncControls() {
+        const busy = preparing || sending;
+        input.disabled = add.disabled = submit.disabled = busy;
+        for (const { remove } of photos) remove.disabled = busy;
+    }
+
+    function updatePreview() {
+        quickPreview.hidden = photos.length === 0;
+        photos.forEach(({ remove }, index) => remove.setAttribute('aria-label', `Remove photo ${index + 1}`));
+        status.textContent = photos.length === 0 ? '' : photos.length === 1 ? 'Photo ready.' : `${photos.length} photos ready.`;
+    }
+
+    function discardPreview({ item, previewUrl }) {
+        URL.revokeObjectURL(previewUrl);
+        item.remove();
+    }
+
+    function addPreview(blob) {
+        const item = photoItem.cloneNode(true);
+        const remove = item.querySelector('[data-remove-photo]');
+        const previewUrl = URL.createObjectURL(blob);
+        const attachment = { blob, item, remove, previewUrl };
+        item.querySelector('img').src = previewUrl;
+        remove.addEventListener('click', () => {
+            if (preparing || sending) return;
+            const index = photos.indexOf(attachment);
+            if (index < 0) return;
+            photos.splice(index, 1);
+            discardPreview(attachment);
+            showError();
+            updatePreview();
+            (photos[index]?.remove || photos.at(-1)?.remove || add).focus();
+        });
+        photos.push(attachment);
+        quickPreview.append(item);
     }
 
     async function compress(file) {
@@ -81,38 +109,28 @@
         }
     }
 
-    async function selectPhoto(file) {
-        if (sending) return;
-        const current = ++selection;
-        const sourceLabel = 'Choose another photo or remove it to send feedback with text only.';
-        hasSelection = true;
-        clearPreview();
-        showError();
-        quickPreview.hidden = false;
-        status.textContent = 'Preparing photo…';
-        try {
-            const compressed = await compress(file);
-            if (current !== selection) return;
-            photo = compressed;
-            previewUrl = URL.createObjectURL(photo);
-            image.src = previewUrl;
-            image.hidden = false;
-            status.textContent = 'Photo ready.';
-        } catch (failure) {
-            if (current !== selection) return;
-            status.textContent = '';
-            showError(`${failure.message || 'The photo could not be prepared.'} ${sourceLabel}`);
+    async function selectPhotos(files) {
+        if (preparing || sending || files.length === 0) return;
+        if (photos.length + files.length > maxPhotos) {
+            showError(`Attach up to ${maxPhotos} photos. Choose fewer photos or remove an existing one.`);
+            return;
         }
-    }
-
-    function removePhoto() {
-        selection += 1;
-        input.value = '';
-        clearPreview();
-        quickPreview.hidden = true;
-        hasSelection = false;
-        status.textContent = '';
+        preparing = true;
+        syncControls();
         showError();
+        status.textContent = files.length === 1 ? 'Preparing photo…' : 'Preparing photos…';
+        try {
+            const compressed = [];
+            // Process one source at a time to limit decoded image memory. Commit only a complete batch.
+            for (const file of files) compressed.push(await compress(file));
+            for (const blob of compressed) addPreview(blob);
+        } catch (failure) {
+            showError(`${failure.message || 'The photo could not be prepared.'} No photos from this selection were added.`);
+        } finally {
+            preparing = false;
+            syncControls();
+            updatePreview();
+        }
     }
 
     function isFileDrag(event) {
@@ -127,20 +145,15 @@
 
     add.addEventListener('click', () => input.click());
     input.addEventListener('change', () => {
-        const file = input.files[0];
+        const files = Array.from(input.files);
         input.value = '';
-        if (file) selectPhoto(file);
-    });
-
-    remove.addEventListener('click', () => {
-        removePhoto();
-        add.focus();
+        return selectPhotos(files);
     });
 
     composer.addEventListener('dragenter', event => {
         if (!isFileDrag(event)) return;
         event.preventDefault();
-        if (sending) return;
+        if (preparing || sending) return;
         dragDepth += 1;
         composer.classList.toggle('is-photo-dragging', true);
     });
@@ -148,7 +161,7 @@
     composer.addEventListener('dragover', event => {
         if (!isFileDrag(event)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = sending ? 'none' : 'copy';
+        event.dataTransfer.dropEffect = preparing || sending ? 'none' : 'copy';
     });
 
     composer.addEventListener('dragleave', () => {
@@ -160,23 +173,19 @@
         if (!isFileDrag(event)) return;
         event.preventDefault();
         clearDrag();
-        if (sending) return;
-        const files = event.dataTransfer.files;
-        if (files.length > 1) {
-            showError('Attach one photo at a time.');
-        } else if (files.length === 1) {
-            selectPhoto(files[0]);
-        }
+        return selectPhotos(Array.from(event.dataTransfer.files));
     });
 
     form.addEventListener('submit', async event => {
-        if (!hasSelection && !sending) return;
+        if (event.defaultPrevented) return;
+        if (photos.length === 0 && !preparing && !sending) return;
         event.preventDefault();
-        if (sending || !photo) return;
+        if (preparing || sending) return;
 
         const body = new FormData(form);
-        body.set('photo', photo, 'feedback.jpg');
-        submit.disabled = input.disabled = add.disabled = remove.disabled = sending = true;
+        photos.forEach(({ blob }, index) => body.append('photo', blob, `feedback-${index + 1}.jpg`));
+        sending = true;
+        syncControls();
         clearDrag();
         status.textContent = 'Sending feedback…';
         success.hidden = true;
@@ -188,10 +197,11 @@
             });
             if (!response.ok) {
                 const result = await response.json().catch(() => ({}));
-                showError(result.message || 'Feedback with the photo could not be sent. Try again or remove the photo to send text only.');
+                showError(result.message || 'Feedback with photos could not be sent. Try again or remove the photos to send text only.');
                 return;
             }
-            removePhoto();
+            photos.splice(0).forEach(discardPreview);
+            updatePreview();
             for (const field of ['name', 'school', 'district', 'comment']) {
                 form.elements[field].value = '';
             }
@@ -202,10 +212,11 @@
             details.open = false;
             details.querySelector('summary').focus();
         } catch {
-            showError('Feedback could not be sent. Try again or remove the photo to send text only.');
+            showError('Feedback could not be sent. Try again or remove the photos to send text only.');
         } finally {
             status.textContent = '';
-            submit.disabled = input.disabled = add.disabled = remove.disabled = sending = false;
+            sending = false;
+            syncControls();
         }
     });
 

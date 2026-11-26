@@ -3,12 +3,14 @@ package com.example.pcaExamAnalyze.service;
 import com.example.pcaExamAnalyze.domain.OfferEvent;
 import com.example.pcaExamAnalyze.domain.OfferEventPhoto;
 import com.example.pcaExamAnalyze.domain.OfferFeedback;
+import com.example.pcaExamAnalyze.domain.OfferFeedback.PhotoMetadata;
 import com.example.pcaExamAnalyze.domain.OfferFeedback.Status;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +33,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 @Transactional(readOnly = true)
 public class OfferContentService {
     public static final int MAX_EVENT_PHOTOS = 20;
+    private static final int MAX_FEEDBACK_PHOTOS = 5;
     private static final int PHOTO_CACHE_ENTRIES = 48;
     private static final Logger log = LoggerFactory.getLogger(OfferContentService.class);
     private final EntityManager db;
@@ -153,7 +156,8 @@ public class OfferContentService {
 
     public List<OfferFeedback> feedback(boolean admin) {
         var query = db.createQuery("""
-            from OfferFeedback f where (:admin = true or f.status = :published)
+            select f from OfferFeedback f left join fetch f.additionalPhotos
+            where (:admin = true or f.status = :published)
             order by case when f.status = :pending then 0 else 1 end, f.receivedAt desc, f.id desc
             """, OfferFeedback.class).setParameter("admin", admin).setParameter("published", Status.PUBLISHED)
             .setParameter("pending", Status.PENDING);
@@ -168,47 +172,55 @@ public class OfferContentService {
     @Transactional
     public void submitFeedback(FeedbackInput input, List<MultipartFile> uploads) {
         var feedback = newFeedback(input, Status.PENDING);
-        if (uploads != null && !uploads.isEmpty()) {
-            if (uploads.size() > 1) throw new IllegalArgumentException("You can attach one photo to your feedback.");
-            var upload = uploads.getFirst();
-            // Browsers may send an empty part when the optional picker has no selection.
-            if (!upload.isEmpty() || !"".equals(upload.getOriginalFilename())) {
-                saveFeedbackPhoto(feedback, FeedbackPhoto.compress(upload));
-            }
-        }
+        var photos = compressFeedbackPhotos(uploads);
+        if (!photos.isEmpty()) saveFeedbackPhotos(feedback, photos);
         db.persist(feedback);
     }
 
-    private void saveFeedbackPhoto(OfferFeedback feedback, FeedbackPhoto photo) {
-        if (!storage.enabled()) throw new FeedbackPhotoUnavailable(null);
-        String key = "offer-feedback/" + UUID.randomUUID() + ".jpg";
+    private static List<FeedbackPhoto> compressFeedbackPhotos(List<MultipartFile> uploads) {
+        if (uploads == null) return List.of();
+        if (uploads.size() > MAX_FEEDBACK_PHOTOS) {
+            throw new IllegalArgumentException("You can attach up to " + MAX_FEEDBACK_PHOTOS + " photos to your feedback.");
+        }
+        // Browsers may send an empty part when the optional picker has no selection.
+        return uploads.stream().filter(upload -> !upload.isEmpty() || !"".equals(upload.getOriginalFilename()))
+            .map(FeedbackPhoto::compress).toList();
+    }
 
-        // Register before upload: a timeout could occur after R2 has received the bytes.
+    private void saveFeedbackPhotos(OfferFeedback feedback, List<FeedbackPhoto> photos) {
+        if (!storage.enabled()) throw new FeedbackPhotoUnavailable(null);
+        var attemptedKeys = new ArrayList<String>(photos.size());
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCompletion(int status) {
-                if (status == STATUS_ROLLED_BACK) Thread.startVirtualThread(() -> storage.deleteQuietly(key));
+                if (status == STATUS_ROLLED_BACK) Thread.startVirtualThread(() -> attemptedKeys.forEach(storage::deleteQuietly));
             }
         });
         try {
-            storage.put(key, photo.bytes(), FeedbackPhoto.CONTENT_TYPE);
+            for (var photo : photos) {
+                String key = "offer-feedback/" + UUID.randomUUID() + ".jpg";
+                // Include a failed attempt: the provider may have stored it before timing out.
+                attemptedKeys.add(key);
+                storage.put(key, photo.bytes(), FeedbackPhoto.CONTENT_TYPE);
+                feedback.addPhoto(new PhotoMetadata(key, photo.bytes().length, photo.width(), photo.height()));
+            }
         } catch (RuntimeException exception) {
-            log.warn("Unable to store Offer feedback photo ({})", exception.getClass().getSimpleName());
+            log.warn("Unable to store Offer feedback photos ({})", exception.getClass().getSimpleName());
             throw new FeedbackPhotoUnavailable(exception);
         }
-
-        feedback.setPhotoKey(key);
-        feedback.setPhotoBytes(photo.bytes().length);
-        feedback.setPhotoWidth(photo.width());
-        feedback.setPhotoHeight(photo.height());
     }
 
     public byte[] feedbackPhoto(Long id, boolean admin) {
-        String key = db.createQuery("""
-            select f.photoKey from OfferFeedback f
-            where f.id = :id and f.photoKey is not null and (:admin = true or f.status = :published)
-            """, String.class).setParameter("id", id).setParameter("admin", admin)
-            .setParameter("published", Status.PUBLISHED).getResultStream().findFirst()
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return feedbackPhoto(id, 0, admin);
+    }
+
+    public byte[] feedbackPhoto(Long id, int index, boolean admin) {
+        if (index < 0 || index >= MAX_FEEDBACK_PHOTOS) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        var feedback = required(db.createQuery("""
+            select f from OfferFeedback f left join fetch f.additionalPhotos
+            where f.id = :id and (:admin = true or f.status = :published)
+            """, OfferFeedback.class).setParameter("id", id).setParameter("admin", admin)
+            .setParameter("published", Status.PUBLISHED).getSingleResultOrNull());
+        String key = required(feedback.photoAt(index)).key();
         if (!storage.enabled()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
         try {
             return storage.read(key);
@@ -222,7 +234,7 @@ public class OfferContentService {
 
     public static class FeedbackPhotoUnavailable extends RuntimeException {
         FeedbackPhotoUnavailable(Throwable cause) {
-            super("The photo could not be uploaded right now. Try again or remove the photo to send your feedback.", cause);
+            super("Photo upload could not finish. Try again or remove the photos to send text only.", cause);
         }
     }
 
