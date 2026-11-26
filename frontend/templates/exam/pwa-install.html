@@ -2,23 +2,37 @@
     <button type="button" class="pca-install-button" data-pca-install hidden>
         <i class="bi bi-download" aria-hidden="true"></i> Install PCA Exam
     </button>
-    <dialog class="pca-install-guide" data-pca-install-guide aria-labelledby="pca-install-heading">
-        <h2 id="pca-install-heading">Install PCA Exam</h2>
-        <p data-pca-safari hidden>Open this page in Safari. Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
-            Turn on <strong>Open as Web App</strong> if shown, then tap <strong>Add</strong>.</p>
-        <p data-pca-browser hidden>In Chrome or Edge, open the browser menu and choose <strong>Install PCA Exam</strong>
-            or <strong>Add to Home screen</strong> when available.</p>
-        <details data-pca-embedded>
-            <summary>Opened in another app?</summary>
-            <p>Choose <strong>Open in browser</strong> from the app menu, or copy this link and paste it into
-                <span data-pca-open-browser></span>.</p>
-            <div class="pca-install-link">
-                <label for="pca-install-url">Current page link</label>
-                <input id="pca-install-url" type="url" readonly>
-                <button type="button" data-pca-copy>Copy link</button>
-                <span data-pca-copy-status role="status"></span>
+    <dialog class="pca-install-guide" data-pca-install-guide aria-labelledby="pca-install-heading" lang="ta">
+        <h2 id="pca-install-heading"><span lang="en">PCA Exam</span> செயலியை நிறுவவும்</h2>
+        <p data-pca-ready hidden>செயலியைச் சேர்க்க, கீழே உள்ள <strong>நிறுவவும்</strong> பொத்தானைத் தட்டுங்கள்.</p>
+        <div data-pca-safari hidden>
+            <p>இந்தப் பக்கத்தை <strong lang="en">Safari</strong> உலாவியில் திறக்கவும்.</p>
+            <ol class="pca-install-steps">
+                <li><strong lang="en">Share</strong> பொத்தானைத் தட்டுங்கள்.</li>
+                <li><strong lang="en">Add to Home Screen</strong> என்பதைத் தேர்ந்தெடுக்கவும்.</li>
+                <li><strong lang="en">Open as Web App</strong> விருப்பம் இருந்தால் அதை இயக்கி, <strong lang="en">Add</strong> என்பதைத் தட்டுங்கள்.</li>
+            </ol>
+        </div>
+        <div data-pca-browser hidden>
+            <ol class="pca-install-steps" data-pca-android hidden>
+                <li><strong lang="en">Chrome</strong> உலாவியில் <strong lang="en">address bar</strong> அருகிலுள்ள <strong>⋮</strong> மெனுவைத் திறக்கவும்.</li>
+                <li><strong lang="en">Install and create shortcut</strong> அல்லது <strong lang="en">Add to Home screen</strong> என்பதைத் தேர்ந்தெடுக்கவும்.</li>
+                <li><strong lang="en">Install</strong> என்பதைத் தட்டுங்கள்.</li>
+            </ol>
+            <div data-pca-desktop hidden>
+                <p>உலாவியில் மேலே வலதுபுறம் உள்ள மெனுவைத் திறக்கவும்.</p>
+                <dl class="pca-install-browser-options">
+                    <dt lang="en">Chrome</dt>
+                    <dd><strong lang="en">Cast, save, and share</strong> மெனுவில் <strong lang="en">Install page as app</strong> என்பதைத் தேர்ந்தெடுக்கவும்.</dd>
+                    <dt lang="en">Edge</dt>
+                    <dd><strong lang="en">More tools</strong> மெனுவில் <strong lang="en">Apps</strong> பட்டியலைத் திறந்து,
+                        <strong lang="en">Install this site as an app</strong> என்பதைத் தேர்ந்தெடுக்கவும்.</dd>
+                </dl>
             </div>
-        </details>
-        <button type="button" data-pca-install-done>Done</button>
+        </div>
+        <div class="pca-install-actions">
+            <button type="button" data-pca-install-done lang="en" autofocus>Close</button>
+            <button type="button" data-pca-install-now hidden>நிறுவவும்</button>
+        </div>
     </dialog>
 </th:block>

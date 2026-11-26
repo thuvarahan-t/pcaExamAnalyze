@@ -9,16 +9,34 @@
     if (!install) return;
 
     const guide = document.querySelector('[data-pca-install-guide]');
+    const installNow = guide.querySelector('[data-pca-install-now]');
+    const readyMessage = guide.querySelector('[data-pca-ready]');
+    const safariInstructions = guide.querySelector('[data-pca-safari]');
+    const browserInstructions = guide.querySelector('[data-pca-browser]');
     const standalone = window.matchMedia('(display-mode: standalone)');
     const userAgent = navigator.userAgent;
     const appleMobile = /iPhone|iPad|iPod/i.test(userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const inApp = /WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|Snapchat|MicroMessenger|; wv\)/i.test(userAgent)
-        || (appleMobile && /AppleWebKit\//i.test(userAgent) && !/Safari\//i.test(userAgent));
-    const pageUrl = guide.querySelector('#pca-install-url');
-    const copyStatus = guide.querySelector('[data-pca-copy-status]');
+    const android = /Android/i.test(userAgent);
+    const guideKey = 'pca-exam-install-guide-shown';
+    let useWebInstall = typeof navigator.install === 'function';
     let nativePrompt;
     let installed = false;
+    let prompting = false;
+
+    guide.querySelector('[data-pca-android]').hidden = !android;
+    guide.querySelector('[data-pca-desktop]').hidden = android;
+
+    function canPrompt() {
+        return useWebInstall || Boolean(nativePrompt);
+    }
+
+    function syncGuide() {
+        const ready = canPrompt();
+        installNow.hidden = readyMessage.hidden = !ready;
+        safariInstructions.hidden = ready || !appleMobile;
+        browserInstructions.hidden = ready || appleMobile;
+    }
 
     function dismissGuide() {
         if (guide.open && typeof guide.close === 'function') guide.close();
@@ -28,23 +46,34 @@
     function syncVisibility() {
         install.hidden = standalone.matches || navigator.standalone === true || installed;
         if (install.hidden) dismissGuide();
+        syncGuide();
     }
 
     function showGuide() {
-        guide.querySelector('[data-pca-safari]').hidden = !appleMobile;
-        guide.querySelector('[data-pca-browser]').hidden = appleMobile;
-        guide.querySelector('[data-pca-embedded]').open = inApp;
-        guide.querySelector('[data-pca-open-browser]').textContent = appleMobile ? 'Safari' : 'Chrome';
-        pageUrl.value = window.location.href;
-        copyStatus.textContent = '';
+        if (install.hidden || guide.open) return;
+        syncGuide();
         if (typeof guide.showModal === 'function') guide.showModal();
         else guide.setAttribute('open', '');
+        try {
+            window.sessionStorage.setItem(guideKey, '1');
+        } catch {
+            // The guide still works when the browser blocks storage.
+        }
+    }
+
+    function guideWasShown() {
+        try {
+            return window.sessionStorage.getItem(guideKey) === '1';
+        } catch {
+            return false;
+        }
     }
 
     window.addEventListener('beforeinstallprompt', event => {
         if (install.hidden) return;
         event.preventDefault();
         nativePrompt = event;
+        syncGuide();
     });
     window.addEventListener('appinstalled', () => {
         installed = true;
@@ -54,35 +83,41 @@
     standalone.addEventListener?.('change', syncVisibility);
     syncVisibility();
 
-    install.addEventListener('click', async () => {
-        if (install.hidden) return;
-        if (!nativePrompt) {
+    async function requestInstall() {
+        if (install.hidden || prompting) return;
+        if (!canPrompt()) {
             showGuide();
             return;
         }
-        const prompt = nativePrompt;
-        nativePrompt = undefined;
-        install.disabled = true;
+        prompting = true;
+        install.disabled = installNow.disabled = true;
         try {
-            const choice = (await prompt.prompt()) ?? (await prompt.userChoice);
-            if (choice?.outcome === 'accepted') installed = true;
-            syncVisibility();
-        } catch {
-            if (!install.hidden) showGuide();
+            if (useWebInstall) {
+                await navigator.install();
+                installed = true;
+            } else {
+                const prompt = nativePrompt;
+                nativePrompt = undefined;
+                const choice = (await prompt.prompt()) ?? (await prompt.userChoice);
+                if (choice?.outcome === 'accepted') installed = true;
+            }
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                useWebInstall = false;
+                showGuide();
+            }
         } finally {
-            install.disabled = false;
+            prompting = false;
+            install.disabled = installNow.disabled = false;
+            syncVisibility();
         }
-    });
+    }
 
+    install.addEventListener('click', showGuide);
+    installNow.addEventListener('click', requestInstall);
     guide.querySelector('[data-pca-install-done]').addEventListener('click', dismissGuide);
-    guide.querySelector('[data-pca-copy]').addEventListener('click', async () => {
-        try {
-            await navigator.clipboard.writeText(pageUrl.value);
-            copyStatus.textContent = 'Link copied.';
-        } catch {
-            pageUrl.focus();
-            pageUrl.select();
-            copyStatus.textContent = 'Select Copy to copy this link.';
-        }
-    });
+
+    if (!guideWasShown() && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]:not([hidden])')) {
+        showGuide();
+    }
 })();

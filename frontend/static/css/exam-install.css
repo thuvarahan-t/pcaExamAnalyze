@@ -26,25 +26,37 @@
     z-index: 200;
     box-sizing: border-box;
     width: min(440px, 100% - 2rem);
-    max-height: 90vh;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
     height: fit-content;
     margin: auto;
-    padding: 1.5rem;
+    padding: clamp(1rem, 5vw, 1.5rem);
     overflow: auto;
     border: 1px solid #d2dbea;
     border-radius: 1rem;
     background: #fff;
     color: #0b1f3a;
+    font-family: "Anek Tamil", Inter, system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.55;
     text-align: left;
     white-space: normal;
     box-shadow: 0 20px 60px #07172b40;
 }
 
 .pca-install-guide::backdrop { background: #081a30a6; }
-.pca-install-guide h2 { margin: 0 0 .75rem; font-size: 1.25rem; }
-.pca-install-guide p { margin: 0 0 1rem; line-height: 1.6; }
-.pca-install-guide details { margin-bottom: 1rem; }
-.pca-install-guide summary { margin-bottom: .5rem; font-weight: 600; cursor: pointer; }
+.pca-install-guide h2 {
+    margin: 0 0 .75rem;
+    font-family: inherit;
+    font-size: clamp(1.2rem, 4vw, 1.4rem);
+    line-height: 1.35;
+}
+.pca-install-guide p { margin: 0 0 .75rem; }
+.pca-install-steps { margin: 0 0 1rem; padding-inline-start: 1.4rem; }
+.pca-install-steps li + li { margin-block-start: .35rem; }
+.pca-install-browser-options { margin: 0 0 1rem; }
+.pca-install-browser-options dt { font-weight: 700; }
+.pca-install-browser-options dd { margin: 0 0 .6rem; }
 .pca-install-guide button {
     min-height: 44px;
     padding: .45rem .9rem;
@@ -56,23 +68,11 @@
     font-weight: 600;
     cursor: pointer;
 }
-
-.pca-install-link {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: .5rem;
-}
-
-.pca-install-link label, .pca-install-link [role='status'] { grid-column: 1 / -1; }
-.pca-install-link [role='status']:empty { display: none; }
-.pca-install-link input {
-    min-width: 0;
-    padding: .5rem;
-    border: 1px solid #bdcde4;
-    border-radius: .55rem;
-    font: inherit;
-    font-size: 1rem;
-}
+.pca-install-guide button:disabled { opacity: .65; cursor: wait; }
+.pca-install-guide button:focus-visible { outline: 2px solid #2756c7; outline-offset: 2px; }
+.pca-install-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.pca-install-guide [data-pca-install-now] { border-color: #2452c6; background: #2452c6; color: #fff; }
+.pca-install-guide [data-pca-install-now]:hover { background: #1d45ae; }
 
 @media (max-width: 760px) {
     .packages-page .pca-install-button { margin: .75rem 0 0; }

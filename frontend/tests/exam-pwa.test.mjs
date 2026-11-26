@@ -130,29 +130,40 @@ test('worker caches only successful versioned, same-origin static asset requests
 class Target {
     listeners = new Map();
     hidden = true;
+    disabled = false;
     open = false;
 
     addEventListener(type, handle) { this.listeners.set(type, handle); }
-    fire(type, event) { return this.listeners.get(type)?.(event); }
+    fire(type, event = { target: this, currentTarget: this }) { return this.listeners.get(type)?.(event); }
     showModal() { this.open = true; }
     close() { this.open = false; }
+    setAttribute(attribute) { if (attribute === 'open') this.open = true; }
     removeAttribute(attribute) { if (attribute === 'open') this.close(); }
-    focus() { this.focused = true; }
-    select() { this.selected = true; }
 }
 
 function testPage({ userAgent = 'Chrome/140', platform, maxTouchPoints = 0, standalone = false,
-    legacyStandalone = false, clipboard, hasInstall = true } = {}) {
+    legacyStandalone = false, hasInstall = true, install, session = new Map(),
+    path = '/exam/packages?from=whatsapp#student-feedback', otherDialogOpen = false, customDialogOpen = false } = {}) {
     const registration = [];
     const button = new Target();
     const guide = new Target();
-    const controls = Object.fromEntries(['safari', 'browser', 'embedded', 'open-browser', 'copy-status', 'install-done', 'copy']
-        .map(name => [name, new Target()]));
-    const pageUrl = new Target();
-    guide.querySelector = selector => selector === '#pca-install-url' ? pageUrl : controls[selector.slice(10, -1)];
+    const otherDialog = Object.assign(new Target(), { open: otherDialogOpen });
+    const customDialog = Object.assign(new Target(), {
+        hidden: !customDialogOpen,
+        getClientRects: () => customDialogOpen ? [{}] : []
+    });
+    const controls = Object.fromEntries([
+        'safari', 'browser', 'android', 'desktop', 'install-done', 'install-now', 'ready'
+    ].map(name => [name, new Target()]));
+    guide.querySelector = selector => controls[selector.slice(10, -1)];
     const displayMode = Object.assign(new Target(), { matches: standalone });
+    const sessionStorage = {
+        getItem: key => session.get(key) ?? null,
+        setItem: (key, value) => session.set(key, String(value))
+    };
+    const location = new URL(path, origin);
     const window = Object.assign(new Target(), {
-        location: { href: origin + '/exam/packages?from=whatsapp#student-feedback' },
+        location, sessionStorage, isSecureContext: true,
         matchMedia: query => {
             assert.equal(query, '(display-mode: standalone)');
             return displayMode;
@@ -160,14 +171,25 @@ function testPage({ userAgent = 'Chrome/140', platform, maxTouchPoints = 0, stan
     });
     const document = {
         currentScript: { dataset: { workerUrl: '/exam-sw.js', workerScope: '/exam' } },
-        querySelector: selector => selector === '[data-pca-install-guide]' ? guide : hasInstall ? button : null
+        querySelector(selector) {
+            if (selector === '[data-pca-install]') return hasInstall ? button : null;
+            if (selector === '[data-pca-install-guide]') return guide;
+            return this.querySelectorAll(selector)[0] ?? null;
+        },
+        querySelectorAll(selector) {
+            const matches = [];
+            if (selector.includes('dialog[open]') && otherDialog.open) matches.push(otherDialog);
+            if (selector === 'dialog[open]' && guide.open) matches.push(guide);
+            if (selector.includes('[role="dialog"]') && !customDialog.hidden) matches.push(customDialog);
+            return matches;
+        }
     };
     const navigator = {
-        userAgent, platform, maxTouchPoints, standalone: legacyStandalone, clipboard,
+        userAgent, platform, maxTouchPoints, standalone: legacyStandalone, install,
         serviceWorker: { register: async (...args) => registration.push(args) }
     };
-    vm.runInNewContext(pwaClient, { window, document, navigator });
-    return { window, button, guide, controls, pageUrl, displayMode, registration };
+    vm.runInNewContext(pwaClient, { window, document, navigator, sessionStorage, isSecureContext: true });
+    return { window, button, guide, controls, displayMode, registration };
 }
 
 test('PWA registers with cache revalidation even on exam pages without an install control', () => {
@@ -179,8 +201,9 @@ test('PWA registers with cache revalidation even on exam pages without an instal
     assert.equal(options.updateViaCache, 'none');
 });
 
-test('Android Chrome native prompt runs only on click and accepted installs hide the control', async () => {
+test('the Android install button reopens the guide and only the guide action prompts Chrome', async () => {
     const page = testPage({ userAgent: 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36' });
+    page.controls['install-done'].fire('click');
     let prompted = 0;
     let prevented = false;
     page.window.fire('beforeinstallprompt', {
@@ -191,26 +214,134 @@ test('Android Chrome native prompt runs only on click and accepted installs hide
     assert.ok(prevented);
     assert.equal(prompted, 0);
     assert.equal(page.button.hidden, false);
+    assert.equal(page.guide.open, false);
     await page.button.fire('click');
+    assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, false);
+    assert.equal(prompted, 0);
+    await page.controls['install-now'].fire('click');
     assert.equal(prompted, 1);
     assert.equal(page.button.hidden, true);
     assert.equal(page.guide.open, false);
 });
 
-test('declined native prompts keep the install control and offer browser instructions next', async () => {
-    const page = testPage();
+test('the guide action prefers navigator.install after the outer button reopens the guide', async () => {
+    let directCalls = 0;
+    let legacyCalls = 0;
+    const page = testPage({ install: async () => { directCalls++; return { manifestId: origin + '/exam' }; } });
+    assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, false);
+    assert.equal(page.controls.ready.hidden, false);
+    assert.equal(page.controls.browser.hidden, true);
     page.window.fire('beforeinstallprompt', {
         preventDefault() {},
-        async prompt() { return { outcome: 'dismissed' }; }
+        async prompt() { legacyCalls++; return { outcome: 'accepted' }; }
     });
-    await page.button.fire('click');
-    assert.equal(page.button.hidden, false);
+    assert.equal(directCalls, 0);
+    assert.equal(legacyCalls, 0);
+    page.controls['install-done'].fire('click');
+    assert.equal(page.guide.open, false);
     await page.button.fire('click');
     assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, false);
+    assert.equal(directCalls, 0);
+    assert.equal(legacyCalls, 0);
+    await page.controls['install-now'].fire('click');
+    assert.equal(directCalls, 1);
+    assert.equal(legacyCalls, 0);
+    assert.equal(page.button.hidden, true);
+    assert.equal(page.guide.open, false);
+});
+
+test('canceling navigator.install leaves the guide open and allows a second direct install click', async () => {
+    let calls = 0;
+    const page = testPage({ install: async () => {
+        calls++;
+        if (calls === 1) throw new DOMException('Canceled', 'AbortError');
+        return { manifestId: origin + '/exam' };
+    } });
+    const action = page.controls['install-now'];
+    await action.fire('click');
+    assert.equal(calls, 1);
+    assert.equal(page.guide.open, true);
+    assert.equal(action.hidden, false);
+    assert.equal(action.disabled, false);
+    await action.fire('click');
+    assert.equal(calls, 2);
+    assert.equal(page.button.hidden, true);
+    assert.equal(page.guide.open, false);
+});
+
+test('the Android guide starts with the correct menu and a late prompt enables its install action', async () => {
+    const page = testPage({ userAgent: 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36' });
+    assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, true);
+    assert.equal(page.controls.ready.hidden, true);
     assert.equal(page.controls.browser.hidden, false);
+    assert.equal(page.controls.android.hidden, false);
+    assert.equal(page.controls.desktop.hidden, true);
+    assert.equal(page.controls.safari.hidden, true);
+
+    let prompts = 0;
+    let prevented = false;
+    page.window.fire('beforeinstallprompt', {
+        preventDefault() { prevented = true; },
+        async prompt() { prompts++; return { outcome: 'accepted' }; }
+    });
+    assert.equal(prevented, true);
+    assert.equal(prompts, 0);
+    assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, false);
+    assert.equal(page.controls.ready.hidden, false);
+    assert.equal(page.controls.browser.hidden, true);
+    await page.controls['install-now'].fire('click');
+    assert.equal(prompts, 1);
+    assert.equal(page.guide.open, false);
+});
+
+test('declining a single-use browser prompt restores the desktop guide until a new prompt is available', async () => {
+    const page = testPage();
+    let prompts = 0;
+    page.window.fire('beforeinstallprompt', {
+        preventDefault() {},
+        async prompt() { prompts++; return { outcome: 'dismissed' }; }
+    });
+    await page.controls['install-now'].fire('click');
+    assert.equal(prompts, 1);
+    assert.equal(page.button.hidden, false);
+    assert.equal(page.guide.open, true);
+    assert.equal(page.controls['install-now'].hidden, true);
+    assert.equal(page.controls.browser.hidden, false);
+    assert.equal(page.controls.desktop.hidden, false);
+    assert.equal(page.controls.android.hidden, true);
     page.window.fire('appinstalled');
     assert.equal(page.button.hidden, true);
     assert.equal(page.guide.open, false);
+});
+
+test('the guide opens once across Exam and Offer in the same tab and can be reopened manually', async () => {
+    const session = new Map();
+    const exam = testPage({ path: '/exam', session });
+    assert.equal(exam.guide.open, true);
+    exam.controls['install-done'].fire('click');
+
+    const offer = testPage({ path: '/exam/packages', session });
+    assert.equal(offer.guide.open, false);
+    assert.equal(offer.button.hidden, false);
+    await offer.button.fire('click');
+    assert.equal(offer.guide.open, true);
+    assert.equal(testPage({ path: '/exam/packages', session }).guide.open, false);
+    assert.equal(testPage({ path: '/exam/packages' }).guide.open, true);
+});
+
+test('another open modal prevents the automatic guide without using up the tab reminder', () => {
+    for (const dialog of [{ otherDialogOpen: true }, { customDialogOpen: true }]) {
+        const session = new Map();
+        const busy = testPage({ ...dialog, session });
+        assert.equal(busy.guide.open, false);
+        assert.equal(busy.button.hidden, false);
+        assert.equal(testPage({ session }).guide.open, true);
+    }
 });
 
 test('iPhone Safari and desktop-mode iPad show Safari instructions', async () => {
@@ -220,29 +351,25 @@ test('iPhone Safari and desktop-mode iPad show Safari instructions', async () =>
         assert.equal(page.guide.open, true);
         assert.equal(page.controls.safari.hidden, false);
         assert.equal(page.controls.browser.hidden, true);
-        assert.equal(page.controls.embedded.open, false);
         page.controls['install-done'].fire('click');
         assert.equal(page.guide.open, false);
     }
 });
 
-test('in-app guide expands browser guidance and copies the exact page URL including the anchor', async () => {
-    const copied = [];
-    const page = testPage({ userAgent: 'iPhone AppleWebKit/605 WhatsApp',
-        clipboard: { writeText: async url => copied.push(url) } });
-    await page.button.fire('click');
-    assert.equal(page.controls.embedded.open, true);
-    assert.equal(page.controls['open-browser'].textContent, 'Safari');
-    await page.controls.copy.fire('click');
-    assert.deepEqual(copied, [page.window.location.href]);
-    assert.equal(page.controls['copy-status'].textContent, 'Link copied.');
+test('Android and Apple in-app browsers show their platform installation steps directly', () => {
+    const android = testPage({ userAgent: 'Mozilla/5.0 (Linux; Android 15; wv) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36' });
+    assert.equal(android.guide.open, true);
+    assert.equal(android.controls['install-now'].hidden, true);
+    assert.equal(android.controls.browser.hidden, false);
+    assert.equal(android.controls.android.hidden, false);
+    assert.equal(android.controls.desktop.hidden, true);
+    assert.equal(android.controls.safari.hidden, true);
 
-    const android = testPage({ userAgent: 'Android; wv) AppleWebKit/537.36' });
-    await android.button.fire('click');
-    assert.equal(android.controls.embedded.open, true);
-    assert.equal(android.controls['open-browser'].textContent, 'Chrome');
-    await android.controls.copy.fire('click');
-    assert.equal(android.pageUrl.selected, true);
+    const apple = testPage({ userAgent: 'iPhone AppleWebKit/605 WhatsApp' });
+    assert.equal(apple.guide.open, true);
+    assert.equal(apple.controls['install-now'].hidden, true);
+    assert.equal(apple.controls.browser.hidden, true);
+    assert.equal(apple.controls.safari.hidden, false);
 });
 
 test('standalone display mode and legacy iPhone standalone hide the install control', async () => {
